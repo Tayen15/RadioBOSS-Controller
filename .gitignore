@@ -1,0 +1,82 @@
+# ==========================================
+# Radio Caster Request Bridge .gitignore
+# ==========================================
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor Configurations
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Python Artifacts & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# PyInstaller Build Artifacts
+*.manifest
+*.spec
+*.exe
+
+# Node & Next.js Build Outputs
+node_modules/
+.next/
+out/
+frontend/out/
+*.tsbuildinfo
+
+# Test & Local Audio Caches
+cache_test/
+*.mp3
+*.m4a
+*.webm
+*.jpg
+*.png
+*.webp
+!frontend/public/**/*
+!docs/**/*
+
+# Environment & Secrets (Keep .env.example, ignore private .env)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+
+# Temporary Log Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
