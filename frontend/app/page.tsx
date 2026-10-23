@@ -511,7 +511,9 @@ export default function DashboardPage() {
               {bottomLeftTab === "sets" && (
                 <PlaylistSetsWidget
                   onSelectTrack={(track) => setSelectedTrack(track)}
+                  onQueueTrack={(track, pos) => queueTrackWithGuard(track, pos, true)}
                   onAddToast={addToast}
+                  isQueueing={isQueueing}
                   onQueueComplete={() => {
                     syncStatus();
                     syncPlaylist();

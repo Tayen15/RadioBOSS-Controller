@@ -442,6 +442,37 @@ export async function removeTrackFromPlaylistSet(
   }
 }
 
+export async function clearPlaylistSetTracks(setId: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/sets/${encodeURIComponent(setId)}/tracks`,
+    {
+      method: "DELETE",
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengosongkan lagu di set.");
+  }
+}
+
+export async function reorderPlaylistSetTracks(
+  setId: string,
+  itemIds: string[]
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/sets/${encodeURIComponent(setId)}/reorder`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item_ids: itemIds }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengubah urutan lagu di set.");
+  }
+}
+
 export async function resolvePlaylistUrl(
   url: string,
   limit: number = 50

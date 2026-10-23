@@ -488,6 +488,26 @@ class DatabaseService:
             cursor.execute("UPDATE playlist_sets SET updated_at = ? WHERE id = ?;", (time.time(), set_id))
         return True
 
+    def clear_set_tracks(self, set_id: str) -> bool:
+        """Remove all tracks from a playlist set."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM playlist_set_items WHERE set_id = ?;", (set_id,))
+            cursor.execute("UPDATE playlist_sets SET updated_at = ? WHERE id = ?;", (time.time(), set_id))
+        return True
+
+    def reorder_set_tracks(self, set_id: str, item_ids: List[str]) -> bool:
+        """Update order_index of tracks inside a playlist set."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            for idx, item_id in enumerate(item_ids):
+                cursor.execute(
+                    "UPDATE playlist_set_items SET order_index = ? WHERE set_id = ? AND id = ?;",
+                    (idx, set_id, item_id),
+                )
+            cursor.execute("UPDATE playlist_sets SET updated_at = ? WHERE id = ?;", (time.time(), set_id))
+        return True
+
     # ==========================================
     # Storage Directory Relocation
     # ==========================================

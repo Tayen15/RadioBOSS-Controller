@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   Sparkles,
   Radio,
@@ -12,7 +13,6 @@ import {
   Clock,
   Flame,
   Zap,
-  Music,
   Smile,
   Check,
 } from "lucide-react";
@@ -74,6 +74,32 @@ export function SmartRecommendationsWidget({
   const effectiveArtist =
     seedTrack?.artists?.[0] || currentArtist || "NIKI";
 
+  const [prevSeedId, setPrevSeedId] = useState<string | null>(null);
+  const [prevArtist, setPrevArtist] = useState<string | null>(null);
+  const [prevMoodKey, setPrevMoodKey] = useState<string | null>(null);
+
+  // Synchronize loading states during render phase (avoids cascading render warning in effects)
+  if (seedTrack?.video_id && seedTrack.video_id !== prevSeedId) {
+    setPrevSeedId(seedTrack.video_id);
+    setIsLoadingRecs(true);
+  } else if (!seedTrack?.video_id && prevSeedId !== null) {
+    setPrevSeedId(null);
+    setIsLoadingRecs(false);
+  }
+
+  if (effectiveArtist && effectiveArtist !== prevArtist) {
+    setPrevArtist(effectiveArtist);
+    setIsLoadingArtist(true);
+  }
+
+  const activeMoodKey = activeTab === "mood" ? selectedMoodId : null;
+  if (activeMoodKey && activeMoodKey !== prevMoodKey) {
+    setPrevMoodKey(activeMoodKey);
+    setIsLoadingMood(true);
+  } else if (activeTab !== "mood" && prevMoodKey !== null) {
+    setPrevMoodKey(null);
+  }
+
   // Load playlist sets for quick "+Set" picker
   const loadSetsList = () => {
     fetchPlaylistSets()
@@ -90,7 +116,6 @@ export function SmartRecommendationsWidget({
     if (!seedTrack?.video_id) return;
 
     let isMounted = true;
-    setIsLoadingRecs(true);
 
     fetchRecommendations(seedTrack.video_id, 8)
       .then((res) => {
@@ -113,7 +138,6 @@ export function SmartRecommendationsWidget({
     if (!effectiveArtist) return;
 
     let isMounted = true;
-    setIsLoadingArtist(true);
 
     fetchArtistTopTracks(effectiveArtist, 6)
       .then((res) => {
@@ -132,29 +156,28 @@ export function SmartRecommendationsWidget({
   }, [effectiveArtist]);
 
   // Fetch mood tracks
-  const loadMoodCategory = (moodId: string) => {
-    setSelectedMoodId(moodId);
-    const item = MOOD_OPTIONS.find((m) => m.id === moodId);
+  useEffect(() => {
+    if (activeTab !== "mood") return;
+
+    let isMounted = true;
+    const item = MOOD_OPTIONS.find((m) => m.id === selectedMoodId);
     if (!item) return;
 
-    setIsLoadingMood(true);
     fetchMoodTracks(item.query, 8)
       .then((res) => {
-        if (res.success) {
+        if (isMounted && res.success) {
           setMoodTracks(res.results);
         }
       })
       .catch(() => {})
       .finally(() => {
-        setIsLoadingMood(false);
+        if (isMounted) setIsLoadingMood(false);
       });
-  };
 
-  useEffect(() => {
-    if (activeTab === "mood" && moodTracks.length === 0) {
-      loadMoodCategory(selectedMoodId);
-    }
-  }, [activeTab]);
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab, selectedMoodId]);
 
   const handleTogglePreview = (track: TrackItem) => {
     if (previewTrackId === track.video_id) {
@@ -181,17 +204,29 @@ export function SmartRecommendationsWidget({
     if (activeTab === "upnext" && seedTrack?.video_id) {
       setIsLoadingRecs(true);
       fetchRecommendations(seedTrack.video_id, 8)
-        .then((res) => setRecommendations(res.results))
+        .then((res) => {
+          if (res.success) setRecommendations(res.results);
+        })
         .catch(() => {})
         .finally(() => setIsLoadingRecs(false));
     } else if (activeTab === "artist" && effectiveArtist) {
       setIsLoadingArtist(true);
       fetchArtistTopTracks(effectiveArtist, 6)
-        .then((res) => setArtistTracks(res.results))
+        .then((res) => {
+          if (res.success) setArtistTracks(res.results);
+        })
         .catch(() => {})
         .finally(() => setIsLoadingArtist(false));
     } else if (activeTab === "mood") {
-      loadMoodCategory(selectedMoodId);
+      const item = MOOD_OPTIONS.find((m) => m.id === selectedMoodId);
+      if (!item) return;
+      setIsLoadingMood(true);
+      fetchMoodTracks(item.query, 8)
+        .then((res) => {
+          if (res.success) setMoodTracks(res.results);
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingMood(false));
     }
   };
 
@@ -342,7 +377,7 @@ export function SmartRecommendationsWidget({
               <button
                 key={m.id}
                 type="button"
-                onClick={() => loadMoodCategory(m.id)}
+                onClick={() => setSelectedMoodId(m.id)}
                 className={`btn btn-xs rounded-lg text-[10px] shrink-0 font-medium transition-all ${
                   isSelected
                     ? "btn-secondary text-secondary-content font-bold shadow-sm"
@@ -402,9 +437,12 @@ export function SmartRecommendationsWidget({
                 {/* Track Thumbnail & Preview Trigger */}
                 <div className="relative shrink-0 w-11 h-11 rounded-lg overflow-hidden bg-base-300">
                   {track.thumbnail_url ? (
-                    <img
+                    <Image
                       src={track.thumbnail_url}
                       alt={track.title}
+                      width={44}
+                      height={44}
+                      unoptimized
                       className="w-full h-full object-cover"
                     />
                   ) : (

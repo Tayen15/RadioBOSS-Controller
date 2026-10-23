@@ -23,6 +23,10 @@ class AddTrackRequest(BaseModel):
     track: TrackItem
 
 
+class ReorderTracksRequest(BaseModel):
+    item_ids: List[str]
+
+
 class ResolvePlaylistRequest(BaseModel):
     url: str = Field(..., min_length=5)
     limit: Optional[int] = Field(default=50, ge=1, le=100)
@@ -110,6 +114,28 @@ async def remove_track_from_playlist_set(set_id: str, item_id: str):
     except Exception as e:
         logger.error(f"Error removing track {item_id} from set {set_id}: {e}")
         raise HTTPException(status_code=500, detail="Gagal menghapus lagu dari playlist set.")
+
+
+@router.delete("/{set_id}/tracks")
+async def clear_playlist_set_tracks(set_id: str):
+    """Remove all songs from a playlist set."""
+    try:
+        db_service.clear_set_tracks(set_id)
+        return {"success": True, "message": "Semua lagu di set berhasil dikosongkan."}
+    except Exception as e:
+        logger.error(f"Error clearing tracks in set {set_id}: {e}")
+        raise HTTPException(status_code=500, detail="Gagal mengosongkan lagu di playlist set.")
+
+
+@router.put("/{set_id}/reorder")
+async def reorder_playlist_set_tracks(set_id: str, req: ReorderTracksRequest):
+    """Reorder songs inside a playlist set."""
+    try:
+        db_service.reorder_set_tracks(set_id, req.item_ids)
+        return {"success": True, "message": "Urutan lagu berhasil diperbarui."}
+    except Exception as e:
+        logger.error(f"Error reordering tracks in set {set_id}: {e}")
+        raise HTTPException(status_code=500, detail="Gagal mengubah urutan lagu.")
 
 
 @router.post("/resolve-url", response_model=ResolvePlaylistResponse)
