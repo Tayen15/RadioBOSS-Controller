@@ -15,6 +15,7 @@ import {
   LyricsResponse,
   RecommendationsResponse,
   ArtistTopTracksResponse,
+  MoodTracksResponse,
   PlaylistSet,
   PlaylistSetDetails,
   ResolvePlaylistResponse,
@@ -330,6 +331,24 @@ export async function fetchArtistTopTracks(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Gagal mengambil lagu populer artis.");
+  }
+  return await res.json();
+}
+
+export async function fetchMoodTracks(
+  mood: string,
+  limit: number = 8
+): Promise<MoodTracksResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/music/mood?mood=${encodeURIComponent(mood)}&limit=${limit}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengambil lagu kategori mood.");
   }
   return await res.json();
 }

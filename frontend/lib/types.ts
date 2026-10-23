@@ -159,6 +159,12 @@ export interface ArtistTopTracksResponse {
   results: TrackItem[];
 }
 
+export interface MoodTracksResponse {
+  success: boolean;
+  mood: string;
+  results: TrackItem[];
+}
+
 export interface PlaylistSetItem {
   id: string;
   set_id: string;

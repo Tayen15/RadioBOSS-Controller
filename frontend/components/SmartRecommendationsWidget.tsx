@@ -10,41 +10,80 @@ import {
   Pause,
   RefreshCw,
   Clock,
-  ExternalLink,
   Flame,
+  Zap,
+  Music,
+  Smile,
+  Check,
 } from "lucide-react";
-import { TrackItem } from "@/lib/types";
-import { fetchRecommendations, fetchArtistTopTracks, getStreamRelayUrl } from "@/lib/api";
+import { TrackItem, PlaylistSet } from "@/lib/types";
+import {
+  fetchRecommendations,
+  fetchArtistTopTracks,
+  fetchMoodTracks,
+  getStreamRelayUrl,
+  fetchPlaylistSets,
+  addTrackToPlaylistSet,
+} from "@/lib/api";
 
 interface SmartRecommendationsWidgetProps {
   seedTrack: TrackItem | null;
   currentArtist?: string | null;
   onSelectTrack: (track: TrackItem) => void;
   onQueueTrack: (track: TrackItem, pos: number) => void;
-  onAddToSet?: (track: TrackItem) => void;
   isQueueing: boolean;
 }
+
+const MOOD_OPTIONS = [
+  { id: "morning", label: "☀️ Semangat", query: "indonesia pop hits upbeat semangat" },
+  { id: "chill", label: "☕ Santai", query: "chill acoustic pop indonesia" },
+  { id: "tophits", label: "🇮🇩 Top Indo", query: "lagu pop indonesia terbaru hits" },
+  { id: "melow", label: "💔 Galau", query: "lagu galau indonesia viral sedih" },
+  { id: "nostalgia", label: "📻 2000s", query: "pop indonesia hits tahun 2000an" },
+];
 
 export function SmartRecommendationsWidget({
   seedTrack,
   currentArtist,
   onSelectTrack,
   onQueueTrack,
-  onAddToSet,
   isQueueing,
 }: SmartRecommendationsWidgetProps) {
-  const [activeTab, setActiveTab] = useState<"upnext" | "artist">("upnext");
+  const [activeTab, setActiveTab] = useState<"upnext" | "artist" | "mood">("upnext");
   const [recommendations, setRecommendations] = useState<TrackItem[]>([]);
   const [artistTracks, setArtistTracks] = useState<TrackItem[]>([]);
+  const [moodTracks, setMoodTracks] = useState<TrackItem[]>([]);
+  const [selectedMoodId, setSelectedMoodId] = useState<string>("morning");
+
   const [isLoadingRecs, setIsLoadingRecs] = useState<boolean>(false);
   const [isLoadingArtist, setIsLoadingArtist] = useState<boolean>(false);
+  const [isLoadingMood, setIsLoadingMood] = useState<boolean>(false);
 
   // Audio preview state
   const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
+  // Auto-fill state
+  const [isAutoFilling, setIsAutoFilling] = useState<boolean>(false);
+
+  // Save to set dropdown state
+  const [sets, setSets] = useState<PlaylistSet[]>([]);
+  const [activeSetDropdownTrackId, setActiveSetDropdownTrackId] = useState<string | null>(null);
+  const [addedSetNotice, setAddedSetNotice] = useState<string | null>(null);
+
   const effectiveArtist =
     seedTrack?.artists?.[0] || currentArtist || "NIKI";
+
+  // Load playlist sets for quick "+Set" picker
+  const loadSetsList = () => {
+    fetchPlaylistSets()
+      .then((data) => setSets(data))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadSetsList();
+  }, []);
 
   // Fetch recommendations whenever seedTrack changes
   useEffect(() => {
@@ -92,6 +131,31 @@ export function SmartRecommendationsWidget({
     };
   }, [effectiveArtist]);
 
+  // Fetch mood tracks
+  const loadMoodCategory = (moodId: string) => {
+    setSelectedMoodId(moodId);
+    const item = MOOD_OPTIONS.find((m) => m.id === moodId);
+    if (!item) return;
+
+    setIsLoadingMood(true);
+    fetchMoodTracks(item.query, 8)
+      .then((res) => {
+        if (res.success) {
+          setMoodTracks(res.results);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setIsLoadingMood(false);
+      });
+  };
+
+  useEffect(() => {
+    if (activeTab === "mood" && moodTracks.length === 0) {
+      loadMoodCategory(selectedMoodId);
+    }
+  }, [activeTab]);
+
   const handleTogglePreview = (track: TrackItem) => {
     if (previewTrackId === track.video_id) {
       if (audioRef.current) {
@@ -126,11 +190,52 @@ export function SmartRecommendationsWidget({
         .then((res) => setArtistTracks(res.results))
         .catch(() => {})
         .finally(() => setIsLoadingArtist(false));
+    } else if (activeTab === "mood") {
+      loadMoodCategory(selectedMoodId);
     }
   };
 
-  const activeList = activeTab === "upnext" ? recommendations : artistTracks;
-  const isLoading = activeTab === "upnext" ? isLoadingRecs : isLoadingArtist;
+  // Instant Auto-Fill Queue: Queues top 3 songs from active recommendation list
+  const handleAutoFill = async () => {
+    const list = getActiveList();
+    if (list.length === 0) return;
+
+    const toQueue = list.slice(0, 3);
+    setIsAutoFilling(true);
+
+    for (const track of toQueue) {
+      onQueueTrack(track, -1);
+      await new Promise((r) => setTimeout(r, 800));
+    }
+
+    setIsAutoFilling(false);
+  };
+
+  const handleSaveTrackToSet = async (setId: string, track: TrackItem) => {
+    try {
+      await addTrackToPlaylistSet(setId, track);
+      setAddedSetNotice(`Tersimpan ke set!`);
+      setTimeout(() => setAddedSetNotice(null), 2000);
+      setActiveSetDropdownTrackId(null);
+    } catch {
+      setAddedSetNotice(`Gagal menyimpan`);
+      setTimeout(() => setAddedSetNotice(null), 2000);
+    }
+  };
+
+  const getActiveList = (): TrackItem[] => {
+    if (activeTab === "upnext") return recommendations;
+    if (activeTab === "artist") return artistTracks;
+    return moodTracks;
+  };
+
+  const activeList = getActiveList();
+  const isLoading =
+    activeTab === "upnext"
+      ? isLoadingRecs
+      : activeTab === "artist"
+      ? isLoadingArtist
+      : isLoadingMood;
 
   return (
     <div className="card bg-base-200 border border-base-300 p-5 shadow-sm space-y-4">
@@ -154,51 +259,112 @@ export function SmartRecommendationsWidget({
               <span className="badge badge-secondary badge-xs scale-90">Auto Radio</span>
             </h3>
             <p className="text-[10px] text-base-content/60">
-              Saran lagu berdasarkan vibe &amp; artis lagu aktif
+              Saran lagu Up Next, katalog artis, &amp; mood siaran
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={refreshActiveTab}
-          disabled={isLoading}
-          className="btn btn-ghost btn-xs text-base-content/60 hover:text-base-content gap-1"
-          title="Perbarui rekomendasi"
-        >
-          <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin text-secondary" : ""}`} />
-          <span className="text-[10px]">Refresh</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          {activeList.length > 0 && (
+            <button
+              type="button"
+              onClick={handleAutoFill}
+              disabled={isAutoFilling || isQueueing}
+              className="btn btn-secondary btn-xs gap-1 font-bold shadow-sm"
+              title="Antrekan 3 lagu rekomendasi teratas secara otomatis ke RadioBOSS"
+            >
+              <Zap className="h-3 w-3" />
+              <span>{isAutoFilling ? "Mengantrekan..." : "Isi 3 Lagu"}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={refreshActiveTab}
+            disabled={isLoading}
+            className="btn btn-ghost btn-xs text-base-content/60 hover:text-base-content gap-1"
+            title="Perbarui rekomendasi"
+          >
+            <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin text-secondary" : ""}`} />
+            <span className="text-[10px]">Refresh</span>
+          </button>
+        </div>
       </div>
 
-      {/* Tabs Switcher */}
+      {/* 3 Tabs Switcher */}
       <div className="tabs tabs-box bg-base-300/50 p-1 rounded-xl flex gap-1">
         <button
           type="button"
           onClick={() => setActiveTab("upnext")}
-          className={`tab flex-1 gap-1.5 text-[11px] font-semibold rounded-lg transition-all ${
+          className={`tab flex-1 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
             activeTab === "upnext"
               ? "tab-active bg-secondary text-secondary-content shadow-sm"
               : "text-base-content/70 hover:text-base-content"
           }`}
         >
           <Radio className="h-3 w-3" />
-          <span className="truncate">Lagu Serupa (Up Next)</span>
+          <span className="truncate">Up Next</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("artist")}
-          className={`tab flex-1 gap-1.5 text-[11px] font-semibold rounded-lg transition-all ${
+          className={`tab flex-1 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
             activeTab === "artist"
               ? "tab-active bg-secondary text-secondary-content shadow-sm"
               : "text-base-content/70 hover:text-base-content"
           }`}
         >
           <User className="h-3 w-3" />
-          <span className="truncate">Top {effectiveArtist}</span>
+          <span className="truncate">Top Artis</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("mood")}
+          className={`tab flex-1 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+            activeTab === "mood"
+              ? "tab-active bg-secondary text-secondary-content shadow-sm"
+              : "text-base-content/70 hover:text-base-content"
+          }`}
+        >
+          <Smile className="h-3 w-3" />
+          <span className="truncate">Mood &amp; Vibe</span>
         </button>
       </div>
+
+      {/* Mood Selector Chips (Visible when Mood tab is active) */}
+      {activeTab === "mood" && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+          {MOOD_OPTIONS.map((m) => {
+            const isSelected = selectedMoodId === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => loadMoodCategory(m.id)}
+                className={`btn btn-xs rounded-lg text-[10px] shrink-0 font-medium transition-all ${
+                  isSelected
+                    ? "btn-secondary text-secondary-content font-bold shadow-sm"
+                    : "btn-ghost bg-base-100 text-base-content/70 hover:bg-base-300"
+                }`}
+              >
+                <span>{m.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Notification Toast for Set saving */}
+      {addedSetNotice && (
+        <div className="alert alert-success text-[11px] py-1 px-3 rounded-lg flex items-center justify-between shadow-sm animate-fade-in">
+          <span className="flex items-center gap-1 font-semibold">
+            <Check className="h-3 w-3" />
+            <span>{addedSetNotice}</span>
+          </span>
+        </div>
+      )}
 
       {/* Content List */}
       {isLoading ? (
@@ -207,7 +373,9 @@ export function SmartRecommendationsWidget({
           <p className="text-xs text-base-content/60">
             {activeTab === "upnext"
               ? "Menyesuaikan vibe & rekomendasi..."
-              : `Mengambil lagu populer ${effectiveArtist}...`}
+              : activeTab === "artist"
+              ? `Mengambil lagu populer ${effectiveArtist}...`
+              : "Mengambil katalog lagu mood siaran..."}
           </p>
         </div>
       ) : activeList.length === 0 ? (
@@ -224,10 +392,12 @@ export function SmartRecommendationsWidget({
         <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
           {activeList.map((track) => {
             const isPlayingPreview = previewTrackId === track.video_id;
+            const isSetDropdownOpen = activeSetDropdownTrackId === track.video_id;
+
             return (
               <div
                 key={track.video_id}
-                className="group flex items-center justify-between gap-2.5 p-2 rounded-xl bg-base-100 hover:bg-base-300/40 border border-base-300/60 transition-colors"
+                className="group relative flex items-center justify-between gap-2.5 p-2 rounded-xl bg-base-100 hover:bg-base-300/40 border border-base-300/60 transition-colors"
               >
                 {/* Track Thumbnail & Preview Trigger */}
                 <div className="relative shrink-0 w-11 h-11 rounded-lg overflow-hidden bg-base-300">
@@ -285,17 +455,50 @@ export function SmartRecommendationsWidget({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-1 shrink-0">
-                  {onAddToSet && (
+                <div className="flex items-center gap-1 shrink-0 relative">
+                  {/* Quick Save to Set Dropdown */}
+                  <div className="relative">
                     <button
                       type="button"
-                      onClick={() => onAddToSet(track)}
+                      onClick={() => {
+                        loadSetsList();
+                        setActiveSetDropdownTrackId(
+                          isSetDropdownOpen ? null : track.video_id
+                        );
+                      }}
                       className="btn btn-ghost btn-xs text-[10px] text-base-content/60 hover:text-accent p-1 h-7 min-h-0"
                       title="Simpan ke Playlist Set"
                     >
                       +Set
                     </button>
-                  )}
+
+                    {isSetDropdownOpen && (
+                      <div className="absolute right-0 top-8 z-50 w-44 bg-base-100 border border-base-300 rounded-xl shadow-2xl p-1.5 space-y-1">
+                        <p className="text-[10px] font-bold text-base-content/50 px-2 py-0.5 uppercase tracking-wider">
+                          Pilih Playlist Set:
+                        </p>
+                        {sets.length === 0 ? (
+                          <p className="text-[10px] text-base-content/50 px-2 py-1">
+                            Belum ada set dibuat di tab Set Playlist.
+                          </p>
+                        ) : (
+                          sets.map((s) => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => handleSaveTrackToSet(s.id, track)}
+                              className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-base-200 text-base-content truncate transition-colors flex items-center justify-between"
+                            >
+                              <span className="truncate">{s.name}</span>
+                              <span className="badge badge-neutral badge-xs scale-90">
+                                {s.track_count}
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   <button
                     type="button"

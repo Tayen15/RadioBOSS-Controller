@@ -23,6 +23,12 @@ class ArtistTopTracksResponse(BaseModel):
     results: List[TrackItem]
 
 
+class MoodTracksResponse(BaseModel):
+    success: bool = True
+    mood: str
+    results: List[TrackItem]
+
+
 @router.get("/recommendations/{video_id}", response_model=RecommendationsResponse)
 async def get_recommendations(
     video_id: str,
@@ -62,3 +68,23 @@ async def get_artist_top_tracks(
     except Exception as e:
         logger.error(f"Error fetching top tracks for artist '{artist}': {e}")
         raise HTTPException(status_code=500, detail="Gagal mengambil lagu populer artis.")
+
+
+@router.get("/mood", response_model=MoodTracksResponse)
+async def get_mood_tracks(
+    mood: str = Query(..., min_length=1),
+    limit: int = Query(default=8, ge=1, le=25),
+):
+    """
+    Get curated mood & vibe radio tracks (e.g. 'indonesia pop hits', 'chill acoustic', 'semangat pagi').
+    """
+    try:
+        results = ytmusic_service.search_songs(mood, limit=limit)
+        return MoodTracksResponse(
+            success=True,
+            mood=mood,
+            results=results,
+        )
+    except Exception as e:
+        logger.error(f"Error fetching mood tracks for '{mood}': {e}")
+        raise HTTPException(status_code=500, detail="Gagal mengambil lagu kategori mood.")
