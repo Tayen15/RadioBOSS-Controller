@@ -179,8 +179,18 @@ async def queue_track(request: QueueRequest):
             "isMasterCached": bool(cached_file and os.path.isfile(cached_file)),
         }
         history_service.add_entry(history_entry)
+        from app.services.db_service import db_service
+        db_service.record_track_play(
+            video_id=clean_id,
+            title=song_title or display_title,
+            artist=artist,
+            album=album,
+            thumbnail_url=thumbnail_url,
+            year=year,
+            genre=genre,
+        )
     except Exception as e:
-        logger.warning(f"Failed to record history entry: {e}")
+        logger.warning(f"Failed to record history and play count: {e}")
 
     return QueueResponse(
         success=True,

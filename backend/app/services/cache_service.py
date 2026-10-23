@@ -71,10 +71,11 @@ class CacheService:
         return default_dir
 
     def get_cache_stats(self) -> dict:
-        """Calculate number of cached tracks and total disk usage."""
+        """Calculate number of cached tracks and total disk usage and sync with DB."""
         total_files = 0
         total_size = 0
         try:
+            self.sync_disk_cache()
             if os.path.isdir(self.cache_dir):
                 for entry in os.scandir(self.cache_dir):
                     if entry.is_file():
@@ -93,6 +94,61 @@ class CacheService:
             "total_size_bytes": total_size,
             "total_size_mb": size_mb,
         }
+
+    def sync_disk_cache(self):
+        """Scan cache directory and register existing MP3s into SQLite cached_tracks table."""
+        from app.services.db_service import db_service
+        try:
+            if not os.path.isdir(self.cache_dir):
+                return
+            for entry in os.scandir(self.cache_dir):
+                if entry.is_file() and entry.name.endswith(".mp3"):
+                    file_size = entry.stat().st_size
+                    if file_size > 50000:
+                        stem = entry.name[:-4]
+                        if " - " in stem:
+                            parts = stem.split(" - ", 1)
+                            artist = parts[0].strip()
+                            title = parts[1].strip()
+                        else:
+                            artist = ""
+                            title = stem.strip()
+
+                        vid = stem
+                        thumb = ""
+                        album = ""
+                        year = ""
+                        genre = ""
+                        try:
+                            with db_service.get_connection() as conn:
+                                cursor = conn.cursor()
+                                cursor.execute(
+                                    "SELECT video_id, thumbnail_url, year, genre, album FROM queue_history WHERE title LIKE ? LIMIT 1;",
+                                    (f"%{title}%",),
+                                )
+                                match = cursor.fetchone()
+                                if match:
+                                    vid = match["video_id"]
+                                    thumb = match["thumbnail_url"]
+                                    album = match["album"]
+                                    year = match["year"]
+                                    genre = match["genre"]
+                        except Exception:
+                            pass
+
+                        db_service.register_cached_file(
+                            video_id=vid,
+                            file_path=entry.path,
+                            file_size_bytes=file_size,
+                            title=title,
+                            artist=artist,
+                            album=album,
+                            thumbnail_url=thumb,
+                            year=year,
+                            genre=genre,
+                        )
+        except Exception as e:
+            logger.warning(f"Error syncing disk cache to DB: {e}")
 
     def open_cache_folder(self) -> bool:
         """Open the cache directory in Windows File Explorer."""
@@ -130,6 +186,8 @@ class CacheService:
                                 deleted += 1
                         except Exception:
                             pass
+            from app.services.db_service import db_service
+            db_service.mark_cache_cleared()
         except Exception as e:
             logger.error(f"Error clearing cache: {e}")
         return deleted
@@ -168,6 +226,21 @@ class CacheService:
         # Reuse if already cached and valid (> 100 KB)
         if os.path.isfile(target_mp3) and os.path.getsize(target_mp3) > 102400:
             logger.info(f"Reusing cached studio audio: {target_mp3}")
+            try:
+                from app.services.db_service import db_service
+                db_service.register_cached_file(
+                    video_id=clean_id,
+                    file_path=target_mp3,
+                    file_size_bytes=os.path.getsize(target_mp3),
+                    title=title,
+                    artist=artist,
+                    album=album,
+                    thumbnail_url=thumbnail_url,
+                    year=year,
+                    genre=genre,
+                )
+            except Exception as e:
+                logger.debug(f"Failed to register reused cache in DB: {e}")
             return target_mp3
 
         logger.info(f"Preparing studio master cache for '{artist} - {title}' ({clean_id})...")
@@ -263,6 +336,21 @@ class CacheService:
 
             if proc.returncode == 0 and os.path.isfile(target_mp3) and os.path.getsize(target_mp3) > 50000:
                 logger.info(f"Studio master MP3 created successfully with ID3 & artwork: {target_mp3}")
+                try:
+                    from app.services.db_service import db_service
+                    db_service.register_cached_file(
+                        video_id=clean_id,
+                        file_path=target_mp3,
+                        file_size_bytes=os.path.getsize(target_mp3),
+                        title=title,
+                        artist=artist,
+                        album=album,
+                        thumbnail_url=thumbnail_url,
+                        year=year,
+                        genre=genre,
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to register new cache in DB: {e}")
                 return target_mp3
             else:
                 logger.warning(f"FFmpeg failed to create cached MP3. Exit code: {proc.returncode}")

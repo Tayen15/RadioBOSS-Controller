@@ -142,6 +142,36 @@ class DatabaseService:
                 ON playlist_set_items (set_id, order_index ASC);
             """)
 
+            # 5. Cached Tracks Table (Smart Audio Cache & DJ Play Tracking)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS cached_tracks (
+                    video_id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    artist TEXT DEFAULT '',
+                    album TEXT DEFAULT '',
+                    year TEXT DEFAULT '',
+                    genre TEXT DEFAULT '',
+                    file_path TEXT DEFAULT '',
+                    thumbnail_url TEXT DEFAULT '',
+                    duration_seconds INTEGER DEFAULT 0,
+                    duration_formatted TEXT DEFAULT '00:00',
+                    file_size_bytes INTEGER DEFAULT 0,
+                    play_count INTEGER DEFAULT 0,
+                    last_played_at REAL DEFAULT NULL,
+                    is_cached INTEGER DEFAULT 0,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                );
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_cached_tracks_play_count 
+                ON cached_tracks (play_count DESC);
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_cached_tracks_last_played 
+                ON cached_tracks (last_played_at DESC);
+            """)
+
     def _auto_migrate_from_legacy_json(self):
         """Automatically import data from legacy config.json and history.json if available."""
         default_dir = _get_default_storage_dir()
@@ -211,6 +241,56 @@ class DatabaseService:
                             logger.warning(f"Failed migrating history.json: {e}")
         except Exception as e:
             logger.warning(f"Error checking history migration: {e}")
+
+        # Seed cached_tracks play counts from queue_history if cached_tracks table is empty
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM cached_tracks;")
+                c_count = cursor.fetchone()[0]
+                if c_count == 0:
+                    cursor.execute("""
+                        SELECT video_id, title, artists, album, year, genre, thumbnail_url,
+                               COUNT(*) as cnt, MAX(created_at) as last_play, MIN(created_at) as first_play
+                        FROM queue_history
+                        GROUP BY video_id;
+                    """)
+                    rows = cursor.fetchall()
+                    now = time.time()
+                    for r in rows:
+                        vid = r["video_id"]
+                        artists_raw = r["artists"]
+                        artist = ""
+                        if artists_raw:
+                            try:
+                                parsed = json.loads(artists_raw)
+                                if isinstance(parsed, list) and len(parsed) > 0:
+                                    artist = parsed[0]
+                                else:
+                                    artist = str(parsed)
+                            except Exception:
+                                artist = str(artists_raw)
+                        cursor.execute("""
+                            INSERT OR IGNORE INTO cached_tracks
+                            (video_id, title, artist, album, year, genre, thumbnail_url, play_count, last_played_at, is_cached, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?);
+                        """, (
+                            vid,
+                            r["title"] or "Unknown",
+                            artist,
+                            r["album"] or "",
+                            r["year"] or "",
+                            r["genre"] or "",
+                            r["thumbnail_url"] or "",
+                            r["cnt"] or 1,
+                            r["last_play"] or now,
+                            r["first_play"] or now,
+                            now,
+                        ))
+                    if rows:
+                        logger.info(f"Seeded {len(rows)} tracks with play counts from queue_history into cached_tracks.")
+        except Exception as e:
+            logger.warning(f"Error seeding cached_tracks from history: {e}")
 
     # ==========================================
     # Settings Repository Operations
@@ -507,6 +587,279 @@ class DatabaseService:
                 )
             cursor.execute("UPDATE playlist_sets SET updated_at = ? WHERE id = ?;", (time.time(), set_id))
         return True
+
+    # ==========================================
+    # Cached Tracks & DJ Play Count Operations
+    # ==========================================
+
+    def record_track_play(
+        self,
+        video_id: str,
+        title: str,
+        artist: str = "",
+        album: str = "",
+        thumbnail_url: str = "",
+        year: str = "",
+        genre: str = "",
+        duration_seconds: int = 0,
+        duration_formatted: str = "00:00",
+    ) -> Dict[str, Any]:
+        """
+        Increment the play count for a track and update its last_played_at timestamp.
+        Inserts a new record if track is not yet tracked.
+        """
+        now = time.time()
+        clean_id = video_id.replace(".mp3", "").strip()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM cached_tracks WHERE video_id = ?;", (clean_id,))
+            row = cursor.fetchone()
+            if row:
+                new_count = (row["play_count"] or 0) + 1
+                cursor.execute(
+                    """
+                    UPDATE cached_tracks 
+                    SET play_count = ?, last_played_at = ?, updated_at = ?,
+                        title = COALESCE(NULLIF(?, ''), title),
+                        artist = COALESCE(NULLIF(?, ''), artist),
+                        album = COALESCE(NULLIF(?, ''), album),
+                        thumbnail_url = COALESCE(NULLIF(?, ''), thumbnail_url)
+                    WHERE video_id = ?;
+                    """,
+                    (new_count, now, now, title, artist, album, thumbnail_url, clean_id),
+                )
+            else:
+                new_count = 1
+                cursor.execute(
+                    """
+                    INSERT INTO cached_tracks
+                    (video_id, title, artist, album, year, genre, thumbnail_url, duration_seconds, duration_formatted, play_count, last_played_at, is_cached, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?);
+                    """,
+                    (
+                        clean_id,
+                        title or "Unknown",
+                        artist or "",
+                        album or "",
+                        year or "",
+                        genre or "",
+                        thumbnail_url or "",
+                        duration_seconds or 0,
+                        duration_formatted or "00:00",
+                        1,
+                        now,
+                        now,
+                        now,
+                    ),
+                )
+        return {"video_id": clean_id, "play_count": new_count, "last_played_at": now}
+
+    def register_cached_file(
+        self,
+        video_id: str,
+        file_path: str,
+        file_size_bytes: int,
+        title: str,
+        artist: str = "",
+        album: str = "",
+        thumbnail_url: str = "",
+        year: str = "",
+        genre: str = "",
+        duration_seconds: int = 0,
+        duration_formatted: str = "00:00",
+    ) -> Dict[str, Any]:
+        """
+        Register a file into cached_tracks as physically stored on disk (is_cached = 1).
+        Preserves existing play_count and last_played_at.
+        """
+        now = time.time()
+        clean_id = video_id.replace(".mp3", "").strip()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM cached_tracks WHERE video_id = ?;", (clean_id,))
+            row = cursor.fetchone()
+            if row:
+                cursor.execute(
+                    """
+                    UPDATE cached_tracks
+                    SET file_path = ?, file_size_bytes = ?, is_cached = 1, updated_at = ?,
+                        title = COALESCE(NULLIF(?, ''), title),
+                        artist = COALESCE(NULLIF(?, ''), artist),
+                        album = COALESCE(NULLIF(?, ''), album),
+                        thumbnail_url = COALESCE(NULLIF(?, ''), thumbnail_url),
+                        year = COALESCE(NULLIF(?, ''), year),
+                        genre = COALESCE(NULLIF(?, ''), genre)
+                    WHERE video_id = ?;
+                    """,
+                    (file_path, file_size_bytes, now, title, artist, album, thumbnail_url, year, genre, clean_id),
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO cached_tracks
+                    (video_id, title, artist, album, year, genre, file_path, thumbnail_url, duration_seconds, duration_formatted, file_size_bytes, play_count, last_played_at, is_cached, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 1, ?, ?);
+                    """,
+                    (
+                        clean_id,
+                        title or "Unknown",
+                        artist or "",
+                        album or "",
+                        year or "",
+                        genre or "",
+                        file_path,
+                        thumbnail_url or "",
+                        duration_seconds or 0,
+                        duration_formatted or "00:00",
+                        file_size_bytes,
+                        now,
+                        now,
+                    ),
+                )
+        return {"video_id": clean_id, "file_path": file_path, "is_cached": True}
+
+    def mark_cache_cleared(self, video_ids: Optional[List[str]] = None):
+        """Mark tracks as not cached when files are deleted from disk."""
+        now = time.time()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if video_ids:
+                placeholders = ",".join("?" for _ in video_ids)
+                cursor.execute(
+                    f"UPDATE cached_tracks SET is_cached = 0, file_path = '', file_size_bytes = 0, updated_at = ? WHERE video_id IN ({placeholders});",
+                    [now] + video_ids,
+                )
+            else:
+                cursor.execute(
+                    "UPDATE cached_tracks SET is_cached = 0, file_path = '', file_size_bytes = 0, updated_at = ?;",
+                    (now,),
+                )
+
+    def get_cached_tracks(
+        self,
+        search: str = "",
+        only_cached: bool = False,
+        sort_by: str = "play_count",
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Retrieve tracks with play counts and cache status."""
+        query = "SELECT * FROM cached_tracks WHERE 1=1"
+        params: List[Any] = []
+
+        if only_cached:
+            query += " AND is_cached = 1"
+
+        if search and search.strip():
+            q = f"%{search.strip().lower()}%"
+            query += " AND (LOWER(title) LIKE ? OR LOWER(artist) LIKE ?)"
+            params.extend([q, q])
+
+        if sort_by == "play_count":
+            query += " ORDER BY play_count DESC, last_played_at DESC"
+        elif sort_by == "recent":
+            query += " ORDER BY last_played_at DESC"
+        elif sort_by == "title":
+            query += " ORDER BY title ASC"
+        else:
+            query += " ORDER BY updated_at DESC"
+
+        query += " LIMIT ?;"
+        params.append(limit)
+
+        results = []
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            for row in cursor.fetchall():
+                results.append(dict(row))
+        return results
+
+    def get_dj_top_chart(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Rank songs based on DJ play count and rotation frequency.
+        Assigns ranks (#1, #2...) and rotation weight badges.
+        """
+        chart = []
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM cached_tracks 
+                WHERE play_count > 0 
+                ORDER BY play_count DESC, last_played_at DESC 
+                LIMIT ?;
+                """,
+                (limit,),
+            )
+            rows = cursor.fetchall()
+            for idx, row in enumerate(rows, start=1):
+                item = dict(row)
+                item["rank"] = idx
+                if idx <= 3:
+                    item["rotation_status"] = "heavy"
+                elif idx <= 10:
+                    item["rotation_status"] = "medium"
+                else:
+                    item["rotation_status"] = "light"
+                chart.append(item)
+        return chart
+
+    def get_dj_top_artists(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Calculate the DJ's most played artists based on cumulative play counts.
+        """
+        artists = []
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT artist, SUM(play_count) as total_plays, COUNT(*) as track_count
+                FROM cached_tracks
+                WHERE artist IS NOT NULL AND TRIM(artist) != '' AND artist != 'YouTube Music'
+                GROUP BY artist
+                ORDER BY total_plays DESC
+                LIMIT ?;
+                """,
+                (limit,),
+            )
+            for row in cursor.fetchall():
+                artists.append({
+                    "artist": row["artist"],
+                    "play_count": row["total_plays"],
+                    "track_count": row["track_count"],
+                })
+        return artists
+
+    def get_dj_rotation_candidates(
+        self,
+        min_plays: int = 1,
+        cooldown_seconds: int = 5400,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """
+        Find DJ signature songs ready to be rotated back into broadcast airplay.
+        A track is a rotation candidate if:
+        - It has been played before (play_count >= min_plays).
+        - It has NOT been played within the cooldown window (e.g., 90 minutes).
+        Ranked by: play_count * time_since_last_play (highest rotation readiness).
+        """
+        now = time.time()
+        cutoff = now - cooldown_seconds
+        candidates = []
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM cached_tracks
+                WHERE play_count >= ? AND (last_played_at IS NULL OR last_played_at <= ?)
+                ORDER BY play_count DESC, last_played_at ASC
+                LIMIT ?;
+                """,
+                (min_plays, cutoff, limit),
+            )
+            for row in cursor.fetchall():
+                candidates.append(dict(row))
+        return candidates
 
     # ==========================================
     # Storage Directory Relocation

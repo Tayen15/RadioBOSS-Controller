@@ -17,14 +17,17 @@ import {
   HardDrive,
   Trash2,
   RefreshCw,
+  Flame,
+  ListMusic,
 } from "lucide-react";
-import { AppConfig, TitleFormatMode, CacheStats } from "@/lib/types";
+import { AppConfig, TitleFormatMode, CacheStats, CachedTrackItem } from "@/lib/types";
 import {
   getAppSettings,
   saveAppSettings,
   fetchCacheStats,
   openCacheFolder,
   clearAudioCache,
+  fetchCachedTracks,
 } from "@/lib/api";
 
 interface SettingsModalProps {
@@ -95,6 +98,23 @@ export function SettingsModal({
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  // Cached tracks list state
+  const [showCacheList, setShowCacheList] = useState(false);
+  const [cachedTracks, setCachedTracks] = useState<CachedTrackItem[]>([]);
+  const [isLoadingCachedTracks, setIsLoadingCachedTracks] = useState(false);
+
+  const handleToggleCacheList = async () => {
+    if (!showCacheList) {
+      setIsLoadingCachedTracks(true);
+      try {
+        const data = await fetchCachedTracks("", false, "play_count", 50);
+        setCachedTracks(data);
+      } catch {}
+      setIsLoadingCachedTracks(false);
+    }
+    setShowCacheList(!showCacheList);
+  };
 
   const loadCacheStats = () => {
     fetchCacheStats()
@@ -584,6 +604,15 @@ export function SettingsModal({
                   <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
                     <button
                       type="button"
+                      onClick={handleToggleCacheList}
+                      className="btn btn-ghost btn-xs text-base-content/80 gap-1 font-semibold hover:bg-base-300"
+                      title="Lihat daftar lagu yang tersimpan di cache lokal beserta frekuensi putarnya"
+                    >
+                      <ListMusic className="h-3 w-3" />
+                      <span>{showCacheList ? "Tutup Daftar" : "Lihat Lagu Cache"}</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleClearCache(7)}
                       disabled={isClearingCache || !cacheStats || cacheStats.total_files === 0}
                       className="btn btn-ghost btn-xs text-warning/90 hover:bg-warning/10 font-normal"
@@ -603,6 +632,59 @@ export function SettingsModal({
                     </button>
                   </div>
                 </div>
+
+                {/* Expandable Cached Tracks & Play Count List */}
+                {showCacheList && (
+                  <div className="pt-2 border-t border-base-300/40 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-base-content/80">
+                      <span>Daftar Lagu Cache &amp; Riwayat Putar ({cachedTracks.length} Lagu):</span>
+                      {isLoadingCachedTracks && (
+                        <span className="loading loading-spinner loading-xs text-primary" />
+                      )}
+                    </div>
+                    {cachedTracks.length === 0 ? (
+                      <p className="text-[10px] text-base-content/50 py-2 text-center">
+                        Belum ada lagu yang tersimpan di cache lokal.
+                      </p>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto space-y-1 pr-1 text-xs">
+                        {cachedTracks.map((t, idx) => (
+                          <div
+                            key={t.video_id || idx}
+                            className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-base-200/50 hover:bg-base-200 border border-base-300/40"
+                          >
+                            <div className="min-w-0 flex-1 truncate">
+                              <p className="font-semibold text-[11px] text-base-content truncate">
+                                {t.title}
+                              </p>
+                              <p className="text-[9px] text-base-content/60 truncate">
+                                {t.artist || t.artists?.join(", ") || "Unknown Artist"}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0 text-[10px]">
+                              {t.play_count > 0 && (
+                                <span className="badge badge-warning/20 text-warning badge-xs font-bold gap-0.5 py-1">
+                                  <Flame className="h-2.5 w-2.5 fill-current" />
+                                  <span>{t.play_count}x</span>
+                                </span>
+                              )}
+                              {t.is_cached && (
+                                <span className="badge badge-success/20 text-success badge-xs font-medium py-1">
+                                  {t.file_size_mb} MB
+                                </span>
+                              )}
+                              {t.last_played_relative && (
+                                <span className="text-base-content/40 text-[9px] hidden sm:inline">
+                                  {t.last_played_relative}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Loudness Normalization Toggle */}

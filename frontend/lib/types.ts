@@ -202,4 +202,37 @@ export interface ResolvePlaylistResponse {
   tracks: TrackItem[];
 }
 
+export interface CachedTrackItem extends TrackItem {
+  artist?: string;
+  file_path?: string | null;
+  file_size_bytes?: number;
+  file_size_mb?: number;
+  play_count: number;
+  last_played_at?: number | null;
+  last_played_relative?: string;
+  is_cached: boolean;
+  rotation_status?: "heavy" | "medium" | "light";
+  rank?: number | null;
+}
+
+export interface DJArtistStat {
+  artist: string;
+  play_count: number;
+  track_count: number;
+}
+
+export interface DJTopChartResponse {
+  success: boolean;
+  total_tracks: number;
+  total_plays: number;
+  chart: CachedTrackItem[];
+}
+
+export interface DJSmartRecommendationsResponse {
+  success: boolean;
+  top_artists: DJArtistStat[];
+  rotation_ready: CachedTrackItem[];
+  affinity_recommendations: TrackItem[];
+}
+
 

@@ -16,8 +16,10 @@ import {
   Mic2,
   Calendar,
   Tag,
+  Flame,
+  HardDrive,
 } from "lucide-react";
-import { TrackItem } from "@/lib/types";
+import { TrackItem, CachedTrackItem } from "@/lib/types";
 import { getStreamRelayUrl } from "@/lib/api";
 import { LyricsModal } from "@/components/LyricsModal";
 
@@ -128,6 +130,19 @@ export function TrackPreviewCard({
                 <Clock className="h-3 w-3 text-base-content/40 shrink-0" />
                 <span>{track.duration_formatted}</span>
               </span>
+              {(track as Partial<CachedTrackItem>).play_count !== undefined &&
+                ((track as Partial<CachedTrackItem>).play_count ?? 0) > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-warning/10 border border-warning/20 text-xs font-bold text-warning">
+                    <Flame className="h-3 w-3 fill-current" />
+                    <span>{(track as Partial<CachedTrackItem>).play_count}x Diputar</span>
+                  </span>
+                )}
+              {(track as Partial<CachedTrackItem>).is_cached && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-success/10 border border-success/20 text-xs font-semibold text-success">
+                  <HardDrive className="h-3 w-3" />
+                  <span>Cache Studio</span>
+                </span>
+              )}
             </div>
           </div>
         </div>

@@ -20,6 +20,9 @@ import {
   PlaylistSetDetails,
   ResolvePlaylistResponse,
   HistoryItem,
+  CachedTrackItem,
+  DJTopChartResponse,
+  DJSmartRecommendationsResponse,
 } from "./types";
 
 const API_BASE_URL =
@@ -486,6 +489,66 @@ export async function resolvePlaylistUrl(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Gagal memproses link playlist.");
+  }
+  return await res.json();
+}
+
+export async function fetchDJTopChart(
+  limit: number = 20
+): Promise<DJTopChartResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/music/dj/top-chart?limit=${limit}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengambil tangga lagu DJ.");
+  }
+  return await res.json();
+}
+
+export async function fetchDJSmartRecommendations(
+  limit: number = 8
+): Promise<DJSmartRecommendationsResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/music/dj/smart-recommendations?limit=${limit}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengambil rekomendasi cerdas DJ.");
+  }
+  return await res.json();
+}
+
+export async function fetchCachedTracks(
+  search: string = "",
+  onlyCached: boolean = false,
+  sort: string = "play_count",
+  limit: number = 50
+): Promise<CachedTrackItem[]> {
+  const params = new URLSearchParams({
+    search,
+    only_cached: String(onlyCached),
+    sort,
+    limit: String(limit),
+  });
+  const res = await fetch(
+    `${API_BASE_URL}/api/music/cache/tracks?${params.toString()}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengambil daftar cache lagu.");
   }
   return await res.json();
 }

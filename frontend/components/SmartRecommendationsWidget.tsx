@@ -15,8 +15,16 @@ import {
   Zap,
   Smile,
   Check,
+  Trophy,
+  HardDrive,
+  Headphones,
 } from "lucide-react";
-import { TrackItem, PlaylistSet } from "@/lib/types";
+import {
+  TrackItem,
+  PlaylistSet,
+  CachedTrackItem,
+  DJArtistStat,
+} from "@/lib/types";
 import {
   fetchRecommendations,
   fetchArtistTopTracks,
@@ -24,6 +32,8 @@ import {
   getStreamRelayUrl,
   fetchPlaylistSets,
   addTrackToPlaylistSet,
+  fetchDJTopChart,
+  fetchDJSmartRecommendations,
 } from "@/lib/api";
 
 interface SmartRecommendationsWidgetProps {
@@ -49,15 +59,26 @@ export function SmartRecommendationsWidget({
   onQueueTrack,
   isQueueing,
 }: SmartRecommendationsWidgetProps) {
-  const [activeTab, setActiveTab] = useState<"upnext" | "artist" | "mood">("upnext");
+  const [activeTab, setActiveTab] = useState<
+    "upnext" | "artist" | "djchart" | "djrecs" | "mood"
+  >("upnext");
   const [recommendations, setRecommendations] = useState<TrackItem[]>([]);
   const [artistTracks, setArtistTracks] = useState<TrackItem[]>([]);
   const [moodTracks, setMoodTracks] = useState<TrackItem[]>([]);
   const [selectedMoodId, setSelectedMoodId] = useState<string>("morning");
 
+  // DJ Top Chart & Smart Recs states
+  const [djChart, setDjChart] = useState<CachedTrackItem[]>([]);
+  const [djTotalPlays, setDjTotalPlays] = useState<number>(0);
+  const [djTopArtists, setDjTopArtists] = useState<DJArtistStat[]>([]);
+  const [djRotationReady, setDjRotationReady] = useState<CachedTrackItem[]>([]);
+  const [djAffinityRecs, setDjAffinityRecs] = useState<TrackItem[]>([]);
+
   const [isLoadingRecs, setIsLoadingRecs] = useState<boolean>(false);
   const [isLoadingArtist, setIsLoadingArtist] = useState<boolean>(false);
   const [isLoadingMood, setIsLoadingMood] = useState<boolean>(false);
+  const [isLoadingDJChart, setIsLoadingDJChart] = useState<boolean>(false);
+  const [isLoadingDJRecs, setIsLoadingDJRecs] = useState<boolean>(false);
 
   // Audio preview state
   const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
@@ -77,8 +98,18 @@ export function SmartRecommendationsWidget({
   const [prevSeedId, setPrevSeedId] = useState<string | null>(null);
   const [prevArtist, setPrevArtist] = useState<string | null>(null);
   const [prevMoodKey, setPrevMoodKey] = useState<string | null>(null);
+  const [prevTab, setPrevTab] = useState(activeTab);
 
   // Synchronize loading states during render phase (avoids cascading render warning in effects)
+  if (activeTab !== prevTab) {
+    setPrevTab(activeTab);
+    if (activeTab === "djchart") {
+      setIsLoadingDJChart(true);
+    } else if (activeTab === "djrecs") {
+      setIsLoadingDJRecs(true);
+    }
+  }
+
   if (seedTrack?.video_id && seedTrack.video_id !== prevSeedId) {
     setPrevSeedId(seedTrack.video_id);
     setIsLoadingRecs(true);
@@ -116,7 +147,6 @@ export function SmartRecommendationsWidget({
     if (!seedTrack?.video_id) return;
 
     let isMounted = true;
-
     fetchRecommendations(seedTrack.video_id, 8)
       .then((res) => {
         if (isMounted && res.success) {
@@ -138,7 +168,6 @@ export function SmartRecommendationsWidget({
     if (!effectiveArtist) return;
 
     let isMounted = true;
-
     fetchArtistTopTracks(effectiveArtist, 6)
       .then((res) => {
         if (isMounted && res.success) {
@@ -179,6 +208,51 @@ export function SmartRecommendationsWidget({
     };
   }, [activeTab, selectedMoodId]);
 
+  // Fetch DJ Top Chart
+  useEffect(() => {
+    if (activeTab !== "djchart") return;
+
+    let isMounted = true;
+    fetchDJTopChart(25)
+      .then((res) => {
+        if (isMounted && res.success) {
+          setDjChart(res.chart);
+          setDjTotalPlays(res.total_plays);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoadingDJChart(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab]);
+
+  // Fetch DJ Smart Recommendations
+  useEffect(() => {
+    if (activeTab !== "djrecs") return;
+
+    let isMounted = true;
+    fetchDJSmartRecommendations(10)
+      .then((res) => {
+        if (isMounted && res.success) {
+          setDjTopArtists(res.top_artists);
+          setDjRotationReady(res.rotation_ready);
+          setDjAffinityRecs(res.affinity_recommendations);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoadingDJRecs(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab]);
+
   const handleTogglePreview = (track: TrackItem) => {
     if (previewTrackId === track.video_id) {
       if (audioRef.current) {
@@ -217,6 +291,29 @@ export function SmartRecommendationsWidget({
         })
         .catch(() => {})
         .finally(() => setIsLoadingArtist(false));
+    } else if (activeTab === "djchart") {
+      setIsLoadingDJChart(true);
+      fetchDJTopChart(25)
+        .then((res) => {
+          if (res.success) {
+            setDjChart(res.chart);
+            setDjTotalPlays(res.total_plays);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingDJChart(false));
+    } else if (activeTab === "djrecs") {
+      setIsLoadingDJRecs(true);
+      fetchDJSmartRecommendations(10)
+        .then((res) => {
+          if (res.success) {
+            setDjTopArtists(res.top_artists);
+            setDjRotationReady(res.rotation_ready);
+            setDjAffinityRecs(res.affinity_recommendations);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingDJRecs(false));
     } else if (activeTab === "mood") {
       const item = MOOD_OPTIONS.find((m) => m.id === selectedMoodId);
       if (!item) return;
@@ -232,17 +329,23 @@ export function SmartRecommendationsWidget({
 
   // Instant Auto-Fill Queue: Queues top 3 songs from active recommendation list
   const handleAutoFill = async () => {
-    const list = getActiveList();
-    if (list.length === 0) return;
+    let toQueue: (TrackItem | CachedTrackItem)[] = [];
+    if (activeTab === "djrecs") {
+      toQueue = [...djRotationReady.slice(0, 2), ...djAffinityRecs.slice(0, 1)];
+      if (toQueue.length < 3) {
+        toQueue = [...djRotationReady, ...djAffinityRecs].slice(0, 3);
+      }
+    } else {
+      toQueue = getActiveList().slice(0, 3);
+    }
 
-    const toQueue = list.slice(0, 3);
+    if (toQueue.length === 0) return;
+
     setIsAutoFilling(true);
-
     for (const track of toQueue) {
       onQueueTrack(track, -1);
       await new Promise((r) => setTimeout(r, 800));
     }
-
     setIsAutoFilling(false);
   };
 
@@ -258,9 +361,11 @@ export function SmartRecommendationsWidget({
     }
   };
 
-  const getActiveList = (): TrackItem[] => {
+  const getActiveList = (): (TrackItem | CachedTrackItem)[] => {
     if (activeTab === "upnext") return recommendations;
     if (activeTab === "artist") return artistTracks;
+    if (activeTab === "djchart") return djChart;
+    if (activeTab === "djrecs") return [...djRotationReady, ...djAffinityRecs];
     return moodTracks;
   };
 
@@ -270,6 +375,10 @@ export function SmartRecommendationsWidget({
       ? isLoadingRecs
       : activeTab === "artist"
       ? isLoadingArtist
+      : activeTab === "djchart"
+      ? isLoadingDJChart
+      : activeTab === "djrecs"
+      ? isLoadingDJRecs
       : isLoadingMood;
 
   return (
@@ -291,10 +400,20 @@ export function SmartRecommendationsWidget({
           <div>
             <h3 className="font-bold text-sm text-base-content flex items-center gap-1.5">
               <span>Rekomendasi Cerdas</span>
-              <span className="badge badge-accent badge-xs scale-90 text-accent-content">Auto Radio</span>
+              <span className="badge badge-accent badge-xs scale-90 text-accent-content">
+                {activeTab === "djchart"
+                  ? "Top Chart DJ"
+                  : activeTab === "djrecs"
+                  ? "DJ Taste"
+                  : "Auto Radio"}
+              </span>
             </h3>
             <p className="text-[10px] text-base-content/60">
-              Saran lagu Up Next, katalog artis, &amp; mood siaran
+              {activeTab === "djchart"
+                ? `Tangga lagu terpopuler siaran (${djTotalPlays} total putar)`
+                : activeTab === "djrecs"
+                ? "Rotasi andalan & lagu sesuai selera DJ"
+                : "Saran lagu Up Next, katalog artis, & mood siaran"}
             </p>
           </div>
         </div>
@@ -320,51 +439,79 @@ export function SmartRecommendationsWidget({
             className="btn btn-ghost btn-xs text-base-content/60 hover:text-base-content gap-1"
             title="Perbarui rekomendasi"
           >
-            <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin text-secondary" : ""}`} />
+            <RefreshCw
+              className={`h-3 w-3 ${isLoading ? "animate-spin text-secondary" : ""}`}
+            />
             <span className="text-[10px]">Refresh</span>
           </button>
         </div>
       </div>
 
-      {/* 3 Tabs Switcher */}
-      <div className="tabs tabs-box bg-base-300/50 p-1 rounded-xl flex gap-1">
+      {/* 5 Tabs Switcher (Scrollable on small screens) */}
+      <div className="tabs tabs-box bg-base-300/50 p-1 rounded-xl flex gap-1 overflow-x-auto no-scrollbar flex-nowrap">
         <button
           type="button"
           onClick={() => setActiveTab("upnext")}
-          className={`tab flex-1 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+          className={`tab shrink-0 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
             activeTab === "upnext"
               ? "tab-active bg-secondary text-secondary-content shadow-sm"
               : "text-base-content/70 hover:text-base-content"
           }`}
         >
-          <Radio className="h-3 w-3" />
-          <span className="truncate">Up Next</span>
+          <Radio className="h-3 w-3 shrink-0" />
+          <span>Up Next</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("djchart")}
+          className={`tab shrink-0 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+            activeTab === "djchart"
+              ? "tab-active bg-secondary text-secondary-content shadow-sm"
+              : "text-base-content/70 hover:text-base-content"
+          }`}
+        >
+          <Trophy className="h-3 w-3 shrink-0 text-warning" />
+          <span>Top Chart DJ</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("djrecs")}
+          className={`tab shrink-0 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+            activeTab === "djrecs"
+              ? "tab-active bg-secondary text-secondary-content shadow-sm"
+              : "text-base-content/70 hover:text-base-content"
+          }`}
+        >
+          <Headphones className="h-3 w-3 shrink-0 text-accent" />
+          <span>Rekomendasi DJ</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("artist")}
-          className={`tab flex-1 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+          className={`tab shrink-0 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
             activeTab === "artist"
               ? "tab-active bg-secondary text-secondary-content shadow-sm"
               : "text-base-content/70 hover:text-base-content"
           }`}
         >
-          <User className="h-3 w-3" />
-          <span className="truncate">Top Artis</span>
+          <User className="h-3 w-3 shrink-0" />
+          <span>Top Artis</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("mood")}
-          className={`tab flex-1 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+          className={`tab shrink-0 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
             activeTab === "mood"
               ? "tab-active bg-secondary text-secondary-content shadow-sm"
               : "text-base-content/70 hover:text-base-content"
           }`}
         >
-          <Smile className="h-3 w-3" />
-          <span className="truncate">Mood &amp; Vibe</span>
+          <Smile className="h-3 w-3 shrink-0" />
+          <span>Mood</span>
         </button>
       </div>
 
@@ -391,6 +538,24 @@ export function SmartRecommendationsWidget({
         </div>
       )}
 
+      {/* DJ Top Artists Pill Row (Visible in Rekomendasi DJ tab) */}
+      {activeTab === "djrecs" && djTopArtists.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin text-[10px]">
+          <span className="text-base-content/50 font-medium shrink-0">
+            Selera Artis:
+          </span>
+          {djTopArtists.map((a) => (
+            <span
+              key={a.artist}
+              className="badge badge-outline border-base-300 badge-xs font-semibold gap-1 py-1.5 shrink-0 text-base-content/80"
+            >
+              <span>{a.artist}</span>
+              <span className="text-warning font-bold">{a.play_count}x</span>
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Notification Toast for Set saving */}
       {addedSetNotice && (
         <div className="alert alert-success text-[11px] py-1 px-3 rounded-lg flex items-center justify-between shadow-sm animate-fade-in">
@@ -410,6 +575,10 @@ export function SmartRecommendationsWidget({
               ? "Menyesuaikan vibe & rekomendasi..."
               : activeTab === "artist"
               ? `Mengambil lagu populer ${effectiveArtist}...`
+              : activeTab === "djchart"
+              ? "Menghitung tangga lagu siaran DJ..."
+              : activeTab === "djrecs"
+              ? "Menganalisis rotasi & selera musik DJ..."
               : "Mengambil katalog lagu mood siaran..."}
           </p>
         </div>
@@ -417,23 +586,54 @@ export function SmartRecommendationsWidget({
         <div className="py-8 text-center space-y-1 bg-base-100/50 rounded-xl border border-dashed border-base-300">
           <Flame className="h-6 w-6 text-base-content/30 mx-auto" />
           <p className="text-xs text-base-content/60 font-medium">
-            Belum ada rekomendasi lagu.
+            {activeTab === "djchart"
+              ? "Belum ada tangga lagu DJ."
+              : activeTab === "djrecs"
+              ? "Belum ada riwayat putar yang cukup untuk rekomendasi DJ."
+              : "Belum ada rekomendasi lagu."}
           </p>
           <p className="text-[10px] text-base-content/40">
-            Pilih lagu di kolom kiri untuk memicu rekomendasi otomatis.
+            {activeTab === "djchart" || activeTab === "djrecs"
+              ? "Putar lagu ke RadioBOSS untuk mulai mencatat tangga lagu studio Anda."
+              : "Pilih lagu di kolom kiri untuk memicu rekomendasi otomatis."}
           </p>
         </div>
       ) : (
         <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-          {activeList.map((track) => {
+          {activeList.map((item, idx) => {
+            const track = item as TrackItem & Partial<CachedTrackItem>;
             const isPlayingPreview = previewTrackId === track.video_id;
             const isSetDropdownOpen = activeSetDropdownTrackId === track.video_id;
+            const rankNum = track.rank ?? idx + 1;
 
             return (
               <div
                 key={track.video_id}
                 className="group relative flex items-center justify-between gap-2.5 p-2 rounded-xl bg-base-100 hover:bg-base-300/40 border border-base-300/60 transition-colors"
               >
+                {/* Rank Badge for DJ Top Chart */}
+                {activeTab === "djchart" && (
+                  <div className="shrink-0 flex items-center justify-center w-6 text-center">
+                    {rankNum === 1 ? (
+                      <span className="badge bg-warning text-black font-black text-[10px] h-5 w-5 p-0 rounded-md shadow-sm">
+                        1
+                      </span>
+                    ) : rankNum === 2 ? (
+                      <span className="badge bg-slate-300 text-black font-bold text-[10px] h-5 w-5 p-0 rounded-md">
+                        2
+                      </span>
+                    ) : rankNum === 3 ? (
+                      <span className="badge bg-amber-700/80 text-white font-bold text-[10px] h-5 w-5 p-0 rounded-md">
+                        3
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-mono font-bold text-base-content/40">
+                        {rankNum}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Track Thumbnail & Preview Trigger */}
                 <div className="relative shrink-0 w-11 h-11 rounded-lg overflow-hidden bg-base-300">
                   {track.thumbnail_url ? (
@@ -479,14 +679,32 @@ export function SmartRecommendationsWidget({
                   <h4 className="text-xs font-bold text-base-content truncate group-hover:text-white transition-colors">
                     {track.title}
                   </h4>
-                  <div className="flex items-center gap-2 text-[10px] text-base-content/60 truncate mt-0.5">
+                  <div className="flex items-center gap-1.5 text-[10px] text-base-content/60 truncate mt-0.5">
                     <span className="truncate">
                       {track.artists.join(", ") || "YouTube Music"}
                     </span>
-                    {track.duration_formatted && (
-                      <span className="shrink-0 flex items-center gap-0.5 text-base-content/40">
-                        <Clock className="h-2.5 w-2.5" />
-                        {track.duration_formatted}
+
+                    {/* Play count badge */}
+                    {track.play_count !== undefined && track.play_count > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-warning font-semibold shrink-0">
+                        <Flame className="h-2.5 w-2.5 fill-current" />
+                        <span>{track.play_count}x</span>
+                      </span>
+                    )}
+
+                    {/* Local Cache badge */}
+                    {track.is_cached && (
+                      <span className="badge badge-success/20 text-success text-[9px] gap-0.5 font-semibold py-0 h-4 shrink-0">
+                        <HardDrive className="h-2 w-2" />
+                        <span>Cache</span>
+                      </span>
+                    )}
+
+                    {/* Last played relative time */}
+                    {track.last_played_relative && (
+                      <span className="text-base-content/40 shrink-0 hidden sm:inline-flex items-center gap-0.5">
+                        <Clock className="h-2 w-2" />
+                        <span>{track.last_played_relative}</span>
                       </span>
                     )}
                   </div>
