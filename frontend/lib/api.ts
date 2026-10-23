@@ -2,6 +2,7 @@
  * API client to communicate with FastAPI backend.
  */
 import {
+  TrackItem,
   SearchResponse,
   ResolveResponse,
   QueueResponse,
@@ -12,6 +13,11 @@ import {
   PlaybackControlResponse,
   PlaylistResponse,
   LyricsResponse,
+  RecommendationsResponse,
+  ArtistTopTracksResponse,
+  PlaylistSet,
+  PlaylistSetDetails,
+  ResolvePlaylistResponse,
 } from "./types";
 
 const API_BASE_URL =
@@ -290,4 +296,147 @@ export async function stopAllRadioBossCarts(): Promise<{
   }
   return await res.json();
 }
+
+export async function fetchRecommendations(
+  videoId: string,
+  limit: number = 8
+): Promise<RecommendationsResponse> {
+  const cleanId = videoId.replace(".mp3", "");
+  const res = await fetch(
+    `${API_BASE_URL}/api/music/recommendations/${encodeURIComponent(cleanId)}?limit=${limit}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengambil rekomendasi lagu.");
+  }
+  return await res.json();
+}
+
+export async function fetchArtistTopTracks(
+  artist: string,
+  limit: number = 6
+): Promise<ArtistTopTracksResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/music/artist-top?artist=${encodeURIComponent(artist)}&limit=${limit}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengambil lagu populer artis.");
+  }
+  return await res.json();
+}
+
+export async function fetchPlaylistSets(): Promise<PlaylistSet[]> {
+  const res = await fetch(`${API_BASE_URL}/api/sets`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengambil daftar playlist set.");
+  }
+  const data = await res.json();
+  return data.sets || [];
+}
+
+export async function createPlaylistSet(
+  name: string,
+  description?: string
+): Promise<PlaylistSet> {
+  const res = await fetch(`${API_BASE_URL}/api/sets`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, description }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal membuat playlist set.");
+  }
+  const data = await res.json();
+  return data.set;
+}
+
+export async function fetchPlaylistSetDetails(
+  setId: string
+): Promise<PlaylistSetDetails> {
+  const res = await fetch(`${API_BASE_URL}/api/sets/${encodeURIComponent(setId)}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengambil detail playlist set.");
+  }
+  const data = await res.json();
+  return data.set;
+}
+
+export async function deletePlaylistSet(setId: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/sets/${encodeURIComponent(setId)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal menghapus playlist set.");
+  }
+}
+
+export async function addTrackToPlaylistSet(
+  setId: string,
+  track: TrackItem
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/sets/${encodeURIComponent(setId)}/tracks`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ track }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal menambahkan lagu ke set.");
+  }
+}
+
+export async function removeTrackFromPlaylistSet(
+  setId: string,
+  itemId: string
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/sets/${encodeURIComponent(setId)}/tracks/${encodeURIComponent(itemId)}`,
+    {
+      method: "DELETE",
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal menghapus lagu dari set.");
+  }
+}
+
+export async function resolvePlaylistUrl(
+  url: string,
+  limit: number = 50
+): Promise<ResolvePlaylistResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/sets/resolve-url`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url, limit }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal memproses link playlist.");
+  }
+  return await res.json();
+}
+
 

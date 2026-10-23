@@ -48,11 +48,15 @@ class CacheService:
 
     @property
     def cache_dir(self) -> str:
-        """Resolve effective audio cache directory (custom or %APPDATA%/RadioBOSSCaster/cache)."""
+        """Resolve effective audio cache directory (custom, custom_data_dir/cache, or %APPDATA%/RadioBOSSCaster/cache)."""
         try:
             cfg = settings_service.get_config()
             if cfg.custom_cache_dir and cfg.custom_cache_dir.strip():
                 target = cfg.custom_cache_dir.strip()
+                os.makedirs(target, exist_ok=True)
+                return os.path.abspath(target)
+            elif cfg.custom_data_dir and cfg.custom_data_dir.strip():
+                target = os.path.join(cfg.custom_data_dir.strip(), "cache")
                 os.makedirs(target, exist_ok=True)
                 return os.path.abspath(target)
         except Exception as e:
@@ -80,8 +84,11 @@ class CacheService:
             logger.error(f"Error reading cache stats: {e}")
 
         size_mb = round(total_size / (1024 * 1024), 2)
+        from app.services.db_service import db_service
         return {
             "cache_dir": self.cache_dir,
+            "storage_dir": str(db_service.storage_dir),
+            "db_path": str(db_service.db_path),
             "total_files": total_files,
             "total_size_bytes": total_size,
             "total_size_mb": size_mb,

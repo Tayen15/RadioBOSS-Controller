@@ -15,6 +15,8 @@ from app.routers import (
     stream_router,
     radioboss_router,
     settings_router,
+    recommendations_router,
+    playlist_sets_router,
 )
 
 # Configure logging
@@ -94,6 +96,8 @@ app.include_router(search_router)
 app.include_router(stream_router)
 app.include_router(radioboss_router)
 app.include_router(settings_router)
+app.include_router(recommendations_router)
+app.include_router(playlist_sets_router)
 
 
 @app.get("/api/health", tags=["Health"])

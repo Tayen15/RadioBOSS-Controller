@@ -68,6 +68,7 @@ def main():
         "--hidden-import=uvicorn.lifespans.off",
         "--hidden-import=defusedxml",
         "--hidden-import=defusedxml.ElementTree",
+        "--hidden-import=sqlite3",
         "--hidden-import=webview.platforms.winforms",
         "--hidden-import=webview.platforms.edgechromium",
         DESKTOP_APP,

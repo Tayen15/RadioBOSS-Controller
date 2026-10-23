@@ -18,6 +18,21 @@ def _format_seconds(seconds: Optional[int]) -> str:
     return f"{m:02d}:{s:02d}"
 
 
+def _parse_duration_str(duration_str: Optional[str]) -> int:
+    """Convert mm:ss or hh:mm:ss into integer seconds."""
+    if not duration_str:
+        return 0
+    parts = str(duration_str).strip().split(":")
+    try:
+        if len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+        elif len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+    except (ValueError, TypeError):
+        return 0
+    return 0
+
+
 def _get_best_thumbnail(thumbnails: list) -> Optional[str]:
     """Extract highest resolution square thumbnail."""
     if not thumbnails:
@@ -110,6 +125,144 @@ class YTMusicService:
                     genre="Pop",
                 )
             )
+
+        return tracks
+
+    def get_recommendations(self, video_id: str, limit: int = 10) -> List[TrackItem]:
+        """
+        Fetch infinite radio / up-next recommendations for a song.
+        Uses YouTube Music watch playlist engine to find matching vibe & genre tracks.
+        """
+        clean_id = video_id.replace(".mp3", "").strip()
+        if not self._client:
+            self._client = YTMusic()
+
+        tracks: List[TrackItem] = []
+        try:
+            watch_playlist = self._client.get_watch_playlist(videoId=clean_id, limit=limit + 5)
+            raw_tracks = watch_playlist.get("tracks", [])
+
+            for item in raw_tracks:
+                v_id = item.get("videoId")
+                if not v_id or v_id == clean_id:
+                    continue
+
+                title = item.get("title", "Unknown Title")
+                artists = [
+                    a.get("name")
+                    for a in item.get("artists", [])
+                    if isinstance(a, dict) and a.get("name")
+                ]
+                album_info = item.get("album")
+                album_name = None
+                if isinstance(album_info, dict):
+                    album_name = album_info.get("name")
+                elif isinstance(album_info, str):
+                    album_name = album_info
+
+                duration_str = item.get("length") or item.get("duration") or "00:00"
+                duration_seconds = _parse_duration_str(duration_str)
+
+                thumbs = item.get("thumbnail") or item.get("thumbnails") or []
+                thumbnail_url = _get_best_thumbnail(thumbs)
+                watch_url = f"https://music.youtube.com/watch?v={v_id}"
+
+                tracks.append(
+                    TrackItem(
+                        video_id=v_id,
+                        title=title,
+                        artists=artists,
+                        album=album_name,
+                        duration_seconds=duration_seconds,
+                        duration_formatted=_format_seconds(duration_seconds),
+                        thumbnail_url=thumbnail_url,
+                        url=watch_url,
+                        year=None,
+                        genre="Radio Recommendation",
+                    )
+                )
+
+                if len(tracks) >= limit:
+                    break
+
+        except Exception as e:
+            logger.error(f"Error fetching recommendations for {clean_id}: {e}")
+
+        return tracks
+
+    def get_artist_top_tracks(self, artist_name: str, limit: int = 6) -> List[TrackItem]:
+        """
+        Fetch top popular tracks by the given artist.
+        Searches the artist profile on YouTube Music and queries their top songs shelf.
+        """
+        if not self._client:
+            self._client = YTMusic()
+
+        clean_artist = artist_name.strip()
+        if not clean_artist:
+            return []
+
+        tracks: List[TrackItem] = []
+        try:
+            artist_results = self._client.search(clean_artist, filter="artists")
+            if artist_results:
+                first_artist = artist_results[0]
+                browse_id = first_artist.get("browseId")
+                if browse_id:
+                    artist_data = self._client.get_artist(browse_id)
+                    songs = artist_data.get("songs", {}).get("results", [])
+
+                    for s in songs:
+                        v_id = s.get("videoId")
+                        if not v_id:
+                            continue
+
+                        title = s.get("title", "Unknown Title")
+                        artists = [
+                            a.get("name")
+                            for a in s.get("artists", [])
+                            if isinstance(a, dict) and a.get("name")
+                        ]
+                        if not artists:
+                            artists = [clean_artist]
+
+                        album_info = s.get("album")
+                        album_name = None
+                        if isinstance(album_info, dict):
+                            album_name = album_info.get("name")
+                        elif isinstance(album_info, str):
+                            album_name = album_info
+
+                        duration_str = s.get("length") or s.get("duration") or "00:00"
+                        duration_seconds = _parse_duration_str(duration_str)
+
+                        thumbs = s.get("thumbnails") or s.get("thumbnail") or []
+                        thumbnail_url = _get_best_thumbnail(thumbs)
+                        watch_url = f"https://music.youtube.com/watch?v={v_id}"
+
+                        tracks.append(
+                            TrackItem(
+                                video_id=v_id,
+                                title=title,
+                                artists=artists,
+                                album=album_name,
+                                duration_seconds=duration_seconds,
+                                duration_formatted=_format_seconds(duration_seconds),
+                                thumbnail_url=thumbnail_url,
+                                url=watch_url,
+                                year=None,
+                                genre="Artist Top Track",
+                            )
+                        )
+
+                        if len(tracks) >= limit:
+                            break
+        except Exception as e:
+            logger.warning(f"Could not fetch artist page songs for {clean_artist}: {e}")
+
+        # Fallback to search_songs if artist page had no results
+        if not tracks:
+            tracks = self.search_songs(clean_artist, limit=limit)
 
         return tracks
 

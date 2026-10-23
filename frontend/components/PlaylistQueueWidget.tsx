@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ListMusic, RefreshCw, Clock, Calendar } from "lucide-react";
+import { ListMusic, RefreshCw, Clock, Calendar, AlertTriangle } from "lucide-react";
 import { PlaylistItem } from "@/lib/types";
 
 interface PlaylistQueueWidgetProps {
@@ -48,6 +48,19 @@ export function PlaylistQueueWidget({
             />
           </button>
         </div>
+
+        {/* Dead-Air Guard Warning Banner */}
+        {connected && tracks.length <= 1 && (
+          <div className="alert alert-warning text-xs py-2 px-3 rounded-xl flex items-center justify-between gap-2 shadow-sm animate-pulse">
+            <div className="flex items-center gap-2 font-bold text-warning-content">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-warning-content" />
+              <span>DEAD-AIR GUARD: Antrean menipis ({tracks.length} lagu tersisa)!</span>
+            </div>
+            <span className="badge badge-neutral badge-xs font-semibold uppercase tracking-wider">
+              Antrekan Lagu
+            </span>
+          </div>
+        )}
 
         {/* Content */}
         {!connected ? (

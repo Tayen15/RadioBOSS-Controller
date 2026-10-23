@@ -7,12 +7,11 @@ import { SearchSection } from "@/components/SearchSection";
 import { TrackPreviewCard } from "@/components/TrackPreviewCard";
 import { QueueHistory } from "@/components/QueueHistory";
 import { PlaylistQueueWidget } from "@/components/PlaylistQueueWidget";
-import {
-  ToastNotification,
-  ToastMessage,
-} from "@/components/ToastNotification";
+import { ToastNotification, ToastMessage } from "@/components/ToastNotification";
 import { SettingsModal } from "@/components/SettingsModal";
-import { Music2, ListMusic, History } from "lucide-react";
+import { SmartRecommendationsWidget } from "@/components/SmartRecommendationsWidget";
+import { PlaylistSetsWidget } from "@/components/PlaylistSetsWidget";
+import { Music2, ListMusic, History, FolderHeart } from "lucide-react";
 import {
   TrackItem,
   RadioBOSSStatus,
@@ -71,7 +70,7 @@ export default function DashboardPage() {
   const [isControlling, setIsControlling] = useState<boolean>(false);
   const [playlistTracks, setPlaylistTracks] = useState<PlaylistItem[]>([]);
   const [isPlaylistLoading, setIsPlaylistLoading] = useState<boolean>(false);
-  const [bottomLeftTab, setBottomLeftTab] = useState<"playlist" | "history">("playlist");
+  const [bottomLeftTab, setBottomLeftTab] = useState<"playlist" | "sets" | "history">("playlist");
 
   // Fetch permanent history from backend file storage on mount
   useEffect(() => {
@@ -266,9 +265,34 @@ export default function DashboardPage() {
     }
   };
 
-  // Handle Queuing to RadioBOSS
-  const handleQueueTrack = async (pos: number, useRelay: boolean) => {
-    if (!selectedTrack) return;
+  // Handle Queuing to RadioBOSS with Anti-Repeat Safety Guard
+  const queueTrackWithGuard = async (
+    targetTrack: TrackItem,
+    pos: number,
+    useRelay: boolean = true
+  ) => {
+    // Anti-Repeat Safety Guard: warn if artist was played or queued recently
+    const primaryArtist = targetTrack.artists?.[0]?.toLowerCase()?.trim();
+    if (primaryArtist) {
+      const recentArtistPlayed = history.slice(0, 3).some(
+        (h) =>
+          h.artists?.some((a) => a.toLowerCase().trim() === primaryArtist) ||
+          h.title?.toLowerCase().includes(primaryArtist)
+      );
+      const nowPlayingTitle =
+        radioBossStatus?.now_playing?.title?.toLowerCase();
+      const isNowPlaying =
+        nowPlayingTitle && nowPlayingTitle.includes(primaryArtist);
+
+      if (recentArtistPlayed || isNowPlaying) {
+        const confirmRepeat = window.confirm(
+          `⚠️ Peringatan Anti-Repeat Siaran:\nLagu dari artis "${targetTrack.artists[0]}" baru saja diputar atau ada di antrean terakhir!\n\nTetap ingin menambahkan lagu ini ke antrean RadioBOSS?`
+        );
+        if (!confirmRepeat) {
+          return;
+        }
+      }
+    }
 
     setIsQueueing(true);
     setActiveQueuePos(pos);
@@ -277,8 +301,8 @@ export default function DashboardPage() {
 
     // Format strictly as "Nama Artis - Judul Lagu"
     const artistStr =
-      selectedTrack.artists?.filter(Boolean).join(", ").trim() || "";
-    const cleanTitle = selectedTrack.title.trim();
+      targetTrack.artists?.filter(Boolean).join(", ").trim() || "";
+    const cleanTitle = targetTrack.title.trim();
     const formattedTitle =
       artistStr && !cleanTitle.includes(" - ")
         ? `${artistStr} - ${cleanTitle}`
@@ -286,17 +310,17 @@ export default function DashboardPage() {
 
     try {
       const res = await queueToRadioBoss(
-        selectedTrack.video_id,
+        targetTrack.video_id,
         formattedTitle,
         pos,
         useRelay,
         undefined,
         {
           artist: artistStr,
-          album: selectedTrack.album,
-          thumbnail_url: selectedTrack.thumbnail_url,
-          year: selectedTrack.year,
-          genre: selectedTrack.genre,
+          album: targetTrack.album,
+          thumbnail_url: targetTrack.thumbnail_url,
+          year: targetTrack.year,
+          genre: targetTrack.genre,
         }
       );
 
@@ -308,11 +332,11 @@ export default function DashboardPage() {
       });
 
       const newHistoryItem: HistoryItem = {
-        id: `${Date.now()}-${selectedTrack.video_id}`,
-        video_id: selectedTrack.video_id,
+        id: `${Date.now()}-${targetTrack.video_id}`,
+        video_id: targetTrack.video_id,
         title: formattedTitle,
-        artists: selectedTrack.artists,
-        thumbnail_url: selectedTrack.thumbnail_url,
+        artists: targetTrack.artists,
+        thumbnail_url: targetTrack.thumbnail_url,
         pos: pos,
         timestamp: timeStr,
         status: "success",
@@ -323,7 +347,7 @@ export default function DashboardPage() {
 
       addToast(
         "success",
-        res.message || `Lagu berhasil dikirim ke RadioBOSS (${posLabel})!`,
+        res.message || `Lagu berhasil dikirim ke RadioBOSS (${posLabel})!`
       );
 
       // Refresh status and playlist after insertion
@@ -340,6 +364,12 @@ export default function DashboardPage() {
     } finally {
       setIsQueueing(false);
       setActiveQueuePos(null);
+    }
+  };
+
+  const handleQueueTrack = async (pos: number, useRelay: boolean) => {
+    if (selectedTrack) {
+      await queueTrackWithGuard(selectedTrack, pos, useRelay);
     }
   };
 
@@ -438,6 +468,22 @@ export default function DashboardPage() {
 
                 <button
                   type="button"
+                  onClick={() => setBottomLeftTab("sets")}
+                  className={`tab flex-1 gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold rounded-xl transition-all ${
+                    bottomLeftTab === "sets"
+                      ? "tab-active bg-primary text-primary-content shadow-sm"
+                      : "text-base-content/70 hover:text-base-content"
+                  }`}
+                >
+                  <FolderHeart className="h-3.5 w-3.5" />
+                  <span className="truncate">Set Playlist</span>
+                  <span className="badge badge-accent badge-xs font-bold scale-90">
+                    Koleksi
+                  </span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setBottomLeftTab("history")}
                   className={`tab flex-1 gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold rounded-xl transition-all ${
                     bottomLeftTab === "history"
@@ -462,6 +508,17 @@ export default function DashboardPage() {
                 />
               )}
 
+              {bottomLeftTab === "sets" && (
+                <PlaylistSetsWidget
+                  onSelectTrack={(track) => setSelectedTrack(track)}
+                  onAddToast={addToast}
+                  onQueueComplete={() => {
+                    syncStatus();
+                    syncPlaylist();
+                  }}
+                />
+              )}
+
               {bottomLeftTab === "history" && (
                 <QueueHistory
                   history={history}
@@ -472,7 +529,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Right Column (Track Preview & RadioBOSS Dispatch Card) */}
+          {/* Right Column (Track Preview & RadioBOSS Dispatch Card & Recommendations) */}
           <div className="lg:col-span-5 lg:sticky lg:top-20 space-y-6">
             {selectedTrack ? (
               <TrackPreviewCard
@@ -531,6 +588,19 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Smart Song Recommendations (Up Next & Top Artist Songs) */}
+            <SmartRecommendationsWidget
+              seedTrack={selectedTrack}
+              currentArtist={
+                radioBossStatus?.now_playing?.title
+                  ? radioBossStatus.now_playing.title.split(" - ")[0]
+                  : null
+              }
+              onSelectTrack={(track) => setSelectedTrack(track)}
+              onQueueTrack={(track, pos) => queueTrackWithGuard(track, pos, true)}
+              isQueueing={isQueueing}
+            />
           </div>
         </div>
       </main>

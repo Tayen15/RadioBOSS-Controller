@@ -84,6 +84,7 @@ export function SettingsModal({
   const [serverPort, setServerPort] = useState(8000);
   const [enableLoudnorm, setEnableLoudnorm] = useState(true);
   const [customCacheDir, setCustomCacheDir] = useState<string>("");
+  const [customDataDir, setCustomDataDir] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -129,6 +130,7 @@ export function SettingsModal({
         setServerPort(cfg.server_port || 8000);
         setEnableLoudnorm(cfg.enable_loudnorm !== undefined ? cfg.enable_loudnorm : true);
         setCustomCacheDir(cfg.custom_cache_dir || "");
+        setCustomDataDir(cfg.custom_data_dir || "");
       })
       .catch((err) => {
         if (!isMounted) return;
@@ -210,6 +212,7 @@ export function SettingsModal({
       server_port: Number(serverPort) || 8000,
       enable_loudnorm: enableLoudnorm,
       custom_cache_dir: customCacheDir.trim(),
+      custom_data_dir: customDataDir.trim(),
     };
 
     try {
@@ -491,6 +494,41 @@ export function SettingsModal({
                       ? `${cacheStats.total_files} file tersimpan (${cacheStats.total_size_mb} MB)`
                       : "Memuat..."}
                   </span>
+                </div>
+
+                {/* Custom Database & Data Root Directory */}
+                <div className="form-control space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="label py-0">
+                      <span className="label-text text-[11px] text-base-content/70 font-medium">
+                        Lokasi Database SQLite &amp; Data App (Disk D: / Kustom):
+                      </span>
+                    </label>
+                    {customDataDir ? (
+                      <button
+                        type="button"
+                        onClick={() => setCustomDataDir("")}
+                        className="btn btn-ghost btn-xs text-[10px] text-primary hover:underline py-0 h-5 min-h-0"
+                        title="Kembalikan lokasi database ke default %APPDATA% di Drive C:"
+                      >
+                        Reset ke Default (Drive C:)
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-base-content/40">Default (Drive C:)</span>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    value={customDataDir}
+                    onChange={(e) => setCustomDataDir(e.target.value)}
+                    placeholder={cacheStats?.storage_dir || "D:\\RadioBOSS-Data (atau kosongkan untuk default C:)"}
+                    className="input input-bordered input-xs w-full bg-base-100 text-[11px] font-mono text-base-content placeholder:text-base-content/30"
+                  />
+
+                  <p className="text-[10px] text-base-content/50 leading-tight">
+                    Database aktif: <code className="text-accent break-all">{cacheStats?.db_path || "Memuat..."}</code>. Menyimpan konfigurasi, riwayat, dan playlist set secara mandiri.
+                  </p>
                 </div>
 
                 <div className="form-control space-y-1">

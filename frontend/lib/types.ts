@@ -79,6 +79,7 @@ export interface AppConfig {
   server_port: number;
   enable_loudnorm?: boolean;
   custom_cache_dir?: string;
+  custom_data_dir?: string;
 }
 
 export interface CartItem {
@@ -125,6 +126,8 @@ export interface PlaylistResponse {
 
 export interface CacheStats {
   cache_dir: string;
+  storage_dir?: string;
+  db_path?: string;
   total_files: number;
   total_size_bytes: number;
   total_size_mb: number;
@@ -143,4 +146,52 @@ export interface LyricsResponse {
   source: string;
   talking_points: TalkingPoints;
 }
+
+export interface RecommendationsResponse {
+  success: boolean;
+  seed_video_id: string;
+  results: TrackItem[];
+}
+
+export interface ArtistTopTracksResponse {
+  success: boolean;
+  artist: string;
+  results: TrackItem[];
+}
+
+export interface PlaylistSetItem {
+  id: string;
+  set_id: string;
+  video_id: string;
+  title: string;
+  artists: string[];
+  album?: string | null;
+  year?: string | null;
+  genre?: string | null;
+  thumbnail_url?: string | null;
+  duration_seconds: number;
+  duration_formatted: string;
+  order_index: number;
+}
+
+export interface PlaylistSet {
+  id: string;
+  name: string;
+  description: string;
+  created_at: number;
+  updated_at: number;
+  track_count: number;
+}
+
+export interface PlaylistSetDetails extends PlaylistSet {
+  tracks: PlaylistSetItem[];
+}
+
+export interface ResolvePlaylistResponse {
+  success: boolean;
+  title: string;
+  count: number;
+  tracks: TrackItem[];
+}
+
 
