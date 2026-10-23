@@ -69,7 +69,7 @@ export function NowPlayingWidget({
             {/* Track Info */}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="badge badge-primary badge-outline badge-xs gap-1 font-bold uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
                   <Radio className="h-2.5 w-2.5" />
                   Live On-Air
                 </span>
@@ -77,23 +77,23 @@ export function NowPlayingWidget({
                 {/* Status Indicator */}
                 {connected ? (
                   isPlaying ? (
-                    <span className="badge badge-success badge-sm gap-1 font-semibold">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs font-semibold">
                       <Play className="h-2.5 w-2.5 fill-current" />
                       Memutar
                     </span>
                   ) : isPaused ? (
-                    <span className="badge badge-warning badge-sm gap-1 font-semibold">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-600 text-xs font-semibold">
                       <Pause className="h-2.5 w-2.5 fill-current" />
                       Dijeda
                     </span>
                   ) : (
-                    <span className="badge badge-neutral badge-sm gap-1 text-base-content/60">
-                      <Square className="h-2.5 w-2.5 fill-current" />
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-base-300 bg-base-200 text-base-content/70 text-xs font-medium">
+                      <Square className="h-2 w-2 fill-current text-base-content/50" />
                       Berhenti
                     </span>
                   )
                 ) : (
-                  <span className="badge badge-error badge-sm gap-1 font-semibold">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-600 text-xs font-semibold">
                     Offline
                   </span>
                 )}

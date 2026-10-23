@@ -670,7 +670,7 @@ export function PlaylistSetsWidget({
                 >
                   <FolderOpen className="h-3 w-3" />
                   <span className="max-w-[120px] truncate">{s.name}</span>
-                  <span className="badge badge-neutral badge-xs scale-90">
+                  <span className="badge badge-ghost border border-base-300 badge-xs font-mono scale-90">
                     {s.track_count}
                   </span>
                 </button>

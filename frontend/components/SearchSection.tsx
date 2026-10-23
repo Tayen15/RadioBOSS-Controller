@@ -163,11 +163,16 @@ export function SearchSection({
                           <p className="truncate text-xs text-base-content/70">
                             {track.artists.join(", ") || "Unknown Artist"}
                           </p>
-                          <div className="mt-1 flex items-center gap-2 text-[10px] text-base-content/50">
+                          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-base-content/50">
                             {track.album && (
-                              <span className="truncate max-w-[110px]">{track.album}</span>
+                              <>
+                                <span className="truncate max-w-[220px] sm:max-w-xs text-base-content/70 font-medium" title={track.album}>
+                                  {track.album}
+                                </span>
+                                <span>•</span>
+                              </>
                             )}
-                            <span className="inline-flex items-center gap-0.5">
+                            <span className="inline-flex items-center gap-0.5 font-mono">
                               <Clock className="h-2.5 w-2.5" />
                               {track.duration_formatted}
                             </span>
@@ -225,9 +230,9 @@ export function SearchSection({
               </button>
             </form>
             <p className="text-xs text-base-content/60 leading-relaxed">
-              Mendukung link <code className="badge badge-neutral badge-xs">youtube.com/watch?v=...</code>,{" "}
-              <code className="badge badge-neutral badge-xs">music.youtube.com/...</code>, atau shortlink{" "}
-              <code className="badge badge-neutral badge-xs">youtu.be/...</code>.
+              Mendukung link <code className="px-1.5 py-0.5 rounded bg-base-200 border border-base-300 font-mono text-[11px] text-base-content/80">youtube.com/watch?v=...</code>,{" "}
+              <code className="px-1.5 py-0.5 rounded bg-base-200 border border-base-300 font-mono text-[11px] text-base-content/80">music.youtube.com/...</code>, atau shortlink{" "}
+              <code className="px-1.5 py-0.5 rounded bg-base-200 border border-base-300 font-mono text-[11px] text-base-content/80">youtu.be/...</code>.
             </p>
           </div>
         )}

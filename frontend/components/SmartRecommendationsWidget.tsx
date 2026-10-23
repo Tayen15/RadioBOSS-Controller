@@ -528,7 +528,7 @@ export function SmartRecommendationsWidget({
                               className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-base-200 text-base-content truncate transition-colors flex items-center justify-between"
                             >
                               <span className="truncate">{s.name}</span>
-                              <span className="badge badge-neutral badge-xs scale-90">
+                              <span className="badge badge-ghost border border-base-300 badge-xs font-mono scale-90">
                                 {s.track_count}
                               </span>
                             </button>

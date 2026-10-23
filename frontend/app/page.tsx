@@ -18,6 +18,7 @@ import {
   HistoryItem,
   PlaybackAction,
   PlaylistItem,
+  APP_VERSION,
 } from "@/lib/types";
 import {
   checkBackendHealth,
@@ -99,18 +100,25 @@ export default function DashboardPage() {
     }
   };
 
-  const addToast = (type: "success" | "error", text: string) => {
-    const newToast: ToastMessage = {
-      id: `${Date.now()}-${Math.random()}`,
-      type,
-      text,
-    };
-    setToasts((prev) => [newToast, ...prev]);
-  };
-
-  const dismissToast = (id: string) => {
+  const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
+
+  const addToast = useCallback(
+    (type: "success" | "error", text: string) => {
+      const id = `${Date.now()}-${Math.random()}`;
+      const newToast: ToastMessage = {
+        id,
+        type,
+        text,
+      };
+      setToasts((prev) => [newToast, ...prev.slice(0, 2)]);
+      setTimeout(() => {
+        dismissToast(id);
+      }, 2800);
+    },
+    [dismissToast]
+  );
 
   // Check connectivity and fetch now playing
   const isSyncingRef = React.useRef(false);
@@ -607,31 +615,25 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Refined Footer Info */}
-      <footer className="footer footer-center p-5 bg-base-200 border-t border-base-300 text-base-content/70">
-        <div className="flex flex-col sm:flex-row items-center justify-between w-full max-w-7xl px-4 text-xs gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-base-content">
-              Radio Caster Bridge
-            </span>
-            <span className="text-base-content/30">•</span>
-            <span className="text-base-content/70">
-              YouTube Music Studio Streamer &amp; RadioBOSS Controller
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-base-content/60">
-            <span>&copy; {new Date().getFullYear()}</span>
-            <span className="text-base-content/30">•</span>
-            <span>Crafted by</span>
+      {/* Clean Minimalist Studio Footer */}
+      <footer className="py-4 px-6 border-t border-base-200 text-center text-xs text-base-content/40">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="flex items-center gap-2">
+            <span className="font-semibold text-base-content/70">Radio Caster Bridge</span>
+            <span>•</span>
+            <span className="font-mono">v{APP_VERSION}</span>
+          </p>
+          <p>
+            Crafted by{" "}
             <a
               href="https://hi.oktaa.my.id"
               target="_blank"
               rel="noopener noreferrer"
-              className="link link-primary font-bold hover:underline transition-all"
+              className="font-medium text-base-content/70 hover:text-primary transition-colors underline decoration-base-content/20"
             >
               Tayen
             </a>
-          </div>
+          </p>
         </div>
       </footer>
 

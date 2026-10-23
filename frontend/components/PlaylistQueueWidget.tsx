@@ -56,7 +56,7 @@ export function PlaylistQueueWidget({
               <AlertTriangle className="h-4 w-4 shrink-0 text-warning-content" />
               <span>DEAD-AIR GUARD: Antrean menipis ({tracks.length} lagu tersisa)!</span>
             </div>
-            <span className="badge badge-neutral badge-xs font-semibold uppercase tracking-wider">
+            <span className="badge badge-warning bg-warning-content/20 text-warning-content border border-warning-content/30 badge-xs font-bold uppercase tracking-wider">
               Antrekan Lagu
             </span>
           </div>

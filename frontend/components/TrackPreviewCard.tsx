@@ -104,27 +104,31 @@ export function TrackPreviewCard({
               {track.artists.join(", ") || "Unknown Artist"}
             </p>
 
-            <div className="mt-2.5 flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs text-base-content/60">
+            <div className="mt-2.5 flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-xs">
               {track.album && (
-                <span className="badge badge-neutral badge-sm truncate max-w-[180px]">
-                  {track.album}
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-base-200/80 border border-base-300 text-xs font-medium text-base-content/80 max-w-[320px] sm:max-w-md truncate"
+                  title={track.album}
+                >
+                  <Disc3 className="h-3 w-3 text-base-content/50 shrink-0" />
+                  <span className="truncate">{track.album}</span>
                 </span>
               )}
               {track.year && (
-                <span className="badge badge-outline badge-sm gap-1">
-                  <Calendar className="h-3 w-3 text-secondary" />
-                  {track.year}
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-200/50 border border-base-300/80 text-xs text-base-content/70">
+                  <Calendar className="h-3 w-3 text-secondary shrink-0" />
+                  <span>{track.year}</span>
                 </span>
               )}
               {track.genre && (
-                <span className="badge badge-outline badge-sm gap-1">
-                  <Tag className="h-3 w-3 text-accent" />
-                  {track.genre}
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-200/50 border border-base-300/80 text-xs text-base-content/70">
+                  <Tag className="h-3 w-3 text-accent shrink-0" />
+                  <span>{track.genre}</span>
                 </span>
               )}
-              <span className="badge badge-outline badge-sm gap-1">
-                <Clock className="h-3 w-3" />
-                {track.duration_formatted}
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-200/50 border border-base-300/80 text-xs font-mono text-base-content/70">
+                <Clock className="h-3 w-3 text-base-content/40 shrink-0" />
+                <span>{track.duration_formatted}</span>
               </span>
             </div>
           </div>
