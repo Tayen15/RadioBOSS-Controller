@@ -18,6 +18,7 @@ from app.routers import (
     recommendations_router,
     playlist_sets_router,
 )
+from app.version import VERSION
 
 # Configure logging
 logging.basicConfig(
@@ -68,7 +69,7 @@ settings = get_settings()
 app = FastAPI(
     title="Radio Caster Request Bridge API",
     description="Bridge connecting Radio Caster Dashboard with RadioBOSS and YouTube Music",
-    version="2.0.0",
+    version=VERSION,
     lifespan=lifespan,
 )
 
@@ -107,7 +108,7 @@ async def health_check():
         content={
             "status": "online",
             "service": "Radio Caster Request Bridge",
-            "version": "2.0.0",
+            "version": VERSION,
         }
     )
 

@@ -9,7 +9,7 @@ import {
   AlertTriangle,
   Settings as SettingsIcon,
 } from "lucide-react";
-import { RadioBOSSStatus } from "@/lib/types";
+import { RadioBOSSStatus, APP_VERSION } from "@/lib/types";
 
 interface ConnectionBarProps {
   backendOnline: boolean;
@@ -41,7 +41,7 @@ export function ConnectionBar({
               Radio Caster Bridge
             </span>
             <span className="badge badge-primary badge-outline badge-xs font-semibold uppercase tracking-wider hidden sm:inline-flex">
-              v2.0 Standalone
+              v{APP_VERSION} Standalone
             </span>
           </div>
           <p className="text-xs text-base-content/60">
