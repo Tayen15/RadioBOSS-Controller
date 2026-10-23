@@ -410,7 +410,7 @@ export function PlaylistSetsWidget({
   };
 
   return (
-    <div className="card bg-base-200 border border-base-300 p-5 shadow-sm space-y-4">
+    <div className="card rounded-2xl bg-base-200 border border-base-300 p-5 shadow-sm space-y-4">
       {/* Hidden audio element for preview */}
       <audio
         ref={audioRef}
@@ -421,13 +421,13 @@ export function PlaylistSetsWidget({
       {/* Top Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-base-300 text-base-content">
             <FolderHeart className="h-5 w-5" />
           </div>
           <div>
             <h3 className="font-bold text-sm text-base-content flex items-center gap-1.5">
               <span>Koleksi Set Playlist &amp; Importer</span>
-              <span className="badge badge-accent badge-xs font-bold scale-90">
+              <span className="badge badge-accent badge-xs font-bold scale-90 text-accent-content">
                 SQLite Local DB
               </span>
             </h3>
@@ -463,10 +463,10 @@ export function PlaylistSetsWidget({
       {isCreatingSet && (
         <form
           onSubmit={handleCreateSet}
-          className="bg-base-100 p-3.5 rounded-xl border border-primary/30 space-y-3"
+          className="bg-base-100 p-3.5 rounded-xl border border-base-300 space-y-3"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+            <span className="text-xs font-bold text-base-content flex items-center gap-1.5">
               <Plus className="h-3.5 w-3.5" />
               <span>Buat Playlist Set Baru</span>
             </span>
@@ -845,7 +845,7 @@ export function PlaylistSetsWidget({
                             className="min-w-0 flex-1 cursor-pointer"
                             title="Klik untuk memilih ke Dispatch Deck"
                           >
-                            <p className="font-bold truncate text-base-content group-hover:text-primary transition-colors">
+                            <p className="font-bold truncate text-base-content group-hover:text-white transition-colors">
                               {item.title}
                             </p>
                             <p className="text-[10px] text-base-content/60 truncate">
@@ -865,7 +865,7 @@ export function PlaylistSetsWidget({
                             type="button"
                             onClick={() => handleQueueSingle(trackObj, 1)}
                             disabled={isQueueing}
-                            className="btn btn-ghost btn-xs text-primary hover:bg-primary/10 px-1.5 h-6 min-h-0 font-bold text-[10px] gap-0.5"
+                            className="btn btn-ghost btn-xs text-base-content hover:bg-base-300 px-1.5 h-6 min-h-0 font-bold text-[10px] gap-0.5"
                             title="Putar Sebagai Lagu Berikutnya (Posisi 1 di RadioBOSS)"
                           >
                             <FastForward className="h-3 w-3" />

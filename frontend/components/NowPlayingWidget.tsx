@@ -42,7 +42,7 @@ export function NowPlayingWidget({
     : "Menunggu koneksi ke RadioBOSS...";
 
   return (
-    <section className="card bg-base-200 border border-base-300 shadow-md">
+    <section className="card rounded-2xl bg-base-200 border border-base-300 shadow-md">
       <div className="card-body p-4 sm:p-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Left: Disc Icon & Track Metadata */}
@@ -50,11 +50,11 @@ export function NowPlayingWidget({
             {/* Spinning Disc Avatar */}
             <div className="avatar shrink-0">
               <div
-                className={`w-14 h-14 rounded-2xl bg-base-300 border border-base-content/10 flex items-center justify-center shadow-inner relative`}
+                className={`w-14 h-14 rounded-2xl bg-base-100 border border-base-300 flex items-center justify-center shadow-inner relative`}
               >
                 <Disc
-                  className={`h-8 w-8 text-primary transition-all ${
-                    isPlaying ? "animate-[spin_4s_linear_infinite]" : "opacity-50"
+                  className={`h-8 w-8 text-base-content transition-all ${
+                    isPlaying ? "animate-[spin_4s_linear_infinite]" : "opacity-40"
                   }`}
                 />
                 {isPlaying && (
@@ -69,31 +69,31 @@ export function NowPlayingWidget({
             {/* Track Info */}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
-                  <Radio className="h-2.5 w-2.5" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border border-base-300 bg-base-100 text-base-content text-[10px] font-bold uppercase tracking-wider">
+                  <span className="h-1.5 w-1.5 rounded-full bg-error animate-pulse" />
                   Live On-Air
                 </span>
 
                 {/* Status Indicator */}
                 {connected ? (
                   isPlaying ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs font-semibold">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-success/40 bg-success/15 text-success text-xs font-semibold">
                       <Play className="h-2.5 w-2.5 fill-current" />
                       Memutar
                     </span>
                   ) : isPaused ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-600 text-xs font-semibold">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-warning/40 bg-warning/15 text-warning text-xs font-semibold">
                       <Pause className="h-2.5 w-2.5 fill-current" />
                       Dijeda
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-base-300 bg-base-200 text-base-content/70 text-xs font-medium">
-                      <Square className="h-2 w-2 fill-current text-base-content/50" />
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-base-300 bg-base-100 text-base-content/70 text-xs font-medium">
+                      <Square className="h-2 w-2 fill-current text-base-content/40" />
                       Berhenti
                     </span>
                   )
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-600 text-xs font-semibold">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-error/40 bg-error/15 text-error text-xs font-semibold">
                     Offline
                   </span>
                 )}

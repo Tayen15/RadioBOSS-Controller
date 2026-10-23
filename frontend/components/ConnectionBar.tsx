@@ -54,10 +54,10 @@ export function ConnectionBar({
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Backend Status */}
         <div
-          className={`badge badge-sm gap-1.5 py-3 px-3 border ${
+          className={`badge badge-sm rounded-full gap-1.5 py-3 px-3 border ${
             backendOnline
-              ? "badge-success/15 border-success/30 text-success"
-              : "badge-error/15 border-error/30 text-error"
+              ? "badge-success/15 border-success/40 text-success"
+              : "badge-error/15 border-error/40 text-error"
           }`}
         >
           <Server className="h-3 w-3" />
@@ -74,10 +74,10 @@ export function ConnectionBar({
 
         {/* RadioBOSS Status */}
         <div
-          className={`badge badge-sm gap-1.5 py-3 px-3 border ${
+          className={`badge badge-sm rounded-full gap-1.5 py-3 px-3 border ${
             isRadioConnected
-              ? "badge-success/15 border-success/30 text-success"
-              : "badge-warning/15 border-warning/30 text-warning"
+              ? "badge-success/15 border-success/40 text-success"
+              : "badge-warning/15 border-warning/40 text-warning"
           }`}
           title={radioBossStatus?.error || undefined}
         >
@@ -101,18 +101,18 @@ export function ConnectionBar({
           onClick={onRefresh}
           disabled={loading}
           aria-label="Refresh status"
-          className="btn btn-ghost btn-circle btn-sm"
+          className="btn btn-ghost btn-circle btn-sm text-base-content/70 hover:text-base-content"
           title="Perbarui Status Koneksi"
         >
           <RefreshCw
-            className={`h-4 w-4 ${loading ? "animate-spin text-primary" : "text-base-content/70"}`}
+            className={`h-4 w-4 ${loading ? "animate-spin text-base-content" : ""}`}
           />
         </button>
 
         {/* Settings Modal Button */}
         <button
           onClick={onOpenSettings}
-          className="btn btn-primary btn-sm gap-1.5 shadow-sm"
+          className="btn btn-primary btn-sm rounded-xl gap-1.5 shadow-sm text-primary-content font-semibold"
           title="Buka Pengaturan RadioBOSS"
         >
           <SettingsIcon className="h-4 w-4" />

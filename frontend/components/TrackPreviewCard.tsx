@@ -47,17 +47,17 @@ export function TrackPreviewCard({
   const relayUrl = getStreamRelayUrl(track.video_id);
 
   return (
-    <div className="card bg-base-200 border border-primary/30 shadow-xl overflow-hidden">
+    <div className="card rounded-2xl bg-base-200 border border-base-300 shadow-xl overflow-hidden">
       <div className="card-body p-4 sm:p-5 space-y-4">
         {/* Card Header */}
         <div className="flex items-center justify-between border-b border-base-300 pb-3">
           <div className="flex items-center gap-2">
-            <span className="badge badge-primary gap-1 font-semibold text-xs">
+            <span className="badge badge-primary gap-1 font-semibold text-xs text-primary-content">
               <Disc3 className="h-3.5 w-3.5 animate-spin" />
               Lagu Terpilih
             </span>
-            <span className="badge badge-accent badge-outline badge-xs font-semibold gap-1">
-              <ShieldCheck className="h-3 w-3" />
+            <span className="badge badge-ghost border border-base-300 badge-xs font-semibold gap-1 text-base-content/80">
+              <ShieldCheck className="h-3 w-3 text-success" />
               Studio Master
             </span>
           </div>
@@ -66,7 +66,7 @@ export function TrackPreviewCard({
             href={track.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="link link-hover text-xs text-base-content/60 hover:text-primary flex items-center gap-1"
+            className="link link-hover text-xs text-base-content/60 hover:text-white flex items-center gap-1"
           >
             <span>Buka YouTube</span>
             <ExternalLink className="h-3 w-3" />
@@ -100,14 +100,14 @@ export function TrackPreviewCard({
             <h3 className="text-base sm:text-lg font-bold text-base-content tracking-tight leading-snug line-clamp-2">
               {track.title}
             </h3>
-            <p className="mt-1 text-sm font-semibold text-primary truncate">
+            <p className="mt-1 text-sm font-semibold text-base-content/80 truncate">
               {track.artists.join(", ") || "Unknown Artist"}
             </p>
 
             <div className="mt-2.5 flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-xs">
               {track.album && (
                 <span
-                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-base-200/80 border border-base-300 text-xs font-medium text-base-content/80 max-w-[320px] sm:max-w-md truncate"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-base-100 border border-base-300 text-xs font-medium text-base-content/80 max-w-[320px] sm:max-w-md truncate"
                   title={track.album}
                 >
                   <Disc3 className="h-3 w-3 text-base-content/50 shrink-0" />
@@ -115,18 +115,18 @@ export function TrackPreviewCard({
                 </span>
               )}
               {track.year && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-200/50 border border-base-300/80 text-xs text-base-content/70">
-                  <Calendar className="h-3 w-3 text-secondary shrink-0" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-100 border border-base-300 text-xs text-base-content/70">
+                  <Calendar className="h-3 w-3 text-base-content/50 shrink-0" />
                   <span>{track.year}</span>
                 </span>
               )}
               {track.genre && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-200/50 border border-base-300/80 text-xs text-base-content/70">
-                  <Tag className="h-3 w-3 text-accent shrink-0" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-100 border border-base-300 text-xs text-base-content/70">
+                  <Tag className="h-3 w-3 text-base-content/50 shrink-0" />
                   <span>{track.genre}</span>
                 </span>
               )}
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-200/50 border border-base-300/80 text-xs font-mono text-base-content/70">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-100 border border-base-300 text-xs font-mono text-base-content/70">
                 <Clock className="h-3 w-3 text-base-content/40 shrink-0" />
                 <span>{track.duration_formatted}</span>
               </span>
@@ -145,9 +145,9 @@ export function TrackPreviewCard({
                   setAudioState("loading");
                   setAudioError(null);
                 }}
-                className="btn btn-outline btn-sm flex-1 gap-1.5 border-base-300 text-xs font-medium"
+                className="btn btn-outline btn-sm rounded-xl flex-1 gap-1.5 border-base-300 text-xs font-medium text-base-content hover:bg-base-300 hover:text-white"
               >
-                <Headphones className="h-4 w-4 text-primary" />
+                <Headphones className="h-4 w-4 text-base-content/80" />
                 <span>Headphone Preview</span>
               </button>
             )}
@@ -155,9 +155,9 @@ export function TrackPreviewCard({
             <button
               type="button"
               onClick={() => setIsLyricsOpen(true)}
-              className="btn btn-outline btn-sm flex-1 gap-1.5 border-base-300 hover:border-secondary/60 text-xs font-medium"
+              className="btn btn-outline btn-sm rounded-xl flex-1 gap-1.5 border-base-300 hover:bg-base-300 text-xs font-medium text-base-content hover:text-white"
             >
-              <Mic2 className="h-4 w-4 text-secondary" />
+              <Mic2 className="h-4 w-4 text-base-content/80" />
               <span>Lirik &amp; Cue Siaran</span>
             </button>
           </div>
@@ -165,17 +165,17 @@ export function TrackPreviewCard({
           {showPreviewAudio && (
             <div className="rounded-xl bg-base-100 border border-base-300 p-3 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 font-semibold text-primary">
-                  <Headphones className="h-3.5 w-3.5" />
+                <span className="flex items-center gap-1.5 font-semibold text-base-content">
+                  <Headphones className="h-3.5 w-3.5 text-base-content/80" />
                   Preview Headphone
                   {audioState === "loading" && (
-                    <span className="badge badge-warning badge-xs gap-1 ml-1">
+                    <span className="badge badge-warning badge-xs gap-1 ml-1 text-warning-content font-bold">
                       <span className="loading loading-spinner loading-xs" />
                       Memuat...
                     </span>
                   )}
                   {audioState === "playing" && (
-                    <span className="badge badge-success badge-xs ml-1">
+                    <span className="badge badge-success badge-xs ml-1 text-success-content font-bold">
                       ● Memutar
                     </span>
                   )}
@@ -186,14 +186,14 @@ export function TrackPreviewCard({
                     setAudioState("idle");
                     setAudioError(null);
                   }}
-                  className="btn btn-ghost btn-xs text-base-content/60 hover:text-base-content"
+                  className="btn btn-ghost btn-xs text-base-content/60 hover:text-white"
                 >
                   Tutup
                 </button>
               </div>
 
               {audioError && (
-                <div className="alert alert-error text-xs py-2 rounded-lg">
+                <div className="alert alert-error text-xs py-2 rounded-lg text-error-content font-medium">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{audioError}</span>
                 </div>
@@ -227,7 +227,7 @@ export function TrackPreviewCard({
         <div className="rounded-xl bg-base-100 border border-base-300 p-3">
           <label className="flex items-center justify-between gap-3 cursor-pointer">
             <div className="flex items-start gap-2.5 min-w-0 flex-1">
-              <Radio className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <Radio className="h-4 w-4 text-base-content/70 shrink-0 mt-0.5" />
               <div className="min-w-0 flex-1">
                 <span className="block text-xs font-semibold text-base-content leading-tight">
                   Studio Master Cache &amp; ID3 Tags
@@ -252,7 +252,7 @@ export function TrackPreviewCard({
           <button
             onClick={() => onQueue(1, useRelay)}
             disabled={isQueueing}
-            className="btn btn-primary btn-block gap-2 shadow-md font-bold"
+            className="btn btn-primary btn-block rounded-xl gap-2 shadow-md font-bold text-primary-content"
           >
             {isQueueing && activePos === 1 ? (
               <>
@@ -271,7 +271,7 @@ export function TrackPreviewCard({
           <button
             onClick={() => onQueue(-1, useRelay)}
             disabled={isQueueing}
-            className="btn btn-secondary btn-outline btn-block gap-2 font-bold"
+            className="btn btn-outline btn-block rounded-xl gap-2 font-bold border-base-300 text-base-content hover:bg-base-300 hover:text-white"
           >
             {isQueueing && activePos === -1 ? (
               <>

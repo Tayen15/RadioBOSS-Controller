@@ -251,11 +251,11 @@ export function SettingsModal({
 
   return (
     <dialog className="modal modal-open z-50">
-      <div className="modal-box bg-base-200 border border-base-300 max-w-lg shadow-2xl p-6">
+      <div className="modal-box rounded-2xl bg-base-200 border border-base-300 max-w-lg shadow-2xl p-6">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-base-300 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-base-300 text-base-content">
               <SettingsIcon className="h-4 w-4" />
             </div>
             <div>
@@ -269,7 +269,7 @@ export function SettingsModal({
           </div>
           <button
             onClick={onClose}
-            className="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-base-content"
+            className="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
@@ -279,8 +279,8 @@ export function SettingsModal({
         {feedback && (
           <div
             className={`alert ${
-              feedback.type === "success" ? "alert-success" : "alert-error"
-            } mt-4 text-xs py-2.5 rounded-xl`}
+              feedback.type === "success" ? "alert-success text-success-content" : "alert-error text-error-content"
+            } mt-4 text-xs py-2.5 rounded-xl font-medium`}
           >
             {feedback.type === "success" ? (
               <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -293,14 +293,14 @@ export function SettingsModal({
 
         {isLoading ? (
           <div className="py-12 text-center space-y-2">
-            <span className="loading loading-spinner loading-md text-primary" />
+            <span className="loading loading-spinner loading-md text-base-content" />
             <p className="text-xs text-base-content/60">Memuat konfigurasi...</p>
           </div>
         ) : (
           <form onSubmit={handleSave} className="mt-4 space-y-5">
             {/* Section 1: RadioBOSS Connection */}
             <div className="space-y-3">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-base-content uppercase tracking-wider">
                 <Radio className="h-3.5 w-3.5" />
                 <span>Koneksi RadioBOSS API</span>
               </div>
@@ -370,7 +370,7 @@ export function SettingsModal({
 
             {/* Section 2: Metadata Format */}
             <div className="space-y-3 pt-1 border-t border-base-300">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider pt-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-base-content uppercase tracking-wider pt-2">
                 <Tag className="h-3.5 w-3.5" />
                 <span>Format Metadata Siaran</span>
               </div>
@@ -384,14 +384,14 @@ export function SettingsModal({
                 <button
                   type="button"
                   onClick={() => setIsFormatDropdownOpen(!isFormatDropdownOpen)}
-                  className="input input-bordered input-sm w-full bg-base-100 flex items-center justify-between text-xs px-3 focus:outline-none hover:border-primary/50 transition-colors"
+                  className="input input-bordered input-sm w-full bg-base-100 flex items-center justify-between text-xs px-3 focus:outline-none hover:border-base-content/50 transition-colors"
                 >
                   <div className="flex items-center gap-2 truncate">
                     <span className="font-semibold text-base-content truncate">
                       {FORMAT_OPTIONS.find((opt) => opt.value === titleFormatMode)?.label || "RadioBOSS Standar"}
                     </span>
                     {FORMAT_OPTIONS.find((opt) => opt.value === titleFormatMode)?.badge && (
-                      <span className="badge badge-primary badge-xs">
+                      <span className="badge badge-accent badge-xs text-accent-content">
                         {FORMAT_OPTIONS.find((opt) => opt.value === titleFormatMode)?.badge}
                       </span>
                     )}
@@ -418,7 +418,7 @@ export function SettingsModal({
                           }}
                           className={`w-full flex items-center justify-between gap-3 p-2 rounded-lg text-left transition-colors ${
                             isSelected
-                              ? "bg-primary/10 text-primary"
+                              ? "bg-base-300 text-white font-semibold"
                               : "hover:bg-base-200 text-base-content"
                           }`}
                         >
@@ -428,7 +428,7 @@ export function SettingsModal({
                                 {opt.label}
                               </span>
                               {opt.badge && (
-                                <span className="badge badge-primary badge-xs scale-90">
+                                <span className="badge badge-accent badge-xs scale-90 text-accent-content">
                                   {opt.badge}
                                 </span>
                               )}
@@ -438,7 +438,7 @@ export function SettingsModal({
                             </p>
                           </div>
                           {isSelected && (
-                            <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <Check className="h-3.5 w-3.5 text-success shrink-0" />
                           )}
                         </button>
                       );
@@ -471,14 +471,14 @@ export function SettingsModal({
             {/* Section 3: Studio Audio Cache & Storage */}
             <div className="space-y-3 pt-1 border-t border-base-300">
               <div className="flex items-center justify-between pt-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-base-content uppercase tracking-wider">
                   <HardDrive className="h-3.5 w-3.5" />
-                  <span>Penyimpanan & Cache Audio Studio</span>
+                  <span>Penyimpanan &amp; Cache Audio Studio</span>
                 </div>
                 <button
                   type="button"
                   onClick={loadCacheStats}
-                  className="btn btn-ghost btn-xs text-[10px] text-base-content/60 gap-1 hover:text-primary"
+                  className="btn btn-ghost btn-xs text-[10px] text-base-content/60 gap-1 hover:text-white"
                   title="Perbarui ukuran cache"
                 >
                   <RefreshCw className="h-2.5 w-2.5" />
@@ -486,7 +486,7 @@ export function SettingsModal({
                 </button>
               </div>
 
-              <div className="bg-base-200/60 border border-base-300/80 rounded-xl p-3 space-y-2.5">
+              <div className="bg-base-100 border border-base-300 rounded-xl p-3 space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-base-content/70">Status Penyimpanan:</span>
                   <span className="font-bold text-accent">
@@ -508,7 +508,7 @@ export function SettingsModal({
                       <button
                         type="button"
                         onClick={() => setCustomDataDir("")}
-                        className="btn btn-ghost btn-xs text-[10px] text-primary hover:underline py-0 h-5 min-h-0"
+                        className="btn btn-ghost btn-xs text-[10px] text-info hover:underline py-0 h-5 min-h-0"
                         title="Kembalikan lokasi database ke default %APPDATA% di Drive C:"
                       >
                         Reset ke Default (Drive C:)
@@ -542,7 +542,7 @@ export function SettingsModal({
                       <button
                         type="button"
                         onClick={() => setCustomCacheDir("")}
-                        className="btn btn-ghost btn-xs text-[10px] text-primary hover:underline py-0 h-5 min-h-0"
+                        className="btn btn-ghost btn-xs text-[10px] text-info hover:underline py-0 h-5 min-h-0"
                         title="Kembalikan lokasi penyimpanan ke default %APPDATA% di Drive C:"
                       >
                         Reset ke Default (Drive C:)
@@ -564,7 +564,7 @@ export function SettingsModal({
                       type="button"
                       onClick={handleOpenFolder}
                       disabled={isOpeningFolder}
-                      className="btn btn-xs join-item btn-primary gap-1 shrink-0 font-medium"
+                      className="btn btn-xs join-item btn-primary gap-1 shrink-0 font-medium text-primary-content"
                       title="Buka folder cache aktif saat ini di Windows File Explorer"
                     >
                       <FolderOpen className="h-3 w-3" />
@@ -641,7 +641,7 @@ export function SettingsModal({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="btn btn-primary btn-sm gap-1.5 text-xs font-bold shadow-md"
+                className="btn btn-primary btn-sm rounded-xl gap-1.5 text-xs font-bold shadow-md text-primary-content"
               >
                 {isSaving ? (
                   <>

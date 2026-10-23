@@ -18,18 +18,18 @@ export function PlaylistQueueWidget({
   connected,
 }: PlaylistQueueWidgetProps) {
   return (
-    <section className="card bg-base-200 border border-base-300 shadow-md">
+    <section className="card rounded-2xl bg-base-200 border border-base-300 shadow-md">
       <div className="card-body p-4 sm:p-5 space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-base-300 pb-2.5">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-base-300 text-base-content">
               <ListMusic className="h-4 w-4" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-base-content flex items-center gap-2">
                 <span>Antrean Siaran RadioBOSS</span>
-                <span className="badge badge-accent badge-xs font-semibold">
+                <span className="badge badge-accent badge-xs font-semibold text-accent-content">
                   {tracks.length} Terjadwal
                 </span>
               </h3>
@@ -40,11 +40,11 @@ export function PlaylistQueueWidget({
             type="button"
             onClick={onRefresh}
             disabled={isLoading || !connected}
-            className="btn btn-ghost btn-circle btn-xs text-base-content/60 hover:text-base-content"
+            className="btn btn-ghost btn-circle btn-xs text-base-content/60 hover:text-white"
             title="Muat Ulang Antrean RadioBOSS"
           >
             <RefreshCw
-              className={`h-3.5 w-3.5 ${isLoading ? "animate-spin text-primary" : ""}`}
+              className={`h-3.5 w-3.5 ${isLoading ? "animate-spin text-base-content" : ""}`}
             />
           </button>
         </div>

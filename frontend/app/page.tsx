@@ -457,7 +457,7 @@ export default function DashboardPage() {
 
             {/* Tabbed Deck: RadioBOSS Playlist Inspector vs Riwayat Request */}
             <div className="space-y-3">
-              <div className="tabs tabs-box bg-base-300/40 p-1 rounded-2xl w-full flex gap-1">
+              <div className="tabs tabs-box bg-base-100 border border-base-300 p-1 rounded-2xl w-full flex gap-1">
                 <button
                   type="button"
                   onClick={() => setBottomLeftTab("playlist")}
@@ -469,7 +469,7 @@ export default function DashboardPage() {
                 >
                   <ListMusic className="h-3.5 w-3.5" />
                   <span className="truncate">Antrean RadioBOSS</span>
-                  <span className="badge badge-accent badge-xs font-bold scale-90">
+                  <span className="badge badge-accent badge-xs font-bold scale-90 text-accent-content">
                     {playlistTracks.length}
                   </span>
                 </button>
@@ -485,7 +485,7 @@ export default function DashboardPage() {
                 >
                   <FolderHeart className="h-3.5 w-3.5" />
                   <span className="truncate">Set Playlist</span>
-                  <span className="badge badge-accent badge-xs font-bold scale-90">
+                  <span className="badge badge-accent badge-xs font-bold scale-90 text-accent-content">
                     Koleksi
                   </span>
                 </button>
@@ -501,7 +501,7 @@ export default function DashboardPage() {
                 >
                   <History className="h-3.5 w-3.5" />
                   <span className="truncate">Riwayat Request</span>
-                  <span className="badge badge-ghost badge-xs font-bold scale-90">
+                  <span className="badge badge-ghost badge-xs font-bold scale-90 text-base-content/70">
                     {history.length}
                   </span>
                 </button>
@@ -549,9 +549,9 @@ export default function DashboardPage() {
                 activePos={activeQueuePos}
               />
             ) : (
-              <div className="card bg-base-200 border border-base-300 p-6 shadow-sm space-y-4">
+              <div className="card rounded-2xl bg-base-200 border border-base-300 p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 border-b border-base-300 pb-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-base-300 text-base-content">
                     <Music2 className="h-5 w-5" />
                   </div>
                   <div>
@@ -567,7 +567,7 @@ export default function DashboardPage() {
 
                 <div className="space-y-2.5 text-xs text-base-content/70">
                   <div className="flex items-start gap-2.5 p-3 rounded-xl bg-base-100 border border-base-300/60">
-                    <span className="badge badge-primary badge-xs mt-0.5 font-bold">
+                    <span className="badge badge-primary badge-xs mt-0.5 font-bold text-primary-content">
                       1
                     </span>
                     <p className="leading-relaxed">
@@ -576,7 +576,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="flex items-start gap-2.5 p-3 rounded-xl bg-base-100 border border-base-300/60">
-                    <span className="badge badge-accent badge-xs mt-0.5 font-bold">
+                    <span className="badge badge-primary badge-xs mt-0.5 font-bold text-primary-content">
                       2
                     </span>
                     <p className="leading-relaxed">
@@ -586,7 +586,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="flex items-start gap-2.5 p-3 rounded-xl bg-base-100 border border-base-300/60">
-                    <span className="badge badge-secondary badge-xs mt-0.5 font-bold">
+                    <span className="badge badge-primary badge-xs mt-0.5 font-bold text-primary-content">
                       3
                     </span>
                     <p className="leading-relaxed">

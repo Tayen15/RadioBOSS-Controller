@@ -18,7 +18,7 @@ export function QueueHistory({
 }: QueueHistoryProps) {
   if (history.length === 0) {
     return (
-      <div className="card bg-base-200 border border-base-300 shadow-sm p-6 text-center">
+      <div className="card rounded-2xl bg-base-200 border border-base-300 shadow-sm p-6 text-center">
         <History className="mx-auto h-7 w-7 text-base-content/30" />
         <h4 className="mt-2 text-sm font-semibold text-base-content/80">
           Belum Ada Riwayat Antrean
@@ -31,11 +31,11 @@ export function QueueHistory({
   }
 
   return (
-    <section className="card bg-base-200 border border-base-300 shadow-md">
+    <section className="card rounded-2xl bg-base-200 border border-base-300 shadow-md">
       <div className="card-body p-4 sm:p-5">
         <div className="flex items-center justify-between border-b border-base-300 pb-3">
           <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-primary" />
+            <History className="h-4 w-4 text-base-content/70" />
             <h3 className="text-sm font-bold text-base-content tracking-tight">
               Riwayat Request ({history.length})
             </h3>
@@ -109,7 +109,7 @@ export function QueueHistory({
 
                 <button
                   onClick={() => onRequeue(item)}
-                  className="btn btn-ghost btn-circle btn-xs text-base-content/70 hover:text-primary"
+                  className="btn btn-ghost btn-circle btn-xs text-base-content/70 hover:text-white"
                   title="Kirim ulang ke RadioBOSS"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />

@@ -273,7 +273,7 @@ export function SmartRecommendationsWidget({
       : isLoadingMood;
 
   return (
-    <div className="card bg-base-200 border border-base-300 p-5 shadow-sm space-y-4">
+    <div className="card rounded-2xl bg-base-200 border border-base-300 p-5 shadow-sm space-y-4">
       {/* Hidden audio element for preview */}
       <audio
         ref={audioRef}
@@ -285,13 +285,13 @@ export function SmartRecommendationsWidget({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-base-300 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-base-300 text-base-content">
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
             <h3 className="font-bold text-sm text-base-content flex items-center gap-1.5">
               <span>Rekomendasi Cerdas</span>
-              <span className="badge badge-secondary badge-xs scale-90">Auto Radio</span>
+              <span className="badge badge-accent badge-xs scale-90 text-accent-content">Auto Radio</span>
             </h3>
             <p className="text-[10px] text-base-content/60">
               Saran lagu Up Next, katalog artis, &amp; mood siaran
@@ -476,7 +476,7 @@ export function SmartRecommendationsWidget({
                   className="min-w-0 flex-1 cursor-pointer"
                   title="Klik untuk memilih ke Dispatch Deck"
                 >
-                  <h4 className="text-xs font-bold text-base-content truncate group-hover:text-primary transition-colors">
+                  <h4 className="text-xs font-bold text-base-content truncate group-hover:text-white transition-colors">
                     {track.title}
                   </h4>
                   <div className="flex items-center gap-2 text-[10px] text-base-content/60 truncate mt-0.5">

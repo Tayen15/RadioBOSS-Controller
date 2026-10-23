@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" data-theme="night" className={`${plusJakarta.variable}`}>
+    <html lang="id" data-theme="black" className={`${plusJakarta.variable}`}>
       <body className="min-h-screen bg-base-100 font-sans text-base-content antialiased">
         {children}
       </body>

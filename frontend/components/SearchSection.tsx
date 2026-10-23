@@ -50,10 +50,10 @@ export function SearchSection({
   };
 
   return (
-    <section className="card bg-base-200 border border-base-300 shadow-md">
+    <section className="card rounded-2xl bg-base-200 border border-base-300 shadow-md">
       <div className="card-body p-4 sm:p-5">
         {/* Tab Switcher */}
-        <div className="tabs tabs-box bg-base-300/50 p-1 rounded-2xl w-full flex">
+        <div className="tabs tabs-box bg-base-100 border border-base-300 p-1 rounded-2xl w-full flex">
           <button
             type="button"
             onClick={() => setActiveTab("search")}
@@ -65,7 +65,7 @@ export function SearchSection({
           >
             <Sparkles className="h-4 w-4" />
             <span>Cari Studio Track</span>
-            <span className="badge badge-accent badge-xs font-bold uppercase hidden sm:inline-flex">
+            <span className="badge badge-success badge-xs font-bold uppercase hidden sm:inline-flex">
               Official
             </span>
           </button>
@@ -132,8 +132,8 @@ export function SearchSection({
                         onClick={() => onSelectTrack(track)}
                         className={`group relative flex cursor-pointer items-center gap-3 rounded-xl border p-2.5 transition-all ${
                           isSelected
-                            ? "border-primary bg-primary/10 shadow-sm shadow-primary/10"
-                            : "border-base-300 bg-base-100 hover:border-primary/40 hover:bg-base-300/40"
+                            ? "border-base-content/60 bg-base-300 shadow-md ring-1 ring-base-content/30"
+                            : "border-base-300 bg-base-100 hover:border-base-content/40 hover:bg-base-200/80"
                         }`}
                       >
                         {/* Artwork */}
@@ -157,7 +157,7 @@ export function SearchSection({
 
                         {/* Text */}
                         <div className="min-w-0 flex-1">
-                          <h4 className="truncate text-xs sm:text-sm font-semibold text-base-content group-hover:text-primary transition-colors">
+                          <h4 className="truncate text-xs sm:text-sm font-semibold text-base-content group-hover:text-white transition-colors">
                             {track.title}
                           </h4>
                           <p className="truncate text-xs text-base-content/70">
@@ -182,13 +182,13 @@ export function SearchSection({
                         {/* Select Icon */}
                         <div className="shrink-0 pr-1">
                           {isSelected ? (
-                            <div className="badge badge-primary badge-circle h-6 w-6 p-0 flex items-center justify-center">
+                            <div className="badge badge-primary badge-circle h-6 w-6 p-0 flex items-center justify-center text-primary-content">
                               <Check className="h-3.5 w-3.5 stroke-[3]" />
                             </div>
                           ) : (
                             <button
                               type="button"
-                              className="btn btn-ghost btn-xs text-base-content/70 opacity-60 group-hover:opacity-100 group-hover:text-primary"
+                              className="btn btn-ghost btn-xs text-base-content/70 opacity-60 group-hover:opacity-100 group-hover:text-white"
                             >
                               Pilih
                             </button>

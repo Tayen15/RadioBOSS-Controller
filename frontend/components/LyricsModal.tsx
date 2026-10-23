@@ -95,7 +95,7 @@ export function LyricsModal({ track, isOpen, onClose }: LyricsModalProps) {
 
   return (
     <dialog className="modal modal-open z-50">
-      <div className="modal-box bg-base-200 border border-base-300 max-w-xl shadow-2xl p-5 sm:p-6 space-y-4">
+      <div className="modal-box rounded-2xl bg-base-200 border border-base-300 max-w-xl shadow-2xl p-5 sm:p-6 space-y-4">
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-base-300 pb-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -109,7 +109,7 @@ export function LyricsModal({ track, isOpen, onClose }: LyricsModalProps) {
                 />
               </div>
             ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-base-300 text-base-content shrink-0">
                 <Music className="h-5 w-5" />
               </div>
             )}
@@ -125,14 +125,14 @@ export function LyricsModal({ track, isOpen, onClose }: LyricsModalProps) {
 
           <button
             onClick={onClose}
-            className="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-base-content shrink-0"
+            className="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-white shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Tab Selection */}
-        <div className="tabs tabs-box bg-base-300/60 p-1 rounded-xl flex gap-1">
+        <div className="tabs tabs-box bg-base-100 border border-base-300 p-1 rounded-xl flex gap-1">
           <button
             type="button"
             onClick={() => setActiveTab("lyrics")}
@@ -145,7 +145,7 @@ export function LyricsModal({ track, isOpen, onClose }: LyricsModalProps) {
             <FileText className="h-3.5 w-3.5" />
             <span>Lirik Lagu</span>
             {data?.has_lyrics && (
-              <span className="badge badge-accent badge-xs font-bold">Ada</span>
+              <span className="badge badge-success badge-xs font-bold text-success-content">Ada</span>
             )}
           </button>
 
@@ -166,7 +166,7 @@ export function LyricsModal({ track, isOpen, onClose }: LyricsModalProps) {
         {/* Content Body */}
         {isLoading ? (
           <div className="py-14 text-center space-y-2">
-            <span className="loading loading-spinner loading-md text-primary" />
+            <span className="loading loading-spinner loading-md text-base-content" />
             <p className="text-xs text-base-content/60">
               Mengambil lirik &amp; talking points siaran...
             </p>
@@ -209,8 +209,8 @@ export function LyricsModal({ track, isOpen, onClose }: LyricsModalProps) {
                 {/* Intro & Outro Cue Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div className="p-3 rounded-2xl bg-base-100 border border-base-300 space-y-1">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
-                      <Clock className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-base-content">
+                      <Clock className="h-3.5 w-3.5 text-base-content/70" />
                       <span>Intro Ramp (Talk Window)</span>
                     </div>
                     <p className="text-xs font-semibold text-base-content">
@@ -222,8 +222,8 @@ export function LyricsModal({ track, isOpen, onClose }: LyricsModalProps) {
                   </div>
 
                   <div className="p-3 rounded-2xl bg-base-100 border border-base-300 space-y-1">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-accent">
-                      <Radio className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-base-content">
+                      <Radio className="h-3.5 w-3.5 text-base-content/70" />
                       <span>Outro Ramp (Transisi)</span>
                     </div>
                     <p className="text-xs font-semibold text-base-content">
@@ -247,7 +247,7 @@ export function LyricsModal({ track, isOpen, onClose }: LyricsModalProps) {
                         key={idx}
                         className="flex items-start gap-2 text-xs text-base-content/75 leading-relaxed"
                       >
-                        <span className="text-primary font-bold mt-0.5">•</span>
+                        <span className="text-accent font-bold mt-0.5">•</span>
                         <span>{tip}</span>
                       </li>
                     ))}
