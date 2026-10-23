@@ -19,6 +19,7 @@ import {
   PlaylistSet,
   PlaylistSetDetails,
   ResolvePlaylistResponse,
+  HistoryItem,
 } from "./types";
 
 const API_BASE_URL =
@@ -247,7 +248,7 @@ export async function fetchTrackLyrics(
   return await res.json();
 }
 
-export async function fetchQueueHistory(): Promise<any[]> {
+export async function fetchQueueHistory(): Promise<HistoryItem[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/api/history`, {
       method: "GET",

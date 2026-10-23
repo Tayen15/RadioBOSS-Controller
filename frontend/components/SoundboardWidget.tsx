@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Volume2,
   Square,
@@ -156,30 +156,39 @@ export function SoundboardWidget({
     }
   };
 
-  const handleTriggerCart = async (cart: CartItem) => {
-    setActiveCartId(cart.id);
+  const handleTriggerCart = useCallback(
+    async (cart: CartItem) => {
+      setActiveCartId(cart.id);
 
-    // Auto reset visual trigger animation after 1.4s
-    setTimeout(() => {
-      setActiveCartId((curr) => (curr === cart.id ? null : curr));
-    }, 1400);
+      // Auto reset visual trigger animation after 1.4s
+      setTimeout(() => {
+        setActiveCartId((curr) => (curr === cart.id ? null : curr));
+      }, 1400);
 
-    if (mode === "local") {
-      playLocalSynthEffect(cart.id);
-      return;
-    }
+      if (mode === "local") {
+        playLocalSynthEffect(cart.id);
+        return;
+      }
 
-    // RadioBOSS remote mode
-    try {
-      await triggerRadioBossCart(cart.id);
-      onNotify?.("success", `Cart #${cart.id} (${cart.label}) dipicu di RadioBOSS!`);
-    } catch (err) {
-      // Fallback: also play local sound so operator is not left in silence
-      playLocalSynthEffect(cart.id);
-      const msg = err instanceof Error ? err.message : "Gagal memicu Cart di RadioBOSS.";
-      onNotify?.("error", msg);
-    }
-  };
+      if (mode === "radioboss" && !connected) {
+        playLocalSynthEffect(cart.id);
+        onNotify?.("error", "RadioBOSS terputus. Memutar efek di headphone lokal.");
+        return;
+      }
+
+      // RadioBOSS remote mode
+      try {
+        await triggerRadioBossCart(cart.id);
+        onNotify?.("success", `Cart #${cart.id} (${cart.label}) dipicu di RadioBOSS!`);
+      } catch (err) {
+        // Fallback: also play local sound so operator is not left in silence
+        playLocalSynthEffect(cart.id);
+        const msg = err instanceof Error ? err.message : "Gagal memicu Cart di RadioBOSS.";
+        onNotify?.("error", msg);
+      }
+    },
+    [mode, connected, onNotify]
+  );
 
   const handleStopAll = async () => {
     setIsStopping(true);
@@ -214,7 +223,7 @@ export function SoundboardWidget({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mode, connected]);
+  }, [handleTriggerCart]);
 
   const getCartIcon = (id: number) => {
     switch (id) {

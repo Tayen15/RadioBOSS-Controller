@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Disc, Play, Pause, Square, Users, Radio, Clock, SkipForward } from "lucide-react";
+import { Disc, Play, Pause, Square, Users, Clock, SkipForward } from "lucide-react";
 import { NowPlayingTrack, PlaybackAction } from "@/lib/types";
 
 interface NowPlayingWidgetProps {

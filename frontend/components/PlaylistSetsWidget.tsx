@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
 import {
   FolderHeart,
@@ -10,14 +10,9 @@ import {
   Trash2,
   FolderOpen,
   Link as LinkIcon,
-  Sparkles,
-  Music,
-  CheckCircle2,
   Clock,
   Send,
-  AlertCircle,
   Loader2,
-  RefreshCw,
   Search,
   ChevronUp,
   ChevronDown,
@@ -88,13 +83,26 @@ export function PlaylistSetsWidget({
   // In-set filter search
   const [filterQuery, setFilterQuery] = useState<string>("");
 
-  const loadSets = async () => {
+  const [prevSelectedSetId, setPrevSelectedSetId] = useState<string | null>(null);
+
+  // Synchronize detail loading & clearing state during render phase (avoids cascading render warnings)
+  if (selectedSetId !== prevSelectedSetId) {
+    setPrevSelectedSetId(selectedSetId);
+    if (!selectedSetId) {
+      setSelectedSetDetails(null);
+      setIsLoadingDetails(false);
+    } else {
+      setIsLoadingDetails(true);
+    }
+  }
+
+  const loadSets = useCallback(async () => {
     setIsLoadingSets(true);
     try {
       const data = await fetchPlaylistSets();
       setSets(data);
-      if (data.length > 0 && !selectedSetId) {
-        setSelectedSetId(data[0].id);
+      if (data.length > 0) {
+        setSelectedSetId((prev) => prev ?? data[0].id);
       }
     } catch (err) {
       onAddToast(
@@ -104,34 +112,77 @@ export function PlaylistSetsWidget({
     } finally {
       setIsLoadingSets(false);
     }
-  };
+  }, [onAddToast]);
 
+  // Initial load of playlist sets on mount
   useEffect(() => {
-    loadSets();
-  }, []);
+    let isMounted = true;
+    fetchPlaylistSets()
+      .then((data) => {
+        if (!isMounted) return;
+        setSets(data);
+        if (data.length > 0) {
+          setSelectedSetId((prev) => prev ?? data[0].id);
+        }
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        onAddToast(
+          "error",
+          err instanceof Error ? err.message : "Gagal memuat playlist set."
+        );
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingSets(false);
+      });
 
-  const loadSetDetails = async (setId: string) => {
-    setIsLoadingDetails(true);
-    try {
-      const details = await fetchPlaylistSetDetails(setId);
-      setSelectedSetDetails(details);
-    } catch (err) {
-      onAddToast(
-        "error",
-        err instanceof Error ? err.message : "Gagal mengambil detail set."
-      );
-    } finally {
-      setIsLoadingDetails(false);
-    }
-  };
+    return () => {
+      isMounted = false;
+    };
+  }, [onAddToast]);
 
+  const loadSetDetails = useCallback(
+    async (setId: string) => {
+      setIsLoadingDetails(true);
+      try {
+        const details = await fetchPlaylistSetDetails(setId);
+        setSelectedSetDetails(details);
+      } catch (err) {
+        onAddToast(
+          "error",
+          err instanceof Error ? err.message : "Gagal mengambil detail set."
+        );
+      } finally {
+        setIsLoadingDetails(false);
+      }
+    },
+    [onAddToast]
+  );
+
+  // Synchronize set details whenever selectedSetId changes
   useEffect(() => {
-    if (selectedSetId) {
-      loadSetDetails(selectedSetId);
-    } else {
-      setSelectedSetDetails(null);
-    }
-  }, [selectedSetId]);
+    if (!selectedSetId) return;
+
+    let isMounted = true;
+    fetchPlaylistSetDetails(selectedSetId)
+      .then((details) => {
+        if (isMounted) setSelectedSetDetails(details);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        onAddToast(
+          "error",
+          err instanceof Error ? err.message : "Gagal mengambil detail set."
+        );
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingDetails(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedSetId, onAddToast]);
 
   const handleCreateSet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,7 +318,7 @@ export function PlaylistSetsWidget({
           }
         );
         successCount++;
-      } catch (err) {
+      } catch {
         // Continue queueing remaining songs even if one fails
       }
 
@@ -319,7 +370,7 @@ export function PlaylistSetsWidget({
       return `${hours}j ${mins}m`;
     }
     return `${mins}m ${secs}s`;
-  }, [selectedSetDetails?.tracks]);
+  }, [selectedSetDetails]);
 
   const filteredTracks = useMemo(() => {
     if (!selectedSetDetails?.tracks) return [];
@@ -330,7 +381,7 @@ export function PlaylistSetsWidget({
         t.title.toLowerCase().includes(q) ||
         t.artists.some((a) => a.toLowerCase().includes(q))
     );
-  }, [selectedSetDetails?.tracks, filterQuery]);
+  }, [selectedSetDetails, filterQuery]);
 
   const handleMoveTrack = async (index: number, direction: "up" | "down") => {
     if (!selectedSetDetails || !selectedSetId) return;

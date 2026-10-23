@@ -12,10 +12,8 @@ import {
   Disc3,
   Clock,
   Radio,
-  Loader2,
   AlertCircle,
   Mic2,
-  FileText,
   Calendar,
   Tag,
 } from "lucide-react";
