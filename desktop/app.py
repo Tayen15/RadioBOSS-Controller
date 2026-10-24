@@ -54,14 +54,28 @@ def _get_desktop_storage_dir() -> str:
 
 
 def global_excepthook(exc_type, exc_val, tb):
+    log_dir = _get_desktop_storage_dir()
+    log_file = os.path.join(log_dir, "fatal.log")
     try:
         import traceback
-        log_dir = _get_desktop_storage_dir()
-        with open(os.path.join(log_dir, "fatal.log"), "a", encoding="utf-8") as f:
+        with open(log_file, "a", encoding="utf-8") as f:
             f.write(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] === FATAL EXCEPTION ===\n")
             traceback.print_exception(exc_type, exc_val, tb, file=f)
     except Exception:
         pass
+
+    try:
+        if sys.platform == "win32":
+            import ctypes
+            msg = (
+                f"Radio Caster Bridge gagal dijalankan:\n\n"
+                f"{exc_type.__name__}: {exc_val}\n\n"
+                f"Detail log tersimpan di:\n{log_file}"
+            )
+            ctypes.windll.user32.MessageBoxW(0, msg, "Radio Caster Bridge - Error", 0x10)
+    except Exception:
+        pass
+
     sys.__excepthook__(exc_type, exc_val, tb)
 
 
@@ -117,15 +131,45 @@ except Exception as e:
     raise
 
 
-def run_fastapi():
+def _is_port_in_use(port: int) -> bool:
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def _is_our_server_running(port: int) -> bool:
+    try:
+        url = f"http://127.0.0.1:{port}/api/health"
+        with urllib.request.urlopen(url, timeout=1.0) as resp:
+            if resp.status == 200:
+                data = resp.read().decode("utf-8", errors="ignore")
+                return "Radio Caster Request Bridge" in data
+    except Exception:
+        pass
+    return False
+
+
+def _resolve_port(preferred_port: int) -> tuple[int, bool]:
+    """Resolve available port or detect already running instance."""
+    if _is_our_server_running(preferred_port):
+        return preferred_port, True
+    if not _is_port_in_use(preferred_port):
+        return preferred_port, False
+    for p in range(preferred_port + 1, preferred_port + 20):
+        if _is_our_server_running(p):
+            return p, True
+        if not _is_port_in_use(p):
+            return p, False
+    return preferred_port, False
+
+
+def run_fastapi(port: int):
     """Run uvicorn server in background thread with its own asyncio event loop."""
     try:
         import asyncio
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        cfg = settings_service.get_config()
-        port = cfg.server_port or 8000
         config = uvicorn.Config(
             app=app,
             host="127.0.0.1",
@@ -173,19 +217,23 @@ def main():
     logger.info("Initializing Radio Caster Request Bridge Desktop...")
     try:
         cfg = settings_service.get_config()
-        port = cfg.server_port or 8000
+        base_port = cfg.server_port or 8000
+        port, already_running = _resolve_port(base_port)
 
-        # Start FastAPI daemon thread
-        server_thread = threading.Thread(target=run_fastapi, daemon=True)
-        server_thread.start()
-        logger.info(f"FastAPI daemon thread started on port {port}")
+        server_thread = None
+        if not already_running:
+            server_thread = threading.Thread(target=run_fastapi, args=(port,), daemon=True)
+            server_thread.start()
+            logger.info(f"FastAPI daemon thread started on port {port}")
 
-        # Wait for server readiness
-        ready = wait_for_server(port)
-        if not ready:
-            logger.warning(f"Server at port {port} did not respond within timeout, opening WebView anyway.")
+            # Wait for server readiness
+            ready = wait_for_server(port)
+            if not ready:
+                logger.warning(f"Server at port {port} did not respond within timeout, opening WebView anyway.")
+            else:
+                logger.info("FastAPI health check passed.")
         else:
-            logger.info("FastAPI health check passed.")
+            logger.info(f"Radio Caster Bridge backend is already active on port {port}. Reusing existing instance.")
 
         # Launch native WebView window (Edge WebView2 on Windows, WebKit2GTK on Linux) or browser
         window_url = f"http://127.0.0.1:{port}"
@@ -206,7 +254,18 @@ def main():
         )
 
         if sys.platform == "win32":
-            webview.start(gui="edgechromium", debug=False, storage_path=webview_storage)
+            try:
+                webview.start(gui="edgechromium", debug=False, storage_path=webview_storage)
+            except Exception as e:
+                logger.warning(f"Edge WebView2 launch failed: {e}. Opening default browser...")
+                import webbrowser
+                webbrowser.open(window_url)
+                print(f"[*] Radio Caster Bridge running at {window_url}")
+                try:
+                    while True:
+                        time.sleep(1)
+                except KeyboardInterrupt:
+                    pass
         else:
             try:
                 webview.start(debug=False, storage_path=webview_storage)
@@ -217,7 +276,7 @@ def main():
                 print(f"[*] Radio Caster Bridge running at {window_url}")
                 print("[*] Press Ctrl+C to stop.")
                 try:
-                    while server_thread.is_alive():
+                    while True:
                         time.sleep(1)
                 except KeyboardInterrupt:
                     pass
@@ -226,6 +285,18 @@ def main():
         sys.exit(0)
     except Exception as e:
         logger.exception(f"Unhandled exception during desktop execution: {e}")
+        try:
+            if sys.platform == "win32":
+                import ctypes
+                log_file = os.path.join(_get_desktop_storage_dir(), "fatal.log")
+                ctypes.windll.user32.MessageBoxW(
+                    0,
+                    f"Gagal menjalankan Radio Caster Bridge:\n\n{e}\n\nFile log: {log_file}",
+                    "Radio Caster Bridge - Error",
+                    0x10,
+                )
+        except Exception:
+            pass
         sys.exit(1)
 
 

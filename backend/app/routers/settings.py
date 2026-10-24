@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from app.services.settings_service import settings_service, AppConfig
 from app.services.radioboss_service import radioboss_service
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.services.cache_service import cache_service
 from app.services.history_service import history_service
 
