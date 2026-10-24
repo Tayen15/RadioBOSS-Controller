@@ -30,6 +30,7 @@ import {
   fetchRadioBossPlaylist,
   fetchQueueHistory,
   clearQueueHistory,
+  setLiveCastTitle,
 } from "@/lib/api";
 
 export default function DashboardPage() {
@@ -277,10 +278,13 @@ export default function DashboardPage() {
   const queueTrackWithGuard = async (
     targetTrack: TrackItem,
     pos: number,
-    useRelay: boolean = true
+    useRelay: boolean = true,
+    customMeta?: { title: string; artist: string }
   ) => {
     // Anti-Repeat Safety Guard: warn if artist was played or queued recently
-    const primaryArtist = targetTrack.artists?.[0]?.toLowerCase()?.trim();
+    const primaryArtist = (customMeta?.artist || targetTrack.artists?.[0] || "")
+      .toLowerCase()
+      .trim();
     if (primaryArtist) {
       const recentArtistPlayed = history.slice(0, 3).some(
         (h) =>
@@ -294,7 +298,7 @@ export default function DashboardPage() {
 
       if (recentArtistPlayed || isNowPlaying) {
         const confirmRepeat = window.confirm(
-          `⚠️ Peringatan Anti-Repeat Siaran:\nLagu dari artis "${targetTrack.artists[0]}" baru saja diputar atau ada di antrean terakhir!\n\nTetap ingin menambahkan lagu ini ke antrean RadioBOSS?`
+          `⚠️ Peringatan Anti-Repeat Siaran:\nLagu dari artis "${customMeta?.artist || targetTrack.artists[0]}" baru saja diputar atau ada di antrean terakhir!\n\nTetap ingin menambahkan lagu ini ke antrean RadioBOSS?`
         );
         if (!confirmRepeat) {
           return;
@@ -307,10 +311,15 @@ export default function DashboardPage() {
 
     const posLabel = pos === 1 ? "Putar Berikutnya" : "Antrean Bawah";
 
-    // Format strictly as "Nama Artis - Judul Lagu"
-    const artistStr =
-      targetTrack.artists?.filter(Boolean).join(", ").trim() || "";
-    const cleanTitle = targetTrack.title.trim();
+    // Format strictly as "Nama Artis - Judul Lagu" with custom metadata support
+    const artistStr = (
+      customMeta?.artist !== undefined
+        ? customMeta.artist
+        : targetTrack.artists?.filter(Boolean).join(", ") || ""
+    ).trim();
+    const cleanTitle = (
+      customMeta?.title !== undefined ? customMeta.title : targetTrack.title
+    ).trim();
     const formattedTitle =
       artistStr && !cleanTitle.includes(" - ")
         ? `${artistStr} - ${cleanTitle}`
@@ -406,12 +415,33 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-base-100 text-base-content flex flex-col">
       {/* Top Header & Connection Bar */}
       <ConnectionBar
-        backendOnline={backendOnline}
         radioBossStatus={radioBossStatus}
         loading={isStatusLoading}
         onRefresh={syncStatus}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
+
+      {/* Backend Disconnected Alert (Only shown when backend service is offline) */}
+      {!backendOnline && (
+        <div className="alert alert-error text-xs py-2.5 px-4 sm:px-6 rounded-none border-x-0 border-t-0 shadow-sm flex flex-wrap items-center justify-between gap-2">
+          <span className="flex items-center gap-2 font-medium">
+            <span className="inline-block w-2 h-2 rounded-full bg-error-content animate-ping" />
+            ⚠️ Layanan Backend Terputus: Tidak dapat terhubung ke server lokal (Port 8000). Pastikan aplikasi controller berjalan.
+          </span>
+          <button
+            onClick={async () => {
+              const ok = await checkBackendHealth();
+              setBackendOnline(ok);
+              if (ok) {
+                syncStatus(true);
+              }
+            }}
+            className="btn btn-xs btn-outline border-error-content/40 hover:bg-error-content/20 text-error-content font-semibold"
+          >
+            Hubungkan Ulang
+          </button>
+        </div>
+      )}
 
       {/* Quick Setup Warning if RadioBOSS Disconnected */}
       {backendOnline && !radioBossStatus?.connected && (
@@ -439,6 +469,11 @@ export default function DashboardPage() {
           onToggleAutoRefresh={() => setAutoRefresh(!autoRefresh)}
           onControl={handlePlaybackControl}
           isControlling={isControlling}
+          onUpdateCastTitle={async (newTitle) => {
+            await setLiveCastTitle(newTitle);
+            addToast("success", `Judul siaran RadioBOSS berhasil diubah ke: "${newTitle}"`);
+            syncStatus(true);
+          }}
         />
 
         {/* Two-column layout for studio workflow */}

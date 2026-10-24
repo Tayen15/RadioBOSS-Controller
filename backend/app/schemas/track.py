@@ -127,3 +127,40 @@ class CartResponse(BaseModel):
     message: str
     cart_id: Optional[int] = None
 
+
+class CastTitleRequest(BaseModel):
+    """Request to update RadioBOSS live broadcast / streaming title."""
+    title: str = Field(..., min_length=1, description="New broadcast title to send to encoders")
+
+
+class CastTitleResponse(BaseModel):
+    """Response of setting broadcast title."""
+    success: bool
+    message: str
+    title: str
+
+
+class TalkingPoints(BaseModel):
+    """Smart cues, timings, emotion analysis, and announcer scripts for on-air DJs."""
+    intro_talk_window: str
+    outro_talk_window: str
+    station_id_cue: Optional[str] = None
+    vibe: Optional[str] = None
+    vibe_badge: Optional[str] = None
+    vibe_category: Optional[str] = "universal"
+    key_lyric_quote: Optional[str] = None
+    intro_script: Optional[str] = None
+    outro_script: Optional[str] = None
+    broadcaster_tips: List[str] = Field(default_factory=list)
+    song_trivia: Optional[dict] = None
+
+
+class LyricsResponse(BaseModel):
+    """Response containing track lyrics and smart announcer cues."""
+    video_id: str
+    has_lyrics: bool
+    lyrics: str
+    source: str
+    talking_points: TalkingPoints
+
+

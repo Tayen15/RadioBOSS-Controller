@@ -11,11 +11,27 @@ from app.schemas.track import NowPlayingTrack, RadioBOSSStatusResponse, Playlist
 logger = logging.getLogger(__name__)
 
 
-def _format_milliseconds(ms_str: Optional[str]) -> str:
-    """Convert millisecond string or integer to mm:ss format."""
+def _format_time_string(raw: Optional[str]) -> str:
+    """
+    Format duration or position from RadioBOSS XML into MM:SS or HH:MM:SS.
+    Handles already-formatted strings ("03:45", "01:23:45") and numeric milliseconds/seconds.
+    """
+    if not raw:
+        return "00:00"
+    raw_str = str(raw).strip()
+    if not raw_str or raw_str in ("––:––", "--:--", "0", "-1"):
+        return "00:00"
+
+    # Already formatted with colons (e.g., '03:45' or '01:23:45')
+    if ":" in raw_str:
+        return raw_str
+
     try:
-        ms = int(ms_str or 0)
-        seconds = ms // 1000
+        val = int(float(raw_str))
+        if val <= 0:
+            return "00:00"
+        # If val > 10000, it is in milliseconds. If smaller, likely seconds
+        seconds = val // 1000 if val > 10000 else val
         m, s = divmod(seconds, 60)
         h, m = divmod(m, 60)
         if h > 0:
@@ -23,6 +39,11 @@ def _format_milliseconds(ms_str: Optional[str]) -> str:
         return f"{m:02d}:{s:02d}"
     except (ValueError, TypeError):
         return "00:00"
+
+
+def _format_milliseconds(ms_str: Optional[str]) -> str:
+    """Backwards compatibility alias for _format_time_string."""
+    return _format_time_string(ms_str)
 
 
 class RadioBOSSService:
@@ -108,8 +129,8 @@ class RadioBOSSService:
                 cast_title = current_track.attrib.get("CASTTITLE", "").strip()
                 item_title = current_track.attrib.get("ITEMTITLE", "").strip()
                 filename = current_track.attrib.get("FILENAME", "").strip()
-                raw_duration = current_track.attrib.get("DURATION")
-                duration_str = _format_milliseconds(raw_duration)
+                raw_duration = current_track.attrib.get("DURATION") or current_track.attrib.get("duration")
+                duration_str = _format_time_string(raw_duration)
 
                 if track_artist and track_title:
                     resolved_title = f"{track_artist} - {track_title}"
@@ -143,6 +164,9 @@ class RadioBOSSService:
                                 resolved_title = f"{c_artist} - {c_title}"
                             elif c_title and c_title != "YouTube Audio":
                                 resolved_title = c_title
+
+                            if duration_str == "00:00" and cached_meta.get("duration_formatted"):
+                                duration_str = cached_meta.get("duration_formatted")
                         except Exception:
                             pass
 
@@ -168,7 +192,12 @@ class RadioBOSSService:
             if playback is not None:
                 state = playback.attrib.get("state", "stopped")
                 raw_pos = playback.attrib.get("pos")
-                pos_str = _format_milliseconds(raw_pos)
+                pos_str = _format_time_string(raw_pos)
+
+                # Fallback to len attribute in Playback element if DURATION was 00:00 or missing
+                raw_len = playback.attrib.get("len")
+                if (duration_str == "00:00" or not duration_str) and raw_len:
+                    duration_str = _format_time_string(raw_len)
 
             # Listeners
             listeners_elem = root.find(".//Listeners")
@@ -355,6 +384,38 @@ class RadioBOSSService:
         except Exception as e:
             logger.error(f"Error stopping carts: {e}")
             return False, f"Gagal menghentikan cart: {e}"
+
+    async def set_cast_title(self, title: str) -> Tuple[bool, str]:
+        """
+        Update RadioBOSS on-air broadcast / streaming title live via cmd=setcasttitle.
+        Instantly updates metadata sent to Icecast/Shoutcast encoders.
+        """
+        clean_title = title.strip()
+        if not clean_title:
+            return False, "Judul siaran tidak boleh kosong."
+
+        base_url = self.settings.radioboss_base_url
+        params = {
+            "cmd": f"setcasttitle {clean_title}",
+        }
+        if self.settings.RADIOBOSS_PASSWORD:
+            params["pass"] = self.settings.RADIOBOSS_PASSWORD
+
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                response = await client.get(base_url, params=params)
+
+            if response.status_code in (401, 403):
+                return False, "Autentikasi gagal: Password RadioBOSS salah."
+            if response.status_code != 200:
+                return False, f"RadioBOSS HTTP error {response.status_code}"
+
+            return True, f"Judul siaran berhasil diubah: '{clean_title}'"
+        except httpx.ConnectError:
+            return False, f"Tidak dapat terhubung ke RadioBOSS di {base_url}."
+        except Exception as e:
+            logger.error(f"Error setting cast title: {e}")
+            return False, f"Gagal mengubah judul siaran: {e}"
 
     async def get_playlist(self, limit: int = 10) -> Tuple[bool, List[PlaylistItem], str]:
         """

@@ -108,8 +108,8 @@ Repository ini dilengkapi dengan workflow GitHub Actions otomatis di [`.github/w
 - **Otomatis Release via Git Tag:**
   Cukup buat dan push tag rilis baru:
   ```bash
-  git tag v0.4.0
-  git push origin v0.4.0
+  git tag v0.5.0
+  git push origin v0.5.0
   ```
   GitHub Actions akan mem-build frontend, meng-compile backend via PyInstaller di runner `windows-latest`, dan otomatis mempublikasikan GitHub Release baru lengkap dengan aset `RadioBOSSCaster.exe`.
 - **Manual Trigger:**

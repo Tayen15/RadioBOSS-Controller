@@ -12,6 +12,8 @@ from app.schemas.track import (
     PlaylistResponse,
     CartRequest,
     CartResponse,
+    CastTitleRequest,
+    CastTitleResponse,
 )
 from app.services.radioboss_service import radioboss_service
 from app.services.ytdlp_service import ytdlp_service
@@ -64,6 +66,18 @@ async def get_radioboss_playlist(limit: int = 10):
     if not success:
         return PlaylistResponse(success=False, count=0, tracks=[], error=error)
     return PlaylistResponse(success=True, count=len(tracks), tracks=tracks)
+
+
+@router.post("/radioboss/casttitle", response_model=CastTitleResponse)
+async def set_radioboss_cast_title(request: CastTitleRequest):
+    """
+    Update RadioBOSS live on-air broadcast / streaming title.
+    Directly updates the metadata received by streaming encoders (Icecast/Shoutcast).
+    """
+    success, message = await radioboss_service.set_cast_title(request.title)
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    return CastTitleResponse(success=True, message=message, title=request.title.strip())
 
 
 @router.post("/queue", response_model=QueueResponse)

@@ -18,14 +18,22 @@ import {
   Tag,
   Flame,
   HardDrive,
+  Edit3,
+  Wand2,
+  RotateCcw,
 } from "lucide-react";
 import { TrackItem, CachedTrackItem } from "@/lib/types";
 import { getStreamRelayUrl } from "@/lib/api";
+import { cleanBroadcastTitle } from "@/lib/titleCleaner";
 import { LyricsModal } from "@/components/LyricsModal";
 
 interface TrackPreviewCardProps {
   track: TrackItem;
-  onQueue: (pos: number, useRelay: boolean) => Promise<void>;
+  onQueue: (
+    pos: number,
+    useRelay: boolean,
+    customMetadata?: { title: string; artist: string }
+  ) => Promise<void>;
   isQueueing: boolean;
   activePos: number | null;
 }
@@ -43,6 +51,35 @@ export function TrackPreviewCard({
   >("idle");
   const [audioError, setAudioError] = useState<string | null>(null);
   const [isLyricsOpen, setIsLyricsOpen] = useState<boolean>(false);
+
+  // Editable broadcast metadata state
+  const [editedTitle, setEditedTitle] = useState(track.title);
+  const [editedArtist, setEditedArtist] = useState(
+    track.artists.filter(Boolean).join(", ")
+  );
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [prevTrackId, setPrevTrackId] = useState(track.video_id);
+
+  // Sync state during render when track changes
+  if (track.video_id !== prevTrackId) {
+    setPrevTrackId(track.video_id);
+    setEditedTitle(track.title);
+    setEditedArtist(track.artists.filter(Boolean).join(", "));
+    setIsEditOpen(false);
+  }
+
+  const isMetadataCustomized =
+    editedTitle.trim() !== track.title.trim() ||
+    editedArtist.trim() !== track.artists.filter(Boolean).join(", ").trim();
+
+  const handleCleanTitle = () => {
+    setEditedTitle((prev) => cleanBroadcastTitle(prev));
+  };
+
+  const handleResetMetadata = () => {
+    setEditedTitle(track.title);
+    setEditedArtist(track.artists.filter(Boolean).join(", "));
+  };
 
   const relayUrl = getStreamRelayUrl(track.video_id);
 
@@ -97,12 +134,97 @@ export function TrackPreviewCard({
 
           {/* Details */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-base sm:text-lg font-bold text-base-content tracking-tight leading-snug line-clamp-2">
-              {track.title}
-            </h3>
-            <p className="mt-1 text-sm font-semibold text-base-content/80 truncate">
-              {track.artists.join(", ") || "Unknown Artist"}
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base sm:text-lg font-bold text-base-content tracking-tight leading-snug line-clamp-2">
+                  {editedTitle}
+                </h3>
+                <p className="mt-1 text-sm font-semibold text-base-content/80 truncate">
+                  {editedArtist || "Unknown Artist"}
+                </p>
+              </div>
+
+              {/* Edit Metadata Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsEditOpen((prev) => !prev)}
+                className={`btn btn-xs rounded-lg gap-1 shrink-0 ${
+                  isEditOpen || isMetadataCustomized
+                    ? "btn-primary text-primary-content"
+                    : "btn-outline border-base-300 text-base-content/70 hover:text-white"
+                }`}
+                title="Edit judul siaran atau bersihkan tag remaster"
+              >
+                <Edit3 className="h-3 w-3" />
+                <span className="text-[11px]">
+                  {isMetadataCustomized ? "Disesuaikan" : "Edit Metadata"}
+                </span>
+              </button>
+            </div>
+
+            {/* Editable Broadcast Metadata Panel */}
+            {isEditOpen && (
+              <div className="mt-3 p-3 rounded-xl bg-base-100 border border-base-300 space-y-2 text-left">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-base-content flex items-center gap-1.5">
+                    <Edit3 className="h-3.5 w-3.5 text-primary" />
+                    Penyesuaian Metadata Siaran
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={handleCleanTitle}
+                      className="btn btn-xs btn-outline border-base-300 gap-1 rounded-lg hover:bg-base-300 text-warning"
+                      title="Bersihkan tag (2008 Remastered), (Official Video), [Remaster], dll"
+                    >
+                      <Wand2 className="h-3 w-3" />
+                      <span>Bersihkan</span>
+                    </button>
+                    {isMetadataCustomized && (
+                      <button
+                        type="button"
+                        onClick={handleResetMetadata}
+                        className="btn btn-xs btn-ghost gap-1 rounded-lg text-base-content/50 hover:text-white"
+                        title="Reset ke metadata asli YouTube"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        <span>Reset</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-base-content/50 block mb-1">
+                      Judul Lagu (Title)
+                    </label>
+                    <input
+                      type="text"
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      className="input input-xs input-bordered bg-base-200 w-full text-xs font-medium rounded-lg"
+                      placeholder="Judul lagu..."
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-base-content/50 block mb-1">
+                      Nama Artis (Artist)
+                    </label>
+                    <input
+                      type="text"
+                      value={editedArtist}
+                      onChange={(e) => setEditedArtist(e.target.value)}
+                      className="input input-xs input-bordered bg-base-200 w-full text-xs font-medium rounded-lg"
+                      placeholder="Nama artis..."
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-base-content/50 leading-tight">
+                  💡 Metadata ini akan disematkan ke tag ID3 file MP3 cache dan dikirimkan sebagai streaming title ke RadioBOSS.
+                </p>
+              </div>
+            )}
 
             <div className="mt-2.5 flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-xs">
               {track.album && (
@@ -263,7 +385,12 @@ export function TrackPreviewCard({
         <div className="grid grid-cols-1 gap-2.5 pt-1">
           {/* Play Next */}
           <button
-            onClick={() => onQueue(1, useRelay)}
+            onClick={() =>
+              onQueue(1, useRelay, {
+                title: editedTitle.trim(),
+                artist: editedArtist.trim(),
+              })
+            }
             disabled={isQueueing}
             className="btn btn-primary btn-block rounded-xl gap-2 shadow-md font-bold text-primary-content"
           >
@@ -282,7 +409,12 @@ export function TrackPreviewCard({
 
           {/* Append to Bottom */}
           <button
-            onClick={() => onQueue(-1, useRelay)}
+            onClick={() =>
+              onQueue(-1, useRelay, {
+                title: editedTitle.trim(),
+                artist: editedArtist.trim(),
+              })
+            }
             disabled={isQueueing}
             className="btn btn-outline btn-block rounded-xl gap-2 font-bold border-base-300 text-base-content hover:bg-base-300 hover:text-white"
           >

@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Flame,
   ListMusic,
+  Scissors,
 } from "lucide-react";
 import { AppConfig, TitleFormatMode, CacheStats, CachedTrackItem } from "@/lib/types";
 import {
@@ -28,6 +29,7 @@ import {
   openCacheFolder,
   clearAudioCache,
   fetchCachedTracks,
+  trimAudioCache,
 } from "@/lib/api";
 
 interface SettingsModalProps {
@@ -88,12 +90,15 @@ export function SettingsModal({
   const [enableLoudnorm, setEnableLoudnorm] = useState(true);
   const [customCacheDir, setCustomCacheDir] = useState<string>("");
   const [customDataDir, setCustomDataDir] = useState<string>("");
+  const [maxCacheSizeMb, setMaxCacheSizeMb] = useState<number>(2048);
+  const [autoCleanupCache, setAutoCleanupCache] = useState<boolean>(true);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
   const [isOpeningFolder, setIsOpeningFolder] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const [isTrimmingCache, setIsTrimmingCache] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -151,6 +156,12 @@ export function SettingsModal({
         setEnableLoudnorm(cfg.enable_loudnorm !== undefined ? cfg.enable_loudnorm : true);
         setCustomCacheDir(cfg.custom_cache_dir || "");
         setCustomDataDir(cfg.custom_data_dir || "");
+        setMaxCacheSizeMb(
+          cfg.max_cache_size_mb !== undefined ? cfg.max_cache_size_mb : 2048
+        );
+        setAutoCleanupCache(
+          cfg.auto_cleanup_cache !== undefined ? cfg.auto_cleanup_cache : true
+        );
       })
       .catch((err) => {
         if (!isMounted) return;
@@ -185,6 +196,26 @@ export function SettingsModal({
       });
     } finally {
       setIsOpeningFolder(false);
+    }
+  };
+
+  const handleTrimCache = async () => {
+    setIsTrimmingCache(true);
+    try {
+      const res = await trimAudioCache();
+      loadCacheStats();
+      setFeedback({
+        type: "success",
+        message: res.message,
+      });
+    } catch (err) {
+      setFeedback({
+        type: "error",
+        message:
+          err instanceof Error ? err.message : "Gagal memangkas cache.",
+      });
+    } finally {
+      setIsTrimmingCache(false);
     }
   };
 
@@ -233,6 +264,8 @@ export function SettingsModal({
       enable_loudnorm: enableLoudnorm,
       custom_cache_dir: customCacheDir.trim(),
       custom_data_dir: customDataDir.trim(),
+      max_cache_size_mb: Number(maxCacheSizeMb) ?? 2048,
+      auto_cleanup_cache: autoCleanupCache,
     };
 
     try {
@@ -516,6 +549,91 @@ export function SettingsModal({
                   </span>
                 </div>
 
+                {/* Cache Usage & Storage Progress Bar */}
+                <div className="space-y-1.5 pt-0.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-base-content/70">Kapasitas Terpakai:</span>
+                    <span className="font-mono font-semibold text-base-content">
+                      {cacheStats ? (
+                        maxCacheSizeMb > 0 ? (
+                          <>
+                            {cacheStats.total_size_mb} MB / {maxCacheSizeMb} MB{" "}
+                            <span
+                              className={`text-[10px] ml-1 font-bold ${
+                                (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 90
+                                  ? "text-error"
+                                  : (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 70
+                                  ? "text-warning"
+                                  : "text-success"
+                              }`}
+                            >
+                              ({Math.min(
+                                100,
+                                Math.round((cacheStats.total_size_mb / maxCacheSizeMb) * 100)
+                              )}
+                              %)
+                            </span>
+                          </>
+                        ) : (
+                          `${cacheStats.total_size_mb} MB (Tanpa Batas)`
+                        )
+                      ) : (
+                        "Memuat..."
+                      )}
+                    </span>
+                  </div>
+                  {maxCacheSizeMb > 0 && cacheStats && (
+                    <progress
+                      className={`progress w-full h-1.5 ${
+                        (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 90
+                          ? "progress-error"
+                          : (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 70
+                          ? "progress-warning"
+                          : "progress-success"
+                      }`}
+                      value={cacheStats.total_size_mb}
+                      max={maxCacheSizeMb}
+                    />
+                  )}
+                </div>
+
+                {/* Storage Cache Limit Selector */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-base-300/40">
+                  <div className="form-control">
+                    <label className="label py-0.5">
+                      <span className="label-text text-[11px] text-base-content/80 font-medium">
+                        Batas Kapasitas Cache:
+                      </span>
+                    </label>
+                    <select
+                      value={maxCacheSizeMb}
+                      onChange={(e) => setMaxCacheSizeMb(Number(e.target.value))}
+                      className="select select-bordered select-xs w-full bg-base-200 text-xs font-semibold"
+                    >
+                      <option value={500}>500 MB (Hemat Ruang Disk)</option>
+                      <option value={1024}>1 GB / 1024 MB</option>
+                      <option value={2048}>2 GB / 2048 MB (Standar)</option>
+                      <option value={5120}>5 GB / 5120 MB (Koleksi Besar)</option>
+                      <option value={10240}>10 GB / 10240 MB</option>
+                      <option value={0}>Tanpa Batas (Unlimited)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-control flex justify-end pb-0.5">
+                    <label className="label cursor-pointer justify-start gap-2 py-1">
+                      <input
+                        type="checkbox"
+                        checked={autoCleanupCache}
+                        onChange={(e) => setAutoCleanupCache(e.target.checked)}
+                        className="checkbox checkbox-primary checkbox-xs rounded"
+                      />
+                      <span className="label-text text-[11px] text-base-content/80 leading-tight">
+                        Otomatis Pangkas Saat Penuh (hapus lagu paling jarang diputar)
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
                 {/* Custom Database & Data Root Directory */}
                 <div className="form-control space-y-1">
                   <div className="flex items-center justify-between">
@@ -610,6 +728,20 @@ export function SettingsModal({
                     >
                       <ListMusic className="h-3 w-3" />
                       <span>{showCacheList ? "Tutup Daftar" : "Lihat Lagu Cache"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleTrimCache}
+                      disabled={isTrimmingCache || !cacheStats || cacheStats.total_files === 0}
+                      className="btn btn-ghost btn-xs text-primary gap-1 hover:bg-primary/10 font-medium"
+                      title="Pangkas audio cache agar tidak melebihi batas kapasitas yang ditentukan"
+                    >
+                      {isTrimmingCache ? (
+                        <span className="loading loading-spinner loading-xs" />
+                      ) : (
+                        <Scissors className="h-3 w-3" />
+                      )}
+                      <span>Pangkas ke Batas</span>
                     </button>
                     <button
                       type="button"

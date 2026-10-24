@@ -32,6 +32,15 @@ class AppConfig(BaseModel):
         default="",
         description="Custom directory for database & app data (e.g. D:\\RadioBOSS-Data). Defaults to %APPDATA%/RadioBOSSCaster"
     )
+    max_cache_size_mb: int = Field(
+        default=2048,
+        description="Maximum storage cache size in MB (e.g. 500, 1024, 2048, 5120, 10240, or 0 for unlimited)"
+    )
+    auto_cleanup_cache: bool = Field(
+        default=True,
+        description="Automatically evict least-played songs when cache size limit is reached"
+    )
+
 
 
 def _get_appdata_dir() -> Path:

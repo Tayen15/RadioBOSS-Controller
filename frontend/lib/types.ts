@@ -2,7 +2,7 @@
  * Type definitions for Radio Caster Request Bridge Frontend.
  */
 
-export const APP_VERSION = "0.4.0";
+export const APP_VERSION = "0.5.0";
 
 export interface TrackItem {
   video_id: string;
@@ -82,6 +82,8 @@ export interface AppConfig {
   enable_loudnorm?: boolean;
   custom_cache_dir?: string;
   custom_data_dir?: string;
+  max_cache_size_mb?: number;
+  auto_cleanup_cache?: boolean;
 }
 
 export interface CartItem {
@@ -133,12 +135,32 @@ export interface CacheStats {
   total_files: number;
   total_size_bytes: number;
   total_size_mb: number;
+  max_cache_size_mb?: number;
+  used_percent?: number;
+  auto_cleanup_cache?: boolean;
+}
+
+export interface SongTrivia {
+  title?: string;
+  artist?: string;
+  album?: string;
+  release_year?: string;
+  duration?: string;
+  play_count?: number;
 }
 
 export interface TalkingPoints {
   intro_talk_window: string;
   outro_talk_window: string;
+  station_id_cue?: string;
+  vibe?: string;
+  vibe_badge?: string;
+  vibe_category?: string;
+  key_lyric_quote?: string;
+  intro_script?: string;
+  outro_script?: string;
   broadcaster_tips: string[];
+  song_trivia?: SongTrivia;
 }
 
 export interface LyricsResponse {

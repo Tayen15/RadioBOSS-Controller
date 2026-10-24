@@ -71,7 +71,7 @@ class CacheService:
         return default_dir
 
     def get_cache_stats(self) -> dict:
-        """Calculate number of cached tracks and total disk usage and sync with DB."""
+        """Calculate number of cached tracks, total disk usage, limit, and sync with DB."""
         total_files = 0
         total_size = 0
         try:
@@ -85,6 +85,11 @@ class CacheService:
             logger.error(f"Error reading cache stats: {e}")
 
         size_mb = round(total_size / (1024 * 1024), 2)
+        cfg = settings_service.get_config()
+        max_mb = getattr(cfg, "max_cache_size_mb", 2048)
+        auto_cleanup = getattr(cfg, "auto_cleanup_cache", True)
+        used_percent = round((size_mb / max_mb) * 100, 1) if max_mb > 0 else 0
+
         from app.services.db_service import db_service
         return {
             "cache_dir": self.cache_dir,
@@ -93,7 +98,116 @@ class CacheService:
             "total_files": total_files,
             "total_size_bytes": total_size,
             "total_size_mb": size_mb,
+            "max_cache_size_mb": max_mb,
+            "used_percent": min(used_percent, 100.0),
+            "auto_cleanup_cache": auto_cleanup,
         }
+
+    def enforce_cache_limit(self, target_max_mb: Optional[int] = None) -> int:
+        """
+        Check total cache size against limit. If limit is exceeded, evict files
+        starting from least-played tracks and oldest played tracks.
+        Returns the number of audio files deleted.
+        """
+        try:
+            cfg = settings_service.get_config()
+            limit_mb = target_max_mb if target_max_mb is not None else getattr(cfg, "max_cache_size_mb", 2048)
+            if limit_mb is None or limit_mb <= 0:
+                return 0  # Unlimited
+
+            limit_bytes = int(limit_mb * 1024 * 1024)
+            if not os.path.isdir(self.cache_dir):
+                return 0
+
+            # Calculate current total size
+            entries = []
+            total_size = 0
+            for entry in os.scandir(self.cache_dir):
+                if entry.is_file():
+                    size = entry.stat().st_size
+                    entries.append((entry.path, size, entry.stat().st_mtime))
+                    total_size += size
+
+            if total_size <= limit_bytes:
+                return 0
+
+            # Target 90% of limit to prevent immediate re-trigger
+            target_size = int(limit_bytes * 0.90)
+            bytes_to_reclaim = total_size - target_size
+            freed_bytes = 0
+            pruned_count = 0
+
+            from app.services.db_service import db_service
+            # Query tracks ordered by least airplay and oldest last_played
+            tracked_candidates = []
+            try:
+                with db_service.get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        """
+                        SELECT video_id, file_path, file_size_bytes
+                        FROM cached_tracks
+                        WHERE is_cached = 1
+                        ORDER BY play_count ASC, last_played_at ASC, cached_at ASC;
+                        """
+                    )
+                    tracked_candidates = cursor.fetchall()
+            except Exception as e:
+                logger.warning(f"Error querying cache candidates from DB: {e}")
+
+            deleted_paths = set()
+
+            # Evict from database tracked files first (LRU / Least Played)
+            for row in tracked_candidates:
+                if freed_bytes >= bytes_to_reclaim:
+                    break
+                path = row["file_path"]
+                if path and os.path.isfile(path):
+                    try:
+                        sz = os.path.getsize(path)
+                        os.remove(path)
+                        freed_bytes += sz
+                        pruned_count += 1
+                        deleted_paths.add(path)
+                        # Also remove sidecar .jpg cover if exists
+                        sidecar_jpg = os.path.splitext(path)[0] + ".jpg"
+                        if os.path.isfile(sidecar_jpg):
+                            try:
+                                freed_bytes += os.path.getsize(sidecar_jpg)
+                                os.remove(sidecar_jpg)
+                            except Exception:
+                                pass
+                    except Exception as e:
+                        logger.debug(f"Could not remove cached file {path}: {e}")
+
+            # If still over limit, evict any remaining files by oldest mtime
+            if freed_bytes < bytes_to_reclaim:
+                entries.sort(key=lambda x: x[2])  # Sort by mtime ascending (oldest first)
+                for path, sz, _ in entries:
+                    if freed_bytes >= bytes_to_reclaim:
+                        break
+                    if path not in deleted_paths and os.path.isfile(path):
+                        try:
+                            os.remove(path)
+                            freed_bytes += sz
+                            pruned_count += 1
+                            deleted_paths.add(path)
+                        except Exception:
+                            pass
+
+            if pruned_count > 0:
+                logger.info(
+                    f"Cache limit enforced: pruned {pruned_count} files freeing "
+                    f"{round(freed_bytes / (1024*1024), 2)} MB"
+                )
+                self.sync_disk_cache()
+
+            return pruned_count
+
+        except Exception as e:
+            logger.error(f"Error enforcing cache limit: {e}")
+            return 0
+
 
     def sync_disk_cache(self):
         """Scan cache directory and register existing MP3s into SQLite cached_tracks table."""
@@ -351,6 +465,14 @@ class CacheService:
                     )
                 except Exception as e:
                     logger.debug(f"Failed to register new cache in DB: {e}")
+
+                try:
+                    cfg = settings_service.get_config()
+                    if getattr(cfg, "auto_cleanup_cache", True):
+                        self.enforce_cache_limit()
+                except Exception:
+                    pass
+
                 return target_mp3
             else:
                 logger.warning(f"FFmpeg failed to create cached MP3. Exit code: {proc.returncode}")

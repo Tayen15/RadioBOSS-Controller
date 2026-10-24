@@ -1,8 +1,22 @@
 "use client";
 
-import React from "react";
-import { Disc, Play, Pause, Square, Users, Clock, SkipForward } from "lucide-react";
+import React, { useState } from "react";
+import {
+  Disc,
+  Play,
+  Pause,
+  Square,
+  Users,
+  Clock,
+  SkipForward,
+  Edit3,
+  Wand2,
+  Check,
+  X,
+} from "lucide-react";
 import { NowPlayingTrack, PlaybackAction } from "@/lib/types";
+import { cleanBroadcastTitle } from "@/lib/titleCleaner";
+import { setLiveCastTitle } from "@/lib/api";
 
 interface NowPlayingWidgetProps {
   nowPlaying: NowPlayingTrack | null | undefined;
@@ -11,6 +25,7 @@ interface NowPlayingWidgetProps {
   onToggleAutoRefresh: () => void;
   onControl?: (action: PlaybackAction) => Promise<void>;
   isControlling?: boolean;
+  onUpdateCastTitle?: (newTitle: string) => Promise<void>;
 }
 
 function formatDisplayTitle(rawTitle?: string): string {
@@ -34,12 +49,51 @@ export function NowPlayingWidget({
   onToggleAutoRefresh,
   onControl,
   isControlling = false,
+  onUpdateCastTitle,
 }: NowPlayingWidgetProps) {
   const isPlaying = nowPlaying?.status?.toLowerCase() === "playing";
   const isPaused = nowPlaying?.status?.toLowerCase() === "paused";
   const displayTitle = connected
     ? formatDisplayTitle(nowPlaying?.title)
     : "Menunggu koneksi ke RadioBOSS...";
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [isUpdatingTitle, setIsUpdatingTitle] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+
+  const handleStartEdit = () => {
+    setEditedTitle(nowPlaying?.title || "");
+    setUpdateMsg(null);
+    setIsEditingTitle(true);
+  };
+
+  const handleApplyClean = () => {
+    setEditedTitle((prev) => cleanBroadcastTitle(prev));
+  };
+
+  const handleSaveTitle = async () => {
+    const trimmed = editedTitle.trim();
+    if (!trimmed) return;
+    setIsUpdatingTitle(true);
+    setUpdateMsg(null);
+    try {
+      if (onUpdateCastTitle) {
+        await onUpdateCastTitle(trimmed);
+      } else {
+        await setLiveCastTitle(trimmed);
+      }
+      setUpdateMsg("Judul siaran di RadioBOSS diperbarui!");
+      setTimeout(() => {
+        setIsEditingTitle(false);
+        setUpdateMsg(null);
+      }, 1500);
+    } catch (e) {
+      setUpdateMsg(e instanceof Error ? e.message : "Gagal mengubah judul siaran.");
+    } finally {
+      setIsUpdatingTitle(false);
+    }
+  };
 
   return (
     <section className="card rounded-2xl bg-base-200 border border-base-300 shadow-md">
@@ -99,17 +153,86 @@ export function NowPlayingWidget({
                 )}
               </div>
 
-              <h2
-                className="mt-1 text-base sm:text-lg font-bold text-base-content tracking-tight truncate"
-                title={displayTitle}
-              >
-                {displayTitle}
-              </h2>
+              {/* Title & Live Broadcast Title Editor */}
+              {isEditingTitle ? (
+                <div className="mt-2 space-y-1.5 max-w-xl">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      type="text"
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      placeholder="Ubah judul siaran (contoh: NIKI - Backburner)"
+                      className="input input-xs input-bordered bg-base-100 flex-1 text-xs font-semibold rounded-lg h-8"
+                      autoFocus
+                    />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleApplyClean}
+                        className="btn btn-xs btn-outline border-base-300 gap-1 h-8 rounded-lg hover:bg-base-300"
+                        title="Hapus otomatis tag (2008 Remastered), (Official Video), dll"
+                      >
+                        <Wand2 className="h-3 w-3 text-warning" />
+                        <span className="text-[11px]">Bersihkan</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isUpdatingTitle || !editedTitle.trim()}
+                        onClick={handleSaveTitle}
+                        className="btn btn-xs btn-primary gap-1 h-8 rounded-lg text-primary-content font-bold"
+                        title="Kirim perubahan ke streaming encoder RadioBOSS"
+                      >
+                        {isUpdatingTitle ? (
+                          <span className="loading loading-spinner loading-xs" />
+                        ) : (
+                          <Check className="h-3 w-3" />
+                        )}
+                        <span className="text-[11px]">Simpan</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditingTitle(false);
+                          setUpdateMsg(null);
+                        }}
+                        className="btn btn-xs btn-ghost h-8 rounded-lg text-base-content/60"
+                        title="Batal"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  {updateMsg && (
+                    <p className={`text-[11px] font-medium ${updateMsg.includes("berhasil") || updateMsg.includes("diperbarui") ? "text-success" : "text-error"}`}>
+                      {updateMsg}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-1 flex items-center gap-2 min-w-0">
+                  <h2
+                    className="text-base sm:text-lg font-bold text-base-content tracking-tight truncate min-w-0"
+                    title={displayTitle}
+                  >
+                    {displayTitle}
+                  </h2>
+                  {connected && (
+                    <button
+                      type="button"
+                      onClick={handleStartEdit}
+                      className="btn btn-ghost btn-xs btn-circle h-6 w-6 shrink-0 text-base-content/40 hover:text-white"
+                      title="Edit Judul Siaran On-Air (setcasttitle)"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-base-content/60">
-                <span className="inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1 font-mono">
                   <Clock className="h-3 w-3" />
-                  {nowPlaying?.position || "00:00"} / {nowPlaying?.duration || "00:00"}
+                  {nowPlaying?.position || "00:00"} / {nowPlaying?.duration && nowPlaying.duration !== "00:00" ? nowPlaying.duration : "--:--"}
                 </span>
 
                 {nowPlaying?.listeners !== undefined && nowPlaying.listeners > 0 && (

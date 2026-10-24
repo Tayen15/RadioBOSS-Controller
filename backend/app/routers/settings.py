@@ -85,6 +85,22 @@ async def clear_audio_cache(days: Optional[int] = None):
     }
 
 
+@router.post("/cache/trim")
+async def trim_audio_cache():
+    """
+    Prune cache storage to stay within configured max_cache_size_mb limit.
+    Deletes least-played songs first.
+    """
+    pruned = cache_service.enforce_cache_limit()
+    stats = cache_service.get_cache_stats()
+    return {
+        "success": True,
+        "message": f"Penyimpanan cache dipangkas ({pruned} file lama/jarang diputar dihapus).",
+        "pruned_count": pruned,
+        "stats": stats,
+    }
+
+
 @router.get("/history", response_model=List[Dict[str, Any]])
 async def get_queue_history():
     """Retrieve persistent queue history from %APPDATA%/RadioBOSSCaster/history.json."""

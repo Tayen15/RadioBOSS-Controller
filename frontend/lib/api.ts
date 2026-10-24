@@ -23,6 +23,7 @@ import {
   CachedTrackItem,
   DJTopChartResponse,
   DJSmartRecommendationsResponse,
+  CacheStats,
 } from "./types";
 
 const API_BASE_URL =
@@ -227,6 +228,36 @@ export async function clearAudioCache(
   });
   if (!res.ok) {
     throw new Error("Gagal membersihkan cache audio.");
+  }
+  return await res.json();
+}
+
+export async function trimAudioCache(): Promise<{
+  success: boolean;
+  message: string;
+  pruned_count: number;
+  stats: CacheStats;
+}> {
+  const res = await fetch(`${API_BASE_URL}/api/cache/trim`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error("Gagal memangkas cache penyimpanan.");
+  }
+  return await res.json();
+}
+
+export async function setLiveCastTitle(
+  title: string
+): Promise<{ success: boolean; message: string; title: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/radioboss/casttitle`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengubah judul siaran RadioBOSS.");
   }
   return await res.json();
 }
