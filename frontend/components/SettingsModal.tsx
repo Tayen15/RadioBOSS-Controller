@@ -304,7 +304,7 @@ export function SettingsModal({
 
   return (
     <dialog className="modal modal-open z-50">
-      <div className="modal-box rounded-2xl bg-base-200 border border-base-300 max-w-2xl w-full max-h-[90vh] shadow-2xl p-5 sm:p-6">
+      <div className="modal-box rounded-2xl bg-base-200 border border-base-300 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-5 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-base-300 pb-3">
           <div className="flex items-center gap-2.5">
