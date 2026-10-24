@@ -70,6 +70,36 @@ def create_linux_portable_tar(tar_path: str, bin_path: str, bin_name: str):
         tf.addfile(sh_info, io.BytesIO(sh_bytes))
 
 
+def find_iscc_compiler() -> str | None:
+    """Find Inno Setup compiler executable (ISCC.exe)."""
+    candidates = [
+        shutil.which("iscc"),
+        shutil.which("ISCC"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"),
+        r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+        r"C:\Program Files\Inno Setup 6\ISCC.exe",
+    ]
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return c
+    return None
+
+
+def build_windows_setup_installer(arch: str) -> str | None:
+    """Compile Inno Setup script to generate Setup Wizard installer."""
+    iscc = find_iscc_compiler()
+    iss_script = os.path.join(ROOT_DIR, "installer", "setup.iss")
+    if not iscc or not os.path.isfile(iss_script):
+        return None
+    print(f"[*] Compiling Windows Setup Wizard Installer with Inno Setup ({arch})...")
+    cmd = [iscc, f"/DAppArch={arch}", iss_script]
+    res = subprocess.run(cmd, cwd=os.path.join(ROOT_DIR, "installer"))
+    if res.returncode == 0:
+        setup_exe = os.path.join(DIST_DIR, f"RadioBOSSCaster-Setup-{arch}.exe")
+        return setup_exe if os.path.isfile(setup_exe) else None
+    return None
+
+
 def main():
     is_windows = sys.platform == "win32"
     arch = "x86" if sys.maxsize <= 2**32 else "x64"
@@ -182,6 +212,13 @@ def main():
             zip_out = os.path.join(DIST_DIR, f"RadioBOSSCaster-Portable-Windows-{arch}.zip")
             create_windows_portable_zip(zip_out, built_bin_path)
             print(f" [+] Portable ZIP package created: {zip_out}")
+
+            # Generate Setup Wizard Installer via Inno Setup
+            setup_exe = build_windows_setup_installer(arch)
+            if setup_exe:
+                print(f" [+] Setup Wizard Installer created: {setup_exe}")
+            else:
+                print(" [i] Inno Setup (ISCC) not found; skipped Setup Wizard installer generation.")
         else:
             # Linux: Generate Portable TAR.GZ package
             tar_out = os.path.join(DIST_DIR, f"RadioBOSSCaster-Portable-Linux-{arch}.tar.gz")

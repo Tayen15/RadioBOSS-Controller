@@ -98,19 +98,22 @@ bun run build
 cd ..
 backend\.venv\Scripts\python.exe desktop/build_exe.py
 ```
-Hasil executable dan paket portable akan tersedia di folder `dist/`:
+Hasil executable, installer wizard, dan paket portable akan tersedia di folder `dist/`:
+- `RadioBOSSCaster-Setup-x64.exe` (Windows Setup Wizard Installer - dialog instalasi standar dengan desktop shortcut & uninstaller)
+- `RadioBOSSCaster-Setup-x86.exe` (Windows 32-bit Setup Wizard Installer)
 - `RadioBOSSCaster.exe` (Windows Standalone executable utama)
-- `RadioBOSSCaster-Windows-x64.exe` (Windows 64-bit)
+- `RadioBOSSCaster-Windows-x64.exe` (Windows 64-bit Standalone)
 - `RadioBOSSCaster-Portable-Windows-x64.zip` (Windows 64-bit Portable Edition)
 
 ---
 
-## 💼 Portable Edition (100% Self-Contained)
+## 📦 Pilihan Distribusi: Setup Wizard vs Portable Edition
 
-Aplikasi ini mendukung **Portable Mode** secara native:
-- **Tanpa Instalasi:** Cukup ekstrak `RadioBOSSCaster-Portable-Windows-x64.zip` (atau buat file kosong `portable.txt` di folder yang sama dengan `.exe`).
-- **Penyimpanan Lokal `./data/`:** Seluruh database SQLite (`radioboss_caster.db`), konfigurasi (`config.json`), audio cache, dan log siaran akan otomatis disimpan di folder lokal `./data/` tanpa menyentuh registry atau `%APPDATA%` sistem.
-- **Dapat Dijalankan dari USB Flash Drive:** Anda dapat menyalin seluruh folder ke flash drive dan menjalankannya di PC studio mana pun secara langsung.
+| Jenis Paket | Keterangan & Penggunaan |
+| :--- | :--- |
+| **Setup Wizard Installer (`*-Setup-*.exe`)** | **Dialog Instalasi Langkah-demi-Langkah:** Menyediakan wizard instalasi standar Windows (pilih folder tujuan instalasi, opsi centang icon Desktop & Start Menu, opsi langsung jalankan aplikasi saat selesai, serta uninstaller bersih di Windows Settings / Control Panel). |
+| **Portable Edition (`*-Portable-*.zip`)** | **100% Mandiri Tanpa Instalasi:** Cukup ekstrak ke folder mana saja atau ke USB Flash Drive. Semua database SQLite, konfigurasi, cache audio MP3, dan log disimpan di `./data/` lokal tanpa menyentuh registry atau `%APPDATA%` sistem. |
+
 
 ---
 
