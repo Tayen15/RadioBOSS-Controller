@@ -11,27 +11,52 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
-def _get_default_storage_dir() -> Path:
-    """Return default %APPDATA%/RadioBOSSCaster directory."""
-    appdata = os.environ.get("APPDATA")
-    if appdata:
-        base_path = Path(appdata)
-    else:
-        base_path = Path.home() / "AppData" / "Roaming"
-    data_dir = base_path / "RadioBOSSCaster"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    return data_dir
-
-
 def _resolve_active_storage_dir() -> Path:
     """
-    Check if user configured a custom data storage directory pointer.
-    If storage_location.txt exists with a valid directory, use it.
-    Otherwise default to %APPDATA%/RadioBOSSCaster.
+    Resolve active storage directory with Portable Mode and Cross-Platform support:
+    1. Portable Mode: if '--portable' in sys.argv, or 'portable.txt' / 'portable' / 'data' dir
+       exists in the application executable folder, use that local './data' folder.
+    2. Custom storage pointer: 'storage_location.txt' in system default directory.
+    3. System default:
+       - Windows: %APPDATA%/RadioBOSSCaster
+       - Linux/Unix: ~/.config/RadioBOSSCaster
     """
-    default_dir = _get_default_storage_dir()
-    pointer_file = default_dir / "storage_location.txt"
+    import sys
 
+    # 1. Check for Portable mode
+    try:
+        if getattr(sys, "frozen", False):
+            app_root = Path(sys.executable).resolve().parent
+        else:
+            # In development, look relative to workspace root
+            app_root = Path(__file__).resolve().parent.parent.parent.parent
+
+        if (
+            "--portable" in sys.argv
+            or (app_root / "portable.txt").is_file()
+            or (app_root / "portable").is_dir()
+            or (app_root / "data").is_dir()
+        ):
+            portable_dir = app_root / "data"
+            portable_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Running in PORTABLE MODE. Storage at: {portable_dir}")
+            return portable_dir
+    except Exception as e:
+        logger.debug(f"Portable check fallback: {e}")
+
+    # 2. System default directory
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA")
+        base_path = Path(appdata) if appdata else (Path.home() / "AppData" / "Roaming")
+    else:
+        # Linux / macOS
+        base_path = Path.home() / ".config"
+
+    default_dir = base_path / "RadioBOSSCaster"
+    default_dir.mkdir(parents=True, exist_ok=True)
+
+    # 3. Check for custom pointer in storage_location.txt
+    pointer_file = default_dir / "storage_location.txt"
     if pointer_file.is_file():
         try:
             custom_path_str = pointer_file.read_text(encoding="utf-8").strip()
@@ -43,6 +68,11 @@ def _resolve_active_storage_dir() -> Path:
             logger.warning(f"Could not read storage_location.txt: {e}")
 
     return default_dir
+
+
+def _get_default_storage_dir() -> Path:
+    """Return default storage directory (alias to _resolve_active_storage_dir)."""
+    return _resolve_active_storage_dir()
 
 
 class DatabaseService:

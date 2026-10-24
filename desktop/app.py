@@ -23,12 +23,40 @@ if sys.stderr is None or not hasattr(sys.stderr, "buffer"):
 if sys.stdin is None:
     sys.stdin = DummyStream()
 
+def _get_desktop_storage_dir() -> str:
+    """Resolve storage directory supporting Portable Mode and cross-platform (Windows & Linux)."""
+    try:
+        if getattr(sys, "frozen", False):
+            app_root = os.path.dirname(os.path.abspath(sys.executable))
+        else:
+            app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        if (
+            "--portable" in sys.argv
+            or os.path.isfile(os.path.join(app_root, "portable.txt"))
+            or os.path.isdir(os.path.join(app_root, "portable"))
+            or os.path.isdir(os.path.join(app_root, "data"))
+        ):
+            p_dir = os.path.join(app_root, "data")
+            os.makedirs(p_dir, exist_ok=True)
+            return p_dir
+    except Exception:
+        pass
+
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
+        log_dir = os.path.join(appdata, "RadioBOSSCaster")
+    else:
+        home = os.path.expanduser("~")
+        log_dir = os.path.join(home, ".config", "RadioBOSSCaster")
+    os.makedirs(log_dir, exist_ok=True)
+    return log_dir
+
+
 def global_excepthook(exc_type, exc_val, tb):
     try:
         import traceback
-        appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
-        log_dir = os.path.join(appdata, "RadioBOSSCaster")
-        os.makedirs(log_dir, exist_ok=True)
+        log_dir = _get_desktop_storage_dir()
         with open(os.path.join(log_dir, "fatal.log"), "a", encoding="utf-8") as f:
             f.write(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] === FATAL EXCEPTION ===\n")
             traceback.print_exception(exc_type, exc_val, tb, file=f)
@@ -36,13 +64,12 @@ def global_excepthook(exc_type, exc_val, tb):
         pass
     sys.__excepthook__(exc_type, exc_val, tb)
 
+
 sys.excepthook = global_excepthook
 
-# Configure early logging to %APPDATA%/RadioBOSSCaster/app.log
+# Configure early logging
 try:
-    appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
-    log_dir = os.path.join(appdata, "RadioBOSSCaster")
-    os.makedirs(log_dir, exist_ok=True)
+    log_dir = _get_desktop_storage_dir()
     log_file = os.path.join(log_dir, "app.log")
     logging.basicConfig(
         filename=log_file,
@@ -160,25 +187,42 @@ def main():
         else:
             logger.info("FastAPI health check passed.")
 
-        # Launch native Edge WebView2 window
+        # Launch native WebView window (Edge WebView2 on Windows, WebKit2GTK on Linux) or browser
         window_url = f"http://127.0.0.1:{port}"
-        logger.info(f"Creating Edge WebView2 window for {window_url}")
+        logger.info(f"Creating window for {window_url}")
+
+        storage_dir = _get_desktop_storage_dir()
+        webview_storage = os.path.join(storage_dir, "webview")
+        os.makedirs(webview_storage, exist_ok=True)
+
         window = webview.create_window(
             title="Radio Caster Bridge | YouTube Music Studio Streamer & RadioBOSS Controller",
             url=window_url,
             width=1240,
             height=840,
             min_size=(960, 620),
-            background_color="#020617",
+            background_color="#000000",
             text_select=True,
         )
 
-        appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
-        webview_storage = os.path.join(appdata, "RadioBOSSCaster", "webview")
-        os.makedirs(webview_storage, exist_ok=True)
+        if sys.platform == "win32":
+            webview.start(gui="edgechromium", debug=False, storage_path=webview_storage)
+        else:
+            try:
+                webview.start(debug=False, storage_path=webview_storage)
+            except Exception as e:
+                logger.warning(f"Native GTK/Qt webview GUI failed on Linux: {e}. Opening system default browser...")
+                import webbrowser
+                webbrowser.open(window_url)
+                print(f"[*] Radio Caster Bridge running at {window_url}")
+                print("[*] Press Ctrl+C to stop.")
+                try:
+                    while server_thread.is_alive():
+                        time.sleep(1)
+                except KeyboardInterrupt:
+                    pass
 
-        webview.start(gui="edgechromium", debug=False, storage_path=webview_storage)
-        logger.info("WebView closed. Exiting application.")
+        logger.info("Application closed. Exiting.")
         sys.exit(0)
     except Exception as e:
         logger.exception(f"Unhandled exception during desktop execution: {e}")

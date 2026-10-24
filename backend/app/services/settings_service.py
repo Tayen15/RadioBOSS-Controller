@@ -44,15 +44,9 @@ class AppConfig(BaseModel):
 
 
 def _get_appdata_dir() -> Path:
-    """Return the Windows %APPDATA% directory for RadioBOSSCaster."""
-    appdata = os.environ.get("APPDATA")
-    if appdata:
-        base_path = Path(appdata)
-    else:
-        base_path = Path.home() / "AppData" / "Roaming"
-    config_dir = base_path / "RadioBOSSCaster"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    return config_dir
+    """Return active app storage directory (supports Portable Mode, custom pointers, and Linux)."""
+    from app.services.db_service import _resolve_active_storage_dir
+    return _resolve_active_storage_dir()
 
 
 class SettingsService:

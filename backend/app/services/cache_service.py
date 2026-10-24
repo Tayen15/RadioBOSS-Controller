@@ -15,21 +15,25 @@ logger = logging.getLogger(__name__)
 
 
 def _find_ffmpeg_binary() -> str:
-    """Find ffmpeg binary in executable dir, local dist, or PATH."""
+    """Find ffmpeg binary in executable dir, local dist, system paths, or PATH."""
+    bin_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
     candidates = []
     if getattr(sys, "frozen", False):
         exe_dir = os.path.dirname(sys.executable)
-        candidates.append(os.path.join(exe_dir, "ffmpeg.exe"))
+        candidates.append(os.path.join(exe_dir, bin_name))
         if hasattr(sys, "_MEIPASS"):
-            candidates.append(os.path.join(sys._MEIPASS, "ffmpeg.exe"))
+            candidates.append(os.path.join(sys._MEIPASS, bin_name))
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
     candidates.extend([
-        os.path.join(project_root, "dist", "ffmpeg.exe"),
-        os.path.join(os.getcwd(), "dist", "ffmpeg.exe"),
-        os.path.join(os.getcwd(), "ffmpeg.exe"),
+        os.path.join(project_root, "dist", bin_name),
+        os.path.join(os.getcwd(), "dist", bin_name),
+        os.path.join(os.getcwd(), bin_name),
         r"D:\Apps\ffmpeg\bin\ffmpeg.exe",
+        "/usr/bin/ffmpeg",
+        "/usr/local/bin/ffmpeg",
+        "/snap/bin/ffmpeg",
     ])
 
     for c in candidates:
@@ -37,7 +41,7 @@ def _find_ffmpeg_binary() -> str:
             return os.path.abspath(c)
 
     which = shutil.which("ffmpeg")
-    return which or "ffmpeg"
+    return which or bin_name
 
 
 class CacheService:

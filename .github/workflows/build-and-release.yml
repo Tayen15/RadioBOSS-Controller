@@ -1,4 +1,4 @@
-name: Build & Release Standalone Executable
+name: Build & Release Multi-Platform Packages
 
 on:
   push:
@@ -7,17 +7,38 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: "Release Tag (e.g. v0.4.0)"
+        description: "Release Tag (e.g. v0.5.0)"
         required: false
-        default: "v0.4.0"
+        default: "v0.5.0"
 
 permissions:
   contents: write
 
 jobs:
-  build-windows:
-    name: Build Standalone Windows Executable
-    runs-on: windows-latest
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows x64 (64-bit)
+          - os: windows-latest
+            arch: x64
+            python-version: "3.11"
+            target: Windows-x64
+
+          # Windows x86 (32-bit)
+          - os: windows-latest
+            arch: x86
+            python-version: "3.11"
+            target: Windows-x86
+
+          # Linux x64 (64-bit Ubuntu)
+          - os: ubuntu-latest
+            arch: x64
+            python-version: "3.11"
+            target: Linux-x64
 
     steps:
       - name: Checkout Code
@@ -34,26 +55,38 @@ jobs:
           bun install --frozen-lockfile
           bun run build
 
-      - name: Verify Frontend Static Output
+      - name: Verify Frontend Static Output (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           if (-not (Test-Path -Path "frontend/out/index.html")) {
             Write-Error "Frontend static build failed: frontend/out/index.html not found!"
             exit 1
           }
-          Write-Host "Frontend static build verified successfully."
+
+      - name: Verify Frontend Static Output (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          test -f frontend/out/index.html || { echo "Frontend static build failed!"; exit 1; }
+
+      - name: Setup System Dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev ffmpeg
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.arch }}
           cache: "pip"
 
-      - name: Setup FFmpeg
+      - name: Setup FFmpeg (Windows)
+        if: runner.os == 'Windows'
         uses: FedericoCarboni/setup-ffmpeg@v3
         with:
           ffmpeg-version: release
-        id: setup-ffmpeg
 
       - name: Install Python Dependencies & PyInstaller
         run: |
@@ -61,31 +94,44 @@ jobs:
           pip install -r backend/requirements.txt
           pip install pyinstaller
 
-      - name: Package Standalone Windows .exe
-        shell: pwsh
+      - name: Package Standalone Executable & Portable Archives
         run: |
           python desktop/build_exe.py
 
-      - name: Verify Executable Output
-        shell: pwsh
-        run: |
-          if (-not (Test-Path -Path "dist/RadioBOSSCaster.exe")) {
-            Write-Error "PyInstaller build failed: dist/RadioBOSSCaster.exe not found!"
-            exit 1
-          }
-          $item = Get-Item "dist/RadioBOSSCaster.exe"
-          $sizeMb = [math]::Round($item.Length / 1MB, 2)
-          Write-Host "Executable generated: dist/RadioBOSSCaster.exe ($sizeMb MB)"
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: |
+            dist/RadioBOSSCaster*
+          retention-days: 2
 
-      - name: Create GitHub Release & Upload Asset
+  publish-release:
+    name: Publish Release Assets
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: release-*
+          merge-multiple: true
+
+      - name: List Release Files
+        run: |
+          ls -la release-assets
+
+      - name: Create GitHub Release & Upload Assets
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
           tag_name: ${{ github.ref_name || inputs.tag_name }}
           name: "Radio Caster Bridge ${{ github.ref_name || inputs.tag_name }}"
-          files: dist/RadioBOSSCaster.exe
+          files: release-assets/*
           draft: false
           prerelease: false
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

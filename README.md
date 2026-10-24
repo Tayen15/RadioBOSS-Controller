@@ -98,20 +98,48 @@ bun run build
 cd ..
 backend\.venv\Scripts\python.exe desktop/build_exe.py
 ```
-Hasil executable akan tersedia di `dist\RadioBOSSCaster.exe` (~30 MB).
+Hasil executable dan paket portable akan tersedia di folder `dist/`:
+- `RadioBOSSCaster.exe` (Windows Standalone executable utama)
+- `RadioBOSSCaster-Windows-x64.exe` (Windows 64-bit)
+- `RadioBOSSCaster-Portable-Windows-x64.zip` (Windows 64-bit Portable Edition)
 
 ---
 
-## 🤖 Otomasi GitHub Actions CI/CD (Build & Release)
+## 💼 Portable Edition (100% Self-Contained)
+
+Aplikasi ini mendukung **Portable Mode** secara native:
+- **Tanpa Instalasi:** Cukup ekstrak `RadioBOSSCaster-Portable-Windows-x64.zip` (atau buat file kosong `portable.txt` di folder yang sama dengan `.exe`).
+- **Penyimpanan Lokal `./data/`:** Seluruh database SQLite (`radioboss_caster.db`), konfigurasi (`config.json`), audio cache, dan log siaran akan otomatis disimpan di folder lokal `./data/` tanpa menyentuh registry atau `%APPDATA%` sistem.
+- **Dapat Dijalankan dari USB Flash Drive:** Anda dapat menyalin seluruh folder ke flash drive dan menjalankannya di PC studio mana pun secara langsung.
+
+---
+
+## 🐧 Dukungan Multi-Platform (Windows x64/x32 & Linux OS)
+
+Radio Caster Request Bridge kini mendukung beragam arsitektur dan sistem operasi:
+- **Windows 64-bit (`x64`)**: Standar untuk PC modern (Windows 10 / 11 64-bit).
+- **Windows 32-bit (`x86`)**: Mendukung PC siaran radio studio lawas (Windows 7 / 8 / 10 32-bit).
+- **Linux OS (Ubuntu, Debian, Fedora, Arch, Raspberry Pi OS 64-bit)**:
+  - Menyediakan binary mandiri `RadioBOSSCaster-Linux-x64` dan paket `RadioBOSSCaster-Portable-Linux-x64.tar.gz`.
+  - GUI native via WebKit2GTK dengan fallback otomatis membuka web browser default (Chrome/Firefox) jika berjalan di lingkungan tanpa GTK atau server/headless.
+  - Skrip sekali klik untuk Linux: `./run.sh`.
+
+---
+
+## 🤖 Otomasi GitHub Actions CI/CD (Multi-Platform Matrix)
 
 Repository ini dilengkapi dengan workflow GitHub Actions otomatis di [`.github/workflows/build-and-release.yml`](.github/workflows/build-and-release.yml):
+- **Matrix Multi-Platform Build:**
+  - `Windows-x64` (Windows 64-bit)
+  - `Windows-x86` (Windows 32-bit)
+  - `Linux-x64` (Ubuntu / Linux 64-bit)
 - **Otomatis Release via Git Tag:**
   Cukup buat dan push tag rilis baru:
   ```bash
   git tag v0.5.0
   git push origin v0.5.0
   ```
-  GitHub Actions akan mem-build frontend, meng-compile backend via PyInstaller di runner `windows-latest`, dan otomatis mempublikasikan GitHub Release baru lengkap dengan aset `RadioBOSSCaster.exe`.
+  GitHub Actions akan mem-build secara paralel untuk ketiga platform, mengemas paket portable (.zip / .tar.gz), dan otomatis mempublikasikan aset rilis di GitHub Releases.
 - **Manual Trigger:**
   Dapat juga dipicu kapan saja melalui tab **Actions** di GitHub repository (*Run workflow*).
 
