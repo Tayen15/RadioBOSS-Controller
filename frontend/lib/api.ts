@@ -24,6 +24,8 @@ import {
   DJTopChartResponse,
   DJSmartRecommendationsResponse,
   CacheStats,
+  UpdateCheckResult,
+  UpdateDownloadStatus,
 } from "./types";
 
 const API_BASE_URL =
@@ -582,6 +584,52 @@ export async function fetchCachedTracks(
     throw new Error(err.detail || "Gagal mengambil daftar cache lagu.");
   }
   return await res.json();
+}
+
+export async function checkForUpdates(force: boolean = false): Promise<UpdateCheckResult> {
+  const res = await fetch(`${API_BASE_URL}/api/update/check?force=${force}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal memeriksa pembaruan.");
+  }
+  return await res.json();
+}
+
+export async function startDownloadUpdate(): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/update/download`, {
+    method: "POST",
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || data.detail || "Gagal memulai unduhan pembaruan.");
+  }
+  return data;
+}
+
+export async function getUpdateStatus(): Promise<UpdateDownloadStatus> {
+  const res = await fetch(`${API_BASE_URL}/api/update/status`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal mengambil status pembaruan.");
+  }
+  return await res.json();
+}
+
+export async function applyUpdate(): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/update/apply`, {
+    method: "POST",
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || data.detail || "Gagal menerapkan pembaruan.");
+  }
+  return data;
 }
 
 

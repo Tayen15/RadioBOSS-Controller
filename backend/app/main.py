@@ -17,6 +17,7 @@ from app.routers import (
     settings_router,
     recommendations_router,
     playlist_sets_router,
+    update_router,
 )
 from app.version import VERSION
 
@@ -99,6 +100,7 @@ app.include_router(radioboss_router)
 app.include_router(settings_router)
 app.include_router(recommendations_router)
 app.include_router(playlist_sets_router)
+app.include_router(update_router)
 
 
 @app.get("/api/health", tags=["Health"])

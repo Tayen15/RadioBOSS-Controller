@@ -20,6 +20,7 @@ import {
   Flame,
   ListMusic,
   Scissors,
+  Sparkles,
 } from "lucide-react";
 import { AppConfig, TitleFormatMode, CacheStats, CachedTrackItem } from "@/lib/types";
 import {
@@ -36,6 +37,7 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSettingsSaved: () => void;
+  onOpenUpdateModal?: () => void;
 }
 
 const FORMAT_OPTIONS: {
@@ -76,6 +78,7 @@ export function SettingsModal({
   isOpen,
   onClose,
   onSettingsSaved,
+  onOpenUpdateModal,
 }: SettingsModalProps) {
   const [host, setHost] = useState("http://127.0.0.1");
   const [port, setPort] = useState(9000);
@@ -850,31 +853,49 @@ export function SettingsModal({
             </div>
 
             {/* Modal Actions */}
-            <div className="modal-action border-t border-base-300 pt-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn btn-ghost btn-sm text-xs font-medium"
-              >
-                Tutup
-              </button>
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="btn btn-primary btn-sm rounded-xl gap-1.5 text-xs font-bold shadow-md text-primary-content"
-              >
-                {isSaving ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs" />
-                    <span>Menyimpan...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-3.5 w-3.5" />
-                    <span>Simpan Pengaturan</span>
-                  </>
+            <div className="modal-action border-t border-base-300 pt-3 flex items-center justify-between">
+              <div>
+                {onOpenUpdateModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenUpdateModal();
+                    }}
+                    className="btn btn-ghost btn-xs text-base-content/70 gap-1.5 hover:text-white"
+                    title="Cek pembaruan aplikasi dari server resmi"
+                  >
+                    <Sparkles className="h-3 w-3 text-accent" />
+                    <span>Cek Pembaruan</span>
+                  </button>
                 )}
-              </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="btn btn-ghost btn-sm text-xs font-medium"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="btn btn-primary btn-sm rounded-xl gap-1.5 text-xs font-bold shadow-md text-primary-content"
+                >
+                  {isSaving ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-3.5 w-3.5" />
+                      <span>Simpan Pengaturan</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         )}

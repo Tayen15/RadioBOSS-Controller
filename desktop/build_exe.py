@@ -150,6 +150,7 @@ def main():
         "--collect-all=pydantic",
         "--collect-all=pydantic_settings",
         "--collect-all=uvicorn",
+        "--collect-all=httpx",
         "--collect-all=ytmusicapi",
         "--collect-all=yt_dlp",
         "--collect-all=webview",

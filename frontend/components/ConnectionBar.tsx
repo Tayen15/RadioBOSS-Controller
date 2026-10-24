@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Settings as SettingsIcon,
   Radio,
+  Sparkles,
 } from "lucide-react";
 import { RadioBOSSStatus } from "@/lib/types";
 
@@ -16,6 +17,9 @@ interface ConnectionBarProps {
   loading: boolean;
   onRefresh: () => void;
   onOpenSettings: () => void;
+  onOpenUpdateModal?: () => void;
+  updateAvailable?: boolean;
+  latestVersion?: string;
 }
 
 export function ConnectionBar({
@@ -23,6 +27,9 @@ export function ConnectionBar({
   loading,
   onRefresh,
   onOpenSettings,
+  onOpenUpdateModal,
+  updateAvailable,
+  latestVersion,
 }: ConnectionBarProps) {
   const isRadioConnected = radioBossStatus?.connected ?? false;
 
@@ -83,6 +90,19 @@ export function ConnectionBar({
             className={`h-4 w-4 ${loading ? "animate-spin text-base-content" : ""}`}
           />
         </button>
+
+        {/* Update Notification Badge */}
+        {updateAvailable && onOpenUpdateModal && (
+          <button
+            onClick={onOpenUpdateModal}
+            className="btn btn-xs sm:btn-sm btn-accent rounded-xl gap-1.5 shadow-md shadow-accent/20 text-accent-content font-bold animate-pulse"
+            title={`Versi baru v${latestVersion || ""} tersedia! Klik untuk memasang.`}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span className="hidden xs:inline">Update v{latestVersion}</span>
+            <span className="xs:hidden">Update</span>
+          </button>
+        )}
 
         {/* Settings Modal Button */}
         <button

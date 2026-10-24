@@ -257,4 +257,37 @@ export interface DJSmartRecommendationsResponse {
   affinity_recommendations: TrackItem[];
 }
 
+export interface UpdateAsset {
+  name: string;
+  size: number;
+  download_url: string;
+  content_type?: string;
+}
+
+export interface UpdateCheckResult {
+  current_version: string;
+  latest_version: string;
+  tag_name?: string;
+  update_available: boolean;
+  release_name: string;
+  release_notes: string;
+  published_at: string;
+  html_url: string;
+  asset: UpdateAsset | null;
+  error?: string;
+}
+
+export type UpdateDownloadState = "idle" | "downloading" | "downloaded" | "error";
+
+export interface UpdateDownloadStatus {
+  status: UpdateDownloadState;
+  progress: number;
+  downloaded_bytes: number;
+  total_bytes: number;
+  speed_mbps: number;
+  file_path: string | null;
+  file_name: string | null;
+  error: string | null;
+}
+
 

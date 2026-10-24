@@ -9,6 +9,7 @@ import { QueueHistory } from "@/components/QueueHistory";
 import { PlaylistQueueWidget } from "@/components/PlaylistQueueWidget";
 import { ToastNotification, ToastMessage } from "@/components/ToastNotification";
 import { SettingsModal } from "@/components/SettingsModal";
+import { UpdateModal } from "@/components/UpdateModal";
 import { SmartRecommendationsWidget } from "@/components/SmartRecommendationsWidget";
 import { PlaylistSetsWidget } from "@/components/PlaylistSetsWidget";
 import { Music2, ListMusic, History, FolderHeart } from "lucide-react";
@@ -19,6 +20,7 @@ import {
   PlaybackAction,
   PlaylistItem,
   APP_VERSION,
+  UpdateCheckResult,
 } from "@/lib/types";
 import {
   checkBackendHealth,
@@ -31,6 +33,7 @@ import {
   fetchQueueHistory,
   clearQueueHistory,
   setLiveCastTitle,
+  checkForUpdates,
 } from "@/lib/api";
 
 export default function DashboardPage() {
@@ -41,6 +44,8 @@ export default function DashboardPage() {
   const [isStatusLoading, setIsStatusLoading] = useState<boolean>(false);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isUpdateOpen, setIsUpdateOpen] = useState<boolean>(false);
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
 
   // Search & Track selection states
   const [searchResults, setSearchResults] = useState<TrackItem[]>([]);
@@ -87,6 +92,13 @@ export default function DashboardPage() {
             );
           } catch {}
         }
+      })
+      .catch(() => {});
+
+    // Silent background check for application updates on mount
+    checkForUpdates(false)
+      .then((res) => {
+        setUpdateResult(res);
       })
       .catch(() => {});
   }, []);
@@ -419,6 +431,9 @@ export default function DashboardPage() {
         loading={isStatusLoading}
         onRefresh={syncStatus}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenUpdateModal={() => setIsUpdateOpen(true)}
+        updateAvailable={updateResult?.update_available}
+        latestVersion={updateResult?.latest_version}
       />
 
       {/* Backend Disconnected Alert (Only shown when backend service is offline) */}
@@ -683,6 +698,15 @@ export default function DashboardPage() {
           syncStatus();
           setIsSettingsOpen(false);
         }}
+        onOpenUpdateModal={() => setIsUpdateOpen(true)}
+      />
+
+      {/* Auto Update Modal */}
+      <UpdateModal
+        isOpen={isUpdateOpen}
+        onClose={() => setIsUpdateOpen(false)}
+        initialCheckResult={updateResult}
+        onUpdateDetected={(res) => setUpdateResult(res)}
       />
     </div>
   );
