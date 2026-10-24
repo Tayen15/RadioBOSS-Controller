@@ -36,6 +36,8 @@
 [17:28] - [backend/app/routers/settings.py, desktop/app.py] - Fix missing Optional import in settings router, add native Windows error message dialog (MessageBoxW), implement intelligent port auto-resolution / instance reuse, and add fallback to default browser if Edge WebView2 runtime is missing - Resolves startup terminal flash and silent crash, guarantees clear user error feedback, and ensures 100% resilient desktop launch
 [17:41] - [installer/setup.iss, desktop/build_exe.py, .github/workflows/build-and-release.yml, README.md] - Create Inno Setup script (installer/setup.iss), integrate automated Setup Wizard generation into desktop/build_exe.py and GitHub Actions CI/CD matrix, and generate RadioBOSSCaster-Setup-x64.exe - Delivers standard Windows Setup Wizard with directory picker, desktop shortcut task, and uninstaller support
 [17:46] - [assets/, frontend/public/, frontend/components/ConnectionBar.tsx, frontend/app/layout.tsx, desktop/build_exe.py, installer/setup.iss] - Generate official studio radio broadcast logo & multi-resolution Windows ICO (assets/icon.ico, frontend/public/logo.png, favicon.ico), embed into PyInstaller binary & Inno Setup installer wizard, and display in Navbar with Next/Image - Delivers branded visual identity across desktop executable, setup dialog, taskbar, browser tab, and navbar
+[17:51] - [frontend/components/SettingsModal.tsx] - Expand modal width to max-w-2xl, decouple cramped flex/grid rows in cache storage settings, eliminate single-word vertical text wrapping bug, and organize management buttons with flex-wrap - Resolves UI position glitches and delivers clean, balanced studio settings dialog
+
 
 
 

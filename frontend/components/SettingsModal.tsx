@@ -304,7 +304,7 @@ export function SettingsModal({
 
   return (
     <dialog className="modal modal-open z-50">
-      <div className="modal-box rounded-2xl bg-base-200 border border-base-300 max-w-lg shadow-2xl p-6">
+      <div className="modal-box rounded-2xl bg-base-200 border border-base-300 max-w-2xl w-full max-h-[90vh] shadow-2xl p-5 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-base-300 pb-3">
           <div className="flex items-center gap-2.5">
@@ -598,17 +598,20 @@ export function SettingsModal({
                 </div>
 
                 {/* Storage Cache Limit Selector */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-base-300/40">
-                  <div className="form-control">
-                    <label className="label py-0.5">
-                      <span className="label-text text-[11px] text-base-content/80 font-medium">
-                        Batas Kapasitas Cache:
+                <div className="space-y-2 pt-2 border-t border-base-300/40">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4">
+                    <div className="min-w-0">
+                      <span className="text-xs font-semibold text-base-content block">
+                        Batas Kapasitas Cache
                       </span>
-                    </label>
+                      <span className="text-[10px] text-base-content/60 block">
+                        Kapasitas maksimal disk untuk cache lagu MP3
+                      </span>
+                    </div>
                     <select
                       value={maxCacheSizeMb}
                       onChange={(e) => setMaxCacheSizeMb(Number(e.target.value))}
-                      className="select select-bordered select-xs w-full bg-base-200 text-xs font-semibold"
+                      className="select select-bordered select-xs w-full sm:w-60 bg-base-200 text-xs font-semibold shrink-0"
                     >
                       <option value={500}>500 MB (Hemat Ruang Disk)</option>
                       <option value={1024}>1 GB / 1024 MB</option>
@@ -619,19 +622,17 @@ export function SettingsModal({
                     </select>
                   </div>
 
-                  <div className="form-control flex justify-end pb-0.5">
-                    <label className="label cursor-pointer justify-start gap-2 py-1">
-                      <input
-                        type="checkbox"
-                        checked={autoCleanupCache}
-                        onChange={(e) => setAutoCleanupCache(e.target.checked)}
-                        className="checkbox checkbox-primary checkbox-xs rounded"
-                      />
-                      <span className="label-text text-[11px] text-base-content/80 leading-tight">
-                        Otomatis Pangkas Saat Penuh (hapus lagu paling jarang diputar)
-                      </span>
-                    </label>
-                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none pt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={autoCleanupCache}
+                      onChange={(e) => setAutoCleanupCache(e.target.checked)}
+                      className="checkbox checkbox-primary checkbox-xs rounded"
+                    />
+                    <span className="text-[11px] text-base-content/80">
+                      Otomatis pangkas saat penuh (menghapus lagu yang paling jarang diputar)
+                    </span>
+                  </label>
                 </div>
 
                 {/* Custom Database & Data Root Directory */}
@@ -696,7 +697,7 @@ export function SettingsModal({
                       value={customCacheDir}
                       onChange={(e) => setCustomCacheDir(e.target.value)}
                       placeholder={cacheStats?.cache_dir || "D:\\RadioCache (atau kosongkan untuk default C:)"}
-                      className="input input-bordered input-xs join-item w-full bg-base-100 text-[11px] font-mono text-base-content placeholder:text-base-content/30"
+                      className="input input-bordered input-xs join-item flex-1 min-w-0 bg-base-100 text-[11px] font-mono text-base-content placeholder:text-base-content/30"
                     />
                     <button
                       type="button"
@@ -715,54 +716,59 @@ export function SettingsModal({
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-base-300/40">
-                  <p className="text-[10px] text-base-content/50 leading-relaxed">
-                    File MP3 tersimpan permanen di PC Anda. Riwayat &amp; cache tidak hilang saat aplikasi ditutup.
-                  </p>
-                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                {/* Cache Management Action Buttons & Info Note */}
+                <div className="pt-2 border-t border-base-300/40 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={handleToggleCacheList}
-                      className="btn btn-ghost btn-xs text-base-content/80 gap-1 font-semibold hover:bg-base-300"
+                      className="btn btn-outline btn-xs text-base-content gap-1.5 font-semibold hover:bg-base-300"
                       title="Lihat daftar lagu yang tersimpan di cache lokal beserta frekuensi putarnya"
                     >
-                      <ListMusic className="h-3 w-3" />
+                      <ListMusic className="h-3.5 w-3.5" />
                       <span>{showCacheList ? "Tutup Daftar" : "Lihat Lagu Cache"}</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleTrimCache}
-                      disabled={isTrimmingCache || !cacheStats || cacheStats.total_files === 0}
-                      className="btn btn-ghost btn-xs text-primary gap-1 hover:bg-primary/10 font-medium"
-                      title="Pangkas audio cache agar tidak melebihi batas kapasitas yang ditentukan"
-                    >
-                      {isTrimmingCache ? (
-                        <span className="loading loading-spinner loading-xs" />
-                      ) : (
-                        <Scissors className="h-3 w-3" />
-                      )}
-                      <span>Pangkas ke Batas</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleClearCache(7)}
-                      disabled={isClearingCache || !cacheStats || cacheStats.total_files === 0}
-                      className="btn btn-ghost btn-xs text-warning/90 hover:bg-warning/10 font-normal"
-                      title="Hapus cache lagu yang tidak pernah dibuka selama lebih dari 7 hari"
-                    >
-                      <span>Hapus &gt; 7 Hari</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleClearCache()}
-                      disabled={isClearingCache || !cacheStats || cacheStats.total_files === 0}
-                      className="btn btn-ghost btn-xs text-error gap-1 hover:bg-error/10 font-normal"
-                      title="Kosongkan SEMUA file MP3 lokal untuk menghemat disk"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      <span>Kosongkan Semua</span>
-                    </button>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleTrimCache}
+                        disabled={isTrimmingCache || !cacheStats || cacheStats.total_files === 0}
+                        className="btn btn-ghost btn-xs text-primary gap-1 hover:bg-primary/10 font-semibold"
+                        title="Pangkas audio cache agar tidak melebihi batas kapasitas yang ditentukan"
+                      >
+                        {isTrimmingCache ? (
+                          <span className="loading loading-spinner loading-xs" />
+                        ) : (
+                          <Scissors className="h-3 w-3" />
+                        )}
+                        <span>Pangkas ke Batas</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleClearCache(7)}
+                        disabled={isClearingCache || !cacheStats || cacheStats.total_files === 0}
+                        className="btn btn-ghost btn-xs text-warning hover:bg-warning/10 font-medium"
+                        title="Hapus cache lagu yang tidak pernah dibuka selama lebih dari 7 hari"
+                      >
+                        <span>Hapus &gt; 7 Hari</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleClearCache()}
+                        disabled={isClearingCache || !cacheStats || cacheStats.total_files === 0}
+                        className="btn btn-ghost btn-xs text-error gap-1 hover:bg-error/10 font-medium"
+                        title="Kosongkan SEMUA file MP3 lokal untuk menghemat disk"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span>Kosongkan Semua</span>
+                      </button>
+                    </div>
                   </div>
+
+                  <p className="text-[11px] text-base-content/50 leading-relaxed">
+                    💡 File MP3 tersimpan permanen di PC Anda. Riwayat &amp; cache tidak hilang saat aplikasi ditutup.
+                  </p>
                 </div>
 
                 {/* Expandable Cached Tracks & Play Count List */}
