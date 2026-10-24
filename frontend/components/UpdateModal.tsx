@@ -17,6 +17,7 @@ import {
 import {
   UpdateCheckResult,
   UpdateDownloadStatus,
+  APP_VERSION,
 } from "@/lib/types";
 import {
   checkForUpdates,
@@ -171,7 +172,7 @@ export function UpdateModal({
 
   if (!isOpen) return null;
 
-  const currentVer = checkResult?.current_version || "0.5.2";
+  const currentVer = checkResult?.current_version || APP_VERSION;
   const latestVer = checkResult?.latest_version || currentVer;
   const isAvailable = checkResult?.update_available ?? false;
 

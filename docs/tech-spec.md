@@ -10,7 +10,7 @@ Configuration is stored in `%APPDATA%/RadioBOSSCaster/config.json` with dynamic 
 - `server_port`: `8000`
 
 ## Backend API Specification
-- `GET /api/health` -> `{ "status": "online", "service": "...", "version": "0.5.0" }`
+- `GET /api/health` -> `{ "status": "online", "service": "...", "version": "0.6.0" }`
 - `GET /api/settings` -> Returns current active configuration
 - `POST /api/settings` -> Updates configuration in `%APPDATA%` and validates RadioBOSS connection
 - `POST /api/search` -> `{ "query": string, "limit": int }` -> Returns array of official songs: `{ video_id, title, artists, album, duration, thumbnail_url }`
