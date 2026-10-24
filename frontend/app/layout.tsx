@@ -12,6 +12,11 @@ export const metadata: Metadata = {
   title: "Radio Caster Bridge | YouTube Music Studio Streamer & RadioBOSS Controller",
   description:
     "YouTube Music Studio Streamer and Queue Bridge for RadioBOSS Web Remote API.",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({

@@ -170,6 +170,9 @@ def main():
     ]
 
     if is_windows:
+        icon_path = os.path.join(ROOT_DIR, "assets", "icon.ico")
+        if os.path.isfile(icon_path):
+            pyinstaller_cmd.append(f"--icon={icon_path}")
         pyinstaller_cmd.extend([
             "--collect-all=pythonnet",
             "--collect-all=clr_loader",

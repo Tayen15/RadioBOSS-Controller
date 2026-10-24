@@ -1,12 +1,13 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import {
-  Radio,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
   Settings as SettingsIcon,
+  Radio,
 } from "lucide-react";
 import { RadioBOSSStatus } from "@/lib/types";
 
@@ -29,8 +30,15 @@ export function ConnectionBar({
     <header className="navbar bg-base-200/90 backdrop-blur-md border-b border-base-300 px-4 sm:px-6 sticky top-0 z-30 justify-between">
       {/* Brand & Logo */}
       <div className="flex items-center gap-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-content shadow-sm shadow-primary/20">
-          <Radio className="h-4.5 w-4.5" />
+        <div className="relative h-9 w-9 rounded-xl overflow-hidden shadow-md shadow-emerald-500/10 border border-base-300 flex-shrink-0">
+          <Image
+            src="/logo.png"
+            alt="Radio Caster Bridge Logo"
+            width={36}
+            height={36}
+            className="h-full w-full object-cover"
+            priority={true}
+          />
         </div>
         <span className="text-base sm:text-lg font-bold tracking-tight text-base-content">
           Radio Caster Bridge
