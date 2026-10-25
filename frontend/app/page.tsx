@@ -12,7 +12,15 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { UpdateModal } from "@/components/UpdateModal";
 import { SmartRecommendationsWidget } from "@/components/SmartRecommendationsWidget";
 import { PlaylistSetsWidget } from "@/components/PlaylistSetsWidget";
-import { Music2, ListMusic, History, FolderHeart } from "lucide-react";
+import {
+  Headphones,
+  ListMusic,
+  History,
+  FolderHeart,
+  Compass,
+  AlertTriangle,
+  Play,
+} from "lucide-react";
 import {
   TrackItem,
   RadioBOSSStatus,
@@ -45,7 +53,9 @@ export default function DashboardPage() {
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isUpdateOpen, setIsUpdateOpen] = useState<boolean>(false);
-  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(
+    null
+  );
 
   // Search & Track selection states
   const [searchResults, setSearchResults] = useState<TrackItem[]>([]);
@@ -73,17 +83,26 @@ export default function DashboardPage() {
   });
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  // Fase 1: Playback Transport & Playlist Queue states
+  // Playback Transport & Playlist Queue states
   const [isControlling, setIsControlling] = useState<boolean>(false);
   const [playlistTracks, setPlaylistTracks] = useState<PlaylistItem[]>([]);
   const [isPlaylistLoading, setIsPlaylistLoading] = useState<boolean>(false);
-  const [bottomLeftTab, setBottomLeftTab] = useState<"playlist" | "sets" | "history">("playlist");
+
+  // Zone 2 (Discovery Deck) & Zone 3 (Queue Monitor) tabs
+  const [catalogTab, setCatalogTab] = useState<"recommendations" | "sets">(
+    "recommendations"
+  );
+  const [queueTab, setQueueTab] = useState<"playlist" | "history">("playlist");
 
   // Fetch permanent history from backend file storage on mount
   useEffect(() => {
     fetchQueueHistory()
       .then((serverHistory) => {
-        if (serverHistory && Array.isArray(serverHistory) && serverHistory.length > 0) {
+        if (
+          serverHistory &&
+          Array.isArray(serverHistory) &&
+          serverHistory.length > 0
+        ) {
           setHistory(serverHistory);
           try {
             localStorage.setItem(
@@ -128,7 +147,7 @@ export default function DashboardPage() {
       setToasts((prev) => [newToast, ...prev.slice(0, 2)]);
       setTimeout(() => {
         dismissToast(id);
-      }, 2800);
+      }, 3200);
     },
     [dismissToast]
   );
@@ -191,7 +210,7 @@ export default function DashboardPage() {
         "error",
         err instanceof Error
           ? err.message
-          : `Gagal mengeksekusi perintah ${action}.`,
+          : `Gagal mengeksekusi perintah ${action}.`
       );
     } finally {
       setIsControlling(false);
@@ -202,7 +221,6 @@ export default function DashboardPage() {
   useEffect(() => {
     let isCancelled = false;
 
-    // Async deferred call to prevent synchronous cascading render during effect mount
     const timer = setTimeout(() => {
       if (!isCancelled) {
         syncStatus();
@@ -222,7 +240,6 @@ export default function DashboardPage() {
       if (!isCancelled) {
         syncStatus(true);
         tickCount++;
-        // Refresh playlist every 3 seconds
         if (tickCount % 3 === 0) {
           syncPlaylist();
         }
@@ -243,12 +260,11 @@ export default function DashboardPage() {
       const resp = await searchYouTubeMusic(query, 6);
       if (resp.results && resp.results.length > 0) {
         setSearchResults(resp.results);
-        // Automatically select the first official studio track
         setSelectedTrack(resp.results[0]);
       } else {
         addToast(
           "error",
-          `Tidak ditemukan lagu studio untuk query '${query}'.`,
+          `Tidak ditemukan lagu studio untuk query '${query}'.`
         );
       }
     } catch (err) {
@@ -256,7 +272,7 @@ export default function DashboardPage() {
         "error",
         err instanceof Error
           ? err.message
-          : "Terjadi kesalahan saat mencari lagu.",
+          : "Terjadi kesalahan saat mencari lagu."
       );
     } finally {
       setIsSearching(false);
@@ -273,13 +289,13 @@ export default function DashboardPage() {
       } else {
         addToast(
           "error",
-          resp.error || "Gagal mengekstrak lagu dari URL tersebut.",
+          resp.error || "Gagal mengekstrak lagu dari URL tersebut."
         );
       }
     } catch (err) {
       addToast(
         "error",
-        err instanceof Error ? err.message : "Gagal memproses URL.",
+        err instanceof Error ? err.message : "Gagal memproses URL."
       );
     } finally {
       setIsResolving(false);
@@ -293,16 +309,21 @@ export default function DashboardPage() {
     useRelay: boolean = true,
     customMeta?: { title: string; artist: string }
   ) => {
-    // Anti-Repeat Safety Guard: warn if artist was played or queued recently
-    const primaryArtist = (customMeta?.artist || targetTrack.artists?.[0] || "")
+    const primaryArtist = (
+      customMeta?.artist ||
+      targetTrack.artists?.[0] ||
+      ""
+    )
       .toLowerCase()
       .trim();
     if (primaryArtist) {
-      const recentArtistPlayed = history.slice(0, 3).some(
-        (h) =>
-          h.artists?.some((a) => a.toLowerCase().trim() === primaryArtist) ||
-          h.title?.toLowerCase().includes(primaryArtist)
-      );
+      const recentArtistPlayed = history
+        .slice(0, 3)
+        .some(
+          (h) =>
+            h.artists?.some((a) => a.toLowerCase().trim() === primaryArtist) ||
+            h.title?.toLowerCase().includes(primaryArtist)
+        );
       const nowPlayingTitle =
         radioBossStatus?.now_playing?.title?.toLowerCase();
       const isNowPlaying =
@@ -310,7 +331,9 @@ export default function DashboardPage() {
 
       if (recentArtistPlayed || isNowPlaying) {
         const confirmRepeat = window.confirm(
-          `⚠️ Peringatan Anti-Repeat Siaran:\nLagu dari artis "${customMeta?.artist || targetTrack.artists[0]}" baru saja diputar atau ada di antrean terakhir!\n\nTetap ingin menambahkan lagu ini ke antrean RadioBOSS?`
+          `Peringatan Anti-Repeat Siaran:\nLagu dari artis "${
+            customMeta?.artist || targetTrack.artists[0]
+          }" baru saja diputar atau ada di antrean terakhir.\n\nTetap ingin menambahkan lagu ini ke antrean RadioBOSS?`
         );
         if (!confirmRepeat) {
           return;
@@ -323,7 +346,6 @@ export default function DashboardPage() {
 
     const posLabel = pos === 1 ? "Putar Berikutnya" : "Antrean Bawah";
 
-    // Format strictly as "Nama Artis - Judul Lagu" with custom metadata support
     const artistStr = (
       customMeta?.artist !== undefined
         ? customMeta.artist
@@ -379,7 +401,6 @@ export default function DashboardPage() {
         res.message || `Lagu berhasil dikirim ke RadioBOSS (${posLabel})!`
       );
 
-      // Refresh status and playlist after insertion
       setTimeout(() => {
         syncStatus();
         syncPlaylist();
@@ -425,7 +446,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-base-100 text-base-content flex flex-col">
-      {/* Top Header & Connection Bar */}
+      {/* ZONE 1A: Top Console Header & Connection Bar */}
       <ConnectionBar
         radioBossStatus={radioBossStatus}
         loading={isStatusLoading}
@@ -436,14 +457,15 @@ export default function DashboardPage() {
         latestVersion={updateResult?.latest_version}
       />
 
-      {/* Backend Disconnected Alert (Only shown when backend service is offline) */}
+      {/* Backend Disconnected Alert */}
       {!backendOnline && (
-        <div className="alert alert-error text-xs py-2.5 px-4 sm:px-6 rounded-none border-x-0 border-t-0 shadow-sm flex flex-wrap items-center justify-between gap-2">
-          <span className="flex items-center gap-2 font-medium">
-            <span className="inline-block w-2 h-2 rounded-full bg-error-content animate-ping" />
-            ⚠️ Layanan Backend Terputus: Tidak dapat terhubung ke server lokal (Port 8000). Pastikan aplikasi controller berjalan.
+        <div className="bg-error/15 border-b border-error/30 text-error text-xs py-2.5 px-4 sm:px-6 flex flex-wrap items-center justify-between gap-2">
+          <span className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Layanan Backend Terputus: Tidak dapat terhubung ke server lokal (Port 8000). Pastikan aplikasi controller berjalan.
           </span>
           <button
+            type="button"
             onClick={async () => {
               const ok = await checkBackendHealth();
               setBackendOnline(ok);
@@ -451,7 +473,7 @@ export default function DashboardPage() {
                 syncStatus(true);
               }
             }}
-            className="btn btn-xs btn-outline border-error-content/40 hover:bg-error-content/20 text-error-content font-semibold"
+            className="btn btn-xs h-7 rounded-md bg-error text-error-content border-none font-bold"
           >
             Hubungkan Ulang
           </button>
@@ -460,23 +482,24 @@ export default function DashboardPage() {
 
       {/* Quick Setup Warning if RadioBOSS Disconnected */}
       {backendOnline && !radioBossStatus?.connected && (
-        <div className="alert alert-warning text-xs py-2.5 px-4 sm:px-6 rounded-none border-x-0 border-t-0 shadow-sm flex flex-wrap items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5 font-medium">
-            ⚠️ RadioBOSS belum terhubung. Pastikan Web Remote Control aktif di
-            RadioBOSS (Port 9000).
+        <div className="bg-warning/15 border-b border-warning/30 text-warning text-xs py-2.5 px-4 sm:px-6 flex flex-wrap items-center justify-between gap-2">
+          <span className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            RadioBOSS belum terhubung. Pastikan Web Remote Control aktif di RadioBOSS (Port 9000).
           </span>
           <button
+            type="button"
             onClick={() => setIsSettingsOpen(true)}
-            className="btn btn-xs btn-outline font-semibold"
+            className="btn btn-xs h-7 rounded-md bg-warning text-warning-content border-none font-bold"
           >
             Atur Password / Port RadioBOSS
           </button>
         </div>
       )}
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Live On-Air Banner with Remote Transport Controls */}
+      {/* Main Studio Workbench */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-5">
+        {/* ZONE 1B: Master On-Air Monitor & Transport Deck */}
         <NowPlayingWidget
           nowPlaying={radioBossStatus?.now_playing}
           connected={radioBossStatus?.connected ?? false}
@@ -486,15 +509,19 @@ export default function DashboardPage() {
           isControlling={isControlling}
           onUpdateCastTitle={async (newTitle) => {
             await setLiveCastTitle(newTitle);
-            addToast("success", `Judul siaran RadioBOSS berhasil diubah ke: "${newTitle}"`);
+            addToast(
+              "success",
+              `Judul siaran RadioBOSS berhasil diubah ke: "${newTitle}"`
+            );
             syncStatus(true);
           }}
         />
 
-        {/* Two-column layout for studio workflow */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column (Search & Deck Tabs) */}
-          <div className="lg:col-span-7 space-y-6">
+        {/* 2-Column Broadcast Workbench (Zone 2 Left + Zone 3 Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* ZONE 2: Left Column (Discovery & Catalog Deck) */}
+          <div className="lg:col-span-7 space-y-5">
+            {/* Smart Omnibox Search & Studio Tracklist */}
             <SearchSection
               onSelectTrack={(track) => setSelectedTrack(track)}
               onSearch={handleSearch}
@@ -505,71 +532,56 @@ export default function DashboardPage() {
               selectedTrackId={selectedTrack?.video_id}
             />
 
-            {/* Tabbed Deck: RadioBOSS Playlist Inspector vs Riwayat Request */}
+            {/* Catalog & Rotation Switcher (Smart Recommendations + Saved Playlist Sets) */}
             <div className="space-y-3">
-              <div className="tabs tabs-box bg-base-100 border border-base-300 p-1 rounded-2xl w-full flex gap-1">
+              <div className="grid grid-cols-2 gap-1 bg-base-200 border border-base-300 p-1 rounded-lg">
                 <button
                   type="button"
-                  onClick={() => setBottomLeftTab("playlist")}
-                  className={`tab flex-1 gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold rounded-xl transition-all ${
-                    bottomLeftTab === "playlist"
-                      ? "tab-active bg-primary text-primary-content shadow-sm"
+                  onClick={() => setCatalogTab("recommendations")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-md transition-colors ${
+                    catalogTab === "recommendations"
+                      ? "bg-primary text-primary-content"
                       : "text-base-content/70 hover:text-base-content"
                   }`}
                 >
-                  <ListMusic className="h-3.5 w-3.5" />
-                  <span className="truncate">Antrean RadioBOSS</span>
-                  <span className="badge badge-accent badge-xs font-bold scale-90 text-accent-content">
-                    {playlistTracks.length}
-                  </span>
+                  <Compass className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Rekomendasi &amp; Rotasi DJ</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setBottomLeftTab("sets")}
-                  className={`tab flex-1 gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold rounded-xl transition-all ${
-                    bottomLeftTab === "sets"
-                      ? "tab-active bg-primary text-primary-content shadow-sm"
+                  onClick={() => setCatalogTab("sets")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-md transition-colors ${
+                    catalogTab === "sets"
+                      ? "bg-primary text-primary-content"
                       : "text-base-content/70 hover:text-base-content"
                   }`}
                 >
-                  <FolderHeart className="h-3.5 w-3.5" />
-                  <span className="truncate">Set Playlist</span>
-                  <span className="badge badge-accent badge-xs font-bold scale-90 text-accent-content">
-                    Koleksi
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setBottomLeftTab("history")}
-                  className={`tab flex-1 gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold rounded-xl transition-all ${
-                    bottomLeftTab === "history"
-                      ? "tab-active bg-primary text-primary-content shadow-sm"
-                      : "text-base-content/70 hover:text-base-content"
-                  }`}
-                >
-                  <History className="h-3.5 w-3.5" />
-                  <span className="truncate">Riwayat Request</span>
-                  <span className="badge badge-ghost badge-xs font-bold scale-90 text-base-content/70">
-                    {history.length}
-                  </span>
+                  <FolderHeart className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Koleksi Set Playlist</span>
                 </button>
               </div>
 
-              {bottomLeftTab === "playlist" && (
-                <PlaylistQueueWidget
-                  tracks={playlistTracks}
-                  isLoading={isPlaylistLoading}
-                  onRefresh={syncPlaylist}
-                  connected={radioBossStatus?.connected ?? false}
+              {catalogTab === "recommendations" ? (
+                <SmartRecommendationsWidget
+                  seedTrack={selectedTrack}
+                  currentArtist={
+                    radioBossStatus?.now_playing?.title
+                      ? radioBossStatus.now_playing.title.split(" - ")[0]
+                      : null
+                  }
+                  onSelectTrack={(track) => setSelectedTrack(track)}
+                  onQueueTrack={(track, pos) =>
+                    queueTrackWithGuard(track, pos, true)
+                  }
+                  isQueueing={isQueueing}
                 />
-              )}
-
-              {bottomLeftTab === "sets" && (
+              ) : (
                 <PlaylistSetsWidget
                   onSelectTrack={(track) => setSelectedTrack(track)}
-                  onQueueTrack={(track, pos) => queueTrackWithGuard(track, pos, true)}
+                  onQueueTrack={(track, pos) =>
+                    queueTrackWithGuard(track, pos, true)
+                  }
                   onAddToast={addToast}
                   isQueueing={isQueueing}
                   onQueueComplete={() => {
@@ -578,19 +590,12 @@ export default function DashboardPage() {
                   }}
                 />
               )}
-
-              {bottomLeftTab === "history" && (
-                <QueueHistory
-                  history={history}
-                  onClearHistory={handleClearHistory}
-                  onRequeue={handleRequeue}
-                />
-              )}
             </div>
           </div>
 
-          {/* Right Column (Track Preview & RadioBOSS Dispatch Card & Recommendations) */}
-          <div className="lg:col-span-5 lg:sticky lg:top-20 space-y-6">
+          {/* ZONE 3: Right Column (Cue Deck & Live On-Air Dispatch Monitor) */}
+          <div className="lg:col-span-5 lg:sticky lg:top-16 space-y-5">
+            {/* Top Module: Active Studio Cue Deck or Compact Standby Deck */}
             {selectedTrack ? (
               <TrackPreviewCard
                 track={selectedTrack}
@@ -599,79 +604,120 @@ export default function DashboardPage() {
                 activePos={activeQueuePos}
               />
             ) : (
-              <div className="card rounded-2xl bg-base-200 border border-base-300 p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-3 border-b border-base-300 pb-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-base-300 text-base-content">
-                    <Music2 className="h-5 w-5" />
+              <div className="rounded-xl bg-base-200 border border-base-300 p-5 space-y-3">
+                <div className="flex items-center justify-between border-b border-base-300 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-base-100 border border-base-300 text-base-content/70">
+                      <Headphones className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-base-content">
+                        Studio Cue &amp; Dispatch Deck
+                      </h3>
+                      <p className="text-xs text-base-content/60">
+                        Pratinjau Headphone &amp; Injeksi Antrean Siaran
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-base-content">
-                      Studio Dispatch Deck
-                    </h3>
-                    <p className="text-[11px] text-base-content/60">
-                      Pilih lagu untuk membuka pratinjau audio &amp; kontrol
-                      siaran
-                    </p>
-                  </div>
+                  <span className="px-2 py-0.5 rounded bg-base-100 border border-base-300 text-xs font-mono text-base-content/60">
+                    STANDBY
+                  </span>
                 </div>
 
-                <div className="space-y-2.5 text-xs text-base-content/70">
-                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-base-100 border border-base-300/60">
-                    <span className="badge badge-primary badge-xs mt-0.5 font-bold text-primary-content">
-                      1
-                    </span>
-                    <p className="leading-relaxed">
-                      <strong>Cari Lagu Studio:</strong> Temukan lagu resmi
-                      YouTube Music di kolom kiri atau paste URL langsung.
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-base-100 border border-base-300/60">
-                    <span className="badge badge-primary badge-xs mt-0.5 font-bold text-primary-content">
-                      2
-                    </span>
-                    <p className="leading-relaxed">
-                      <strong>Caster Preview:</strong> Dengarkan lagu di
-                      headphone sebelum mengudara untuk memastikan intro &amp;
-                      versi lagu pas.
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-base-100 border border-base-300/60">
-                    <span className="badge badge-primary badge-xs mt-0.5 font-bold text-primary-content">
-                      3
-                    </span>
-                    <p className="leading-relaxed">
-                      <strong>Kirim ke RadioBOSS:</strong> Sisipkan otomatis ke{" "}
-                      <em>Putar Berikutnya</em> atau antrean bawah dengan tag
-                      ID3 dan cover art lengkap.
-                    </p>
-                  </div>
+                <div className="p-4 rounded-lg bg-base-100 border border-base-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <p className="text-xs text-base-content/70 leading-relaxed">
+                    Klik lagu dari hasil pencarian atau daftar rekomendasi di sebelah kiri untuk memuat pratinjau audio, lirik penyiar, dan tombol kirim ke RadioBOSS.
+                  </p>
+                  {searchResults.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTrack(searchResults[0])}
+                      className="btn btn-secondary btn-sm h-8 rounded-lg text-xs font-semibold gap-1.5 shrink-0"
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                      <span>Muat Hasil #01</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Smart Song Recommendations (Up Next & Top Artist Songs) */}
-            <SmartRecommendationsWidget
-              seedTrack={selectedTrack}
-              currentArtist={
-                radioBossStatus?.now_playing?.title
-                  ? radioBossStatus.now_playing.title.split(" - ")[0]
-                  : null
-              }
-              onSelectTrack={(track) => setSelectedTrack(track)}
-              onQueueTrack={(track, pos) => queueTrackWithGuard(track, pos, true)}
-              isQueueing={isQueueing}
-            />
+            {/* Bottom Module: Live RadioBOSS Queue & Request Log right beneath Dispatch controls */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-1 bg-base-200 border border-base-300 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setQueueTab("playlist")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-md transition-colors ${
+                    queueTab === "playlist"
+                      ? "bg-primary text-primary-content"
+                      : "text-base-content/70 hover:text-base-content"
+                  }`}
+                >
+                  <ListMusic className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Antrean RadioBOSS</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-xs font-mono tabular-nums ${
+                      queueTab === "playlist"
+                        ? "bg-primary-content/15 text-primary-content"
+                        : "bg-base-100 text-base-content/70"
+                    }`}
+                  >
+                    {playlistTracks.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setQueueTab("history")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-md transition-colors ${
+                    queueTab === "history"
+                      ? "bg-primary text-primary-content"
+                      : "text-base-content/70 hover:text-base-content"
+                  }`}
+                >
+                  <History className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Riwayat Request</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-xs font-mono tabular-nums ${
+                      queueTab === "history"
+                        ? "bg-primary-content/15 text-primary-content"
+                        : "bg-base-100 text-base-content/70"
+                    }`}
+                  >
+                    {history.length}
+                  </span>
+                </button>
+              </div>
+
+              {queueTab === "playlist" ? (
+                <PlaylistQueueWidget
+                  tracks={playlistTracks}
+                  isLoading={isPlaylistLoading}
+                  onRefresh={syncPlaylist}
+                  connected={radioBossStatus?.connected ?? false}
+                />
+              ) : (
+                <QueueHistory
+                  history={history}
+                  onClearHistory={handleClearHistory}
+                  onRequeue={handleRequeue}
+                />
+              )}
+            </div>
           </div>
         </div>
       </main>
 
-      {/* Clean Minimalist Studio Footer */}
-      <footer className="py-4 px-6 border-t border-base-200 text-center text-xs text-base-content/40">
+      {/* Studio Console Footer */}
+      <footer className="py-4 px-6 border-t border-base-300 text-center text-xs text-base-content/60">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="flex items-center gap-2">
-            <span className="font-semibold text-base-content/70">Radio Caster Bridge</span>
+            <span className="font-semibold text-base-content/80">
+              Radio Caster Bridge
+            </span>
             <span>•</span>
-            <span className="font-mono">v{APP_VERSION}</span>
+            <span className="font-mono tabular-nums">v{APP_VERSION}</span>
           </p>
           <p>
             Crafted by{" "}
@@ -679,7 +725,7 @@ export default function DashboardPage() {
               href="https://hi.oktaa.my.id"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-base-content/70 hover:text-primary transition-colors underline decoration-base-content/20"
+              className="font-semibold text-base-content/80 hover:text-primary transition-colors underline decoration-base-content/30"
             >
               Tayen
             </a>
@@ -687,7 +733,7 @@ export default function DashboardPage() {
         </div>
       </footer>
 
-      {/* Toast Notification Container */}  
+      {/* Toast Notification Container */}
       <ToastNotification toasts={toasts} onDismiss={dismissToast} />
 
       {/* Settings Modal */}

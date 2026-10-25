@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
-  Sparkles,
   Radio,
   User,
   Plus,
@@ -13,11 +12,13 @@ import {
   Clock,
   Flame,
   Zap,
-  Smile,
+  Compass,
   Check,
   Trophy,
   HardDrive,
   Headphones,
+  Music2,
+  FastForward,
 } from "lucide-react";
 import {
   TrackItem,
@@ -45,11 +46,11 @@ interface SmartRecommendationsWidgetProps {
 }
 
 const MOOD_OPTIONS = [
-  { id: "morning", label: "☀️ Semangat", query: "indonesia pop hits upbeat semangat" },
-  { id: "chill", label: "☕ Santai", query: "chill acoustic pop indonesia" },
-  { id: "tophits", label: "🇮🇩 Top Indo", query: "lagu pop indonesia terbaru hits" },
-  { id: "melow", label: "💔 Galau", query: "lagu galau indonesia viral sedih" },
-  { id: "nostalgia", label: "📻 2000s", query: "pop indonesia hits tahun 2000an" },
+  { id: "morning", label: "Semangat Pagi", query: "indonesia pop hits upbeat semangat" },
+  { id: "chill", label: "Akustik Santai", query: "chill acoustic pop indonesia" },
+  { id: "tophits", label: "Top Hits Indo", query: "lagu pop indonesia terbaru hits" },
+  { id: "melow", label: "Pop Melankolis", query: "lagu galau indonesia viral sedih" },
+  { id: "nostalgia", label: "Era 2000an", query: "pop indonesia hits tahun 2000an" },
 ];
 
 export function SmartRecommendationsWidget({
@@ -67,7 +68,6 @@ export function SmartRecommendationsWidget({
   const [moodTracks, setMoodTracks] = useState<TrackItem[]>([]);
   const [selectedMoodId, setSelectedMoodId] = useState<string>("morning");
 
-  // DJ Top Chart & Smart Recs states
   const [djChart, setDjChart] = useState<CachedTrackItem[]>([]);
   const [djTotalPlays, setDjTotalPlays] = useState<number>(0);
   const [djTopArtists, setDjTopArtists] = useState<DJArtistStat[]>([]);
@@ -80,14 +80,11 @@ export function SmartRecommendationsWidget({
   const [isLoadingDJChart, setIsLoadingDJChart] = useState<boolean>(false);
   const [isLoadingDJRecs, setIsLoadingDJRecs] = useState<boolean>(false);
 
-  // Audio preview state
   const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
-  // Auto-fill state
   const [isAutoFilling, setIsAutoFilling] = useState<boolean>(false);
 
-  // Save to set dropdown state
   const [sets, setSets] = useState<PlaylistSet[]>([]);
   const [activeSetDropdownTrackId, setActiveSetDropdownTrackId] = useState<string | null>(null);
   const [addedSetNotice, setAddedSetNotice] = useState<string | null>(null);
@@ -100,7 +97,7 @@ export function SmartRecommendationsWidget({
   const [prevMoodKey, setPrevMoodKey] = useState<string | null>(null);
   const [prevTab, setPrevTab] = useState(activeTab);
 
-  // Synchronize loading states during render phase (avoids cascading render warning in effects)
+  // Synchronize loading states during render phase
   if (activeTab !== prevTab) {
     setPrevTab(activeTab);
     if (activeTab === "djchart") {
@@ -131,7 +128,6 @@ export function SmartRecommendationsWidget({
     setPrevMoodKey(null);
   }
 
-  // Load playlist sets for quick "+Set" picker
   const loadSetsList = () => {
     fetchPlaylistSets()
       .then((data) => setSets(data))
@@ -142,7 +138,6 @@ export function SmartRecommendationsWidget({
     loadSetsList();
   }, []);
 
-  // Fetch recommendations whenever seedTrack changes
   useEffect(() => {
     if (!seedTrack?.video_id) return;
 
@@ -163,7 +158,6 @@ export function SmartRecommendationsWidget({
     };
   }, [seedTrack?.video_id]);
 
-  // Fetch artist top tracks
   useEffect(() => {
     if (!effectiveArtist) return;
 
@@ -184,7 +178,6 @@ export function SmartRecommendationsWidget({
     };
   }, [effectiveArtist]);
 
-  // Fetch mood tracks
   useEffect(() => {
     if (activeTab !== "mood") return;
 
@@ -208,7 +201,6 @@ export function SmartRecommendationsWidget({
     };
   }, [activeTab, selectedMoodId]);
 
-  // Fetch DJ Top Chart
   useEffect(() => {
     if (activeTab !== "djchart") return;
 
@@ -230,7 +222,6 @@ export function SmartRecommendationsWidget({
     };
   }, [activeTab]);
 
-  // Fetch DJ Smart Recommendations
   useEffect(() => {
     if (activeTab !== "djrecs") return;
 
@@ -327,7 +318,6 @@ export function SmartRecommendationsWidget({
     }
   };
 
-  // Instant Auto-Fill Queue: Queues top 3 songs from active recommendation list
   const handleAutoFill = async () => {
     let toQueue: (TrackItem | CachedTrackItem)[] = [];
     if (activeTab === "djrecs") {
@@ -352,11 +342,11 @@ export function SmartRecommendationsWidget({
   const handleSaveTrackToSet = async (setId: string, track: TrackItem) => {
     try {
       await addTrackToPlaylistSet(setId, track);
-      setAddedSetNotice(`Tersimpan ke set!`);
+      setAddedSetNotice("Lagu berhasil ditambahkan ke set.");
       setTimeout(() => setAddedSetNotice(null), 2000);
       setActiveSetDropdownTrackId(null);
     } catch {
-      setAddedSetNotice(`Gagal menyimpan`);
+      setAddedSetNotice("Gagal menyimpan ke set.");
       setTimeout(() => setAddedSetNotice(null), 2000);
     }
   };
@@ -382,8 +372,10 @@ export function SmartRecommendationsWidget({
       : isLoadingMood;
 
   return (
-    <div className="card rounded-2xl bg-base-200 border border-base-300 p-5 shadow-sm space-y-4">
-      {/* Hidden audio element for preview */}
+    <section
+      aria-label="Katalog Rekomendasi & Rotasi DJ"
+      className="rounded-xl bg-base-200 border border-base-300 p-4 sm:p-5 space-y-4"
+    >
       <audio
         ref={audioRef}
         onEnded={handleAudioEnded}
@@ -391,44 +383,32 @@ export function SmartRecommendationsWidget({
         className="hidden"
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-base-300 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-base-300 text-base-content">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <div>
-            <h3 className="font-bold text-sm text-base-content flex items-center gap-1.5">
-              <span>Rekomendasi Cerdas</span>
-              <span className="badge badge-accent badge-xs scale-90 text-accent-content">
-                {activeTab === "djchart"
-                  ? "Top Chart DJ"
-                  : activeTab === "djrecs"
-                  ? "DJ Taste"
-                  : "Auto Radio"}
-              </span>
-            </h3>
-            <p className="text-[10px] text-base-content/60">
-              {activeTab === "djchart"
-                ? `Tangga lagu terpopuler siaran (${djTotalPlays} total putar)`
-                : activeTab === "djrecs"
-                ? "Rotasi andalan & lagu sesuai selera DJ"
-                : "Saran lagu Up Next, katalog artis, & mood siaran"}
-            </p>
-          </div>
+      {/* Section Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 pb-3">
+        <div>
+          <h3 className="font-bold text-sm text-base-content">
+            Rotasi Musik &amp; Rekomendasi Siaran
+          </h3>
+          <p className="text-xs text-base-content/70">
+            {activeTab === "djchart"
+              ? `Tangga lagu paling sering diputar di studio (${djTotalPlays} total putar)`
+              : activeTab === "djrecs"
+              ? "Lagu rotasi siap putar & kesesuaian artis favorit penyiar"
+              : "Saran lagu lanjutan (Up Next), katalog artis aktif, & program suasana siaran"}
+          </p>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           {activeList.length > 0 && (
             <button
               type="button"
               onClick={handleAutoFill}
               disabled={isAutoFilling || isQueueing}
-              className="btn btn-secondary btn-xs gap-1 font-bold shadow-sm"
-              title="Antrekan 3 lagu rekomendasi teratas secara otomatis ke RadioBOSS"
+              className="btn btn-secondary btn-xs h-8 px-3 rounded-lg border border-base-300 gap-1.5 text-xs font-semibold text-secondary-content hover:bg-base-300"
+              title="Antrekan 3 lagu teratas dari daftar ini ke RadioBOSS"
             >
-              <Zap className="h-3 w-3" />
-              <span>{isAutoFilling ? "Mengantrekan..." : "Isi 3 Lagu"}</span>
+              <Zap className="h-3.5 w-3.5 text-primary" />
+              <span>{isAutoFilling ? "Mengirim 3 Lagu..." : "Isi 3 Lagu"}</span>
             </button>
           )}
 
@@ -436,88 +416,88 @@ export function SmartRecommendationsWidget({
             type="button"
             onClick={refreshActiveTab}
             disabled={isLoading}
-            className="btn btn-ghost btn-xs text-base-content/60 hover:text-base-content gap-1"
-            title="Perbarui rekomendasi"
+            className="btn btn-ghost btn-xs h-8 px-2.5 rounded-lg bg-base-100 border border-base-300 text-xs font-medium text-base-content/80 hover:text-base-content gap-1.5"
+            title="Perbarui daftar"
           >
             <RefreshCw
-              className={`h-3 w-3 ${isLoading ? "animate-spin text-secondary" : ""}`}
+              className={`h-3.5 w-3.5 ${isLoading ? "animate-spin text-primary" : ""}`}
             />
-            <span className="text-[10px]">Refresh</span>
+            <span>Segarkan</span>
           </button>
         </div>
       </div>
 
-      {/* 5 Tabs Switcher (Scrollable on small screens) */}
-      <div className="tabs tabs-box bg-base-300/50 p-1 rounded-xl flex gap-1 overflow-x-auto no-scrollbar flex-nowrap">
+      {/* 5 Mode Switcher Tabs */}
+      <div className="bg-base-100 border border-base-300 p-1 rounded-lg flex gap-1 overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab("upnext")}
-          className={`tab shrink-0 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+          className={`flex-1 min-w-fit inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold rounded-md transition-colors ${
             activeTab === "upnext"
-              ? "tab-active bg-secondary text-secondary-content shadow-sm"
-              : "text-base-content/70 hover:text-base-content"
+              ? "bg-primary text-primary-content font-bold"
+              : "text-base-content/70 hover:text-base-content hover:bg-base-200"
           }`}
         >
-          <Radio className="h-3 w-3 shrink-0" />
+          <Radio className="h-3.5 w-3.5 shrink-0" />
           <span>Up Next</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("djchart")}
-          className={`tab shrink-0 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+          className={`flex-1 min-w-fit inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold rounded-md transition-colors ${
             activeTab === "djchart"
-              ? "tab-active bg-secondary text-secondary-content shadow-sm"
-              : "text-base-content/70 hover:text-base-content"
+              ? "bg-primary text-primary-content font-bold"
+              : "text-base-content/70 hover:text-base-content hover:bg-base-200"
           }`}
         >
-          <Trophy className="h-3 w-3 shrink-0 text-warning" />
+          <Trophy className="h-3.5 w-3.5 shrink-0" />
           <span>Top Chart DJ</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("djrecs")}
-          className={`tab shrink-0 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+          className={`flex-1 min-w-fit inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold rounded-md transition-colors ${
             activeTab === "djrecs"
-              ? "tab-active bg-secondary text-secondary-content shadow-sm"
-              : "text-base-content/70 hover:text-base-content"
+              ? "bg-primary text-primary-content font-bold"
+              : "text-base-content/70 hover:text-base-content hover:bg-base-200"
           }`}
         >
-          <Headphones className="h-3 w-3 shrink-0 text-accent" />
-          <span>Rekomendasi DJ</span>
+          <Headphones className="h-3.5 w-3.5 shrink-0" />
+          <span>Rotasi DJ</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("artist")}
-          className={`tab shrink-0 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+          className={`flex-1 min-w-fit inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold rounded-md transition-colors ${
             activeTab === "artist"
-              ? "tab-active bg-secondary text-secondary-content shadow-sm"
-              : "text-base-content/70 hover:text-base-content"
+              ? "bg-primary text-primary-content font-bold"
+              : "text-base-content/70 hover:text-base-content hover:bg-base-200"
           }`}
         >
-          <User className="h-3 w-3 shrink-0" />
-          <span>Top Artis</span>
+          <User className="h-3.5 w-3.5 shrink-0" />
+          <span>Katalog Artis</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("mood")}
-          className={`tab shrink-0 gap-1 text-[11px] font-semibold rounded-lg transition-all ${
+          className={`flex-1 min-w-fit inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold rounded-md transition-colors ${
             activeTab === "mood"
-              ? "tab-active bg-secondary text-secondary-content shadow-sm"
-              : "text-base-content/70 hover:text-base-content"
+              ? "bg-primary text-primary-content font-bold"
+              : "text-base-content/70 hover:text-base-content hover:bg-base-200"
           }`}
         >
-          <Smile className="h-3 w-3 shrink-0" />
-          <span>Mood</span>
+          <Compass className="h-3.5 w-3.5 shrink-0" />
+          <span>Program Suasana</span>
         </button>
       </div>
 
-      {/* Mood Selector Chips (Visible when Mood tab is active) */}
+      {/* Mood Program Selector (No emojis per R-04) */}
       {activeTab === "mood" && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {MOOD_OPTIONS.map((m) => {
             const isSelected = selectedMoodId === m.id;
             return (
@@ -525,10 +505,10 @@ export function SmartRecommendationsWidget({
                 key={m.id}
                 type="button"
                 onClick={() => setSelectedMoodId(m.id)}
-                className={`btn btn-xs rounded-lg text-[10px] shrink-0 font-medium transition-all ${
+                className={`btn btn-xs h-8 px-3 rounded-md text-xs shrink-0 transition-colors ${
                   isSelected
-                    ? "btn-secondary text-secondary-content font-bold shadow-sm"
-                    : "btn-ghost bg-base-100 text-base-content/70 hover:bg-base-300"
+                    ? "bg-secondary border border-primary/50 text-base-content font-bold"
+                    : "bg-base-100 border border-base-300 text-base-content/70 hover:text-base-content"
                 }`}
               >
                 <span>{m.label}</span>
@@ -538,181 +518,177 @@ export function SmartRecommendationsWidget({
         </div>
       )}
 
-      {/* DJ Top Artists Pill Row (Visible in Rekomendasi DJ tab) */}
+      {/* DJ Top Artists Readout */}
       {activeTab === "djrecs" && djTopArtists.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin text-[10px]">
-          <span className="text-base-content/50 font-medium shrink-0">
-            Selera Artis:
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+          <span className="text-base-content/70 font-medium shrink-0">
+            Frekuensi Artis Tertinggi:
           </span>
           {djTopArtists.map((a) => (
             <span
               key={a.artist}
-              className="badge badge-outline border-base-300 badge-xs font-semibold gap-1 py-1.5 shrink-0 text-base-content/80"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-base-100 border border-base-300 shrink-0 text-xs font-medium text-base-content"
             >
               <span>{a.artist}</span>
-              <span className="text-warning font-bold">{a.play_count}x</span>
+              <span className="font-mono font-bold text-primary">{a.play_count}x</span>
             </span>
           ))}
         </div>
       )}
 
-      {/* Notification Toast for Set saving */}
+      {/* Feedback Banner for Set Saving */}
       {addedSetNotice && (
-        <div className="alert alert-success text-[11px] py-1 px-3 rounded-lg flex items-center justify-between shadow-sm animate-fade-in">
-          <span className="flex items-center gap-1 font-semibold">
-            <Check className="h-3 w-3" />
+        <div className="alert alert-success text-xs py-2 px-3 rounded-lg flex items-center justify-between font-semibold text-success-content">
+          <span className="flex items-center gap-1.5">
+            <Check className="h-4 w-4" />
             <span>{addedSetNotice}</span>
           </span>
         </div>
       )}
 
-      {/* Content List */}
+      {/* Single-Column Tracklist Content */}
       {isLoading ? (
-        <div className="py-8 text-center space-y-2">
-          <span className="loading loading-spinner loading-sm text-secondary" />
-          <p className="text-xs text-base-content/60">
+        <div className="py-8 text-center space-y-2 rounded-lg bg-base-100 border border-base-300">
+          <span className="loading loading-spinner loading-sm text-primary" />
+          <p className="text-xs text-base-content/70">
             {activeTab === "upnext"
-              ? "Menyesuaikan vibe & rekomendasi..."
+              ? "Menyusun daftar lagu Up Next yang selaras..."
               : activeTab === "artist"
-              ? `Mengambil lagu populer ${effectiveArtist}...`
+              ? `Memuat katalog rilis resmi ${effectiveArtist}...`
               : activeTab === "djchart"
-              ? "Menghitung tangga lagu siaran DJ..."
+              ? "Menghitung statistik tangga lagu studio..."
               : activeTab === "djrecs"
-              ? "Menganalisis rotasi & selera musik DJ..."
-              : "Mengambil katalog lagu mood siaran..."}
+              ? "Memindai histori rotasi & kecocokan musik penyiar..."
+              : "Memuat daftar lagu program siaran..."}
           </p>
         </div>
       ) : activeList.length === 0 ? (
-        <div className="py-8 text-center space-y-1 bg-base-100/50 rounded-xl border border-dashed border-base-300">
-          <Flame className="h-6 w-6 text-base-content/30 mx-auto" />
-          <p className="text-xs text-base-content/60 font-medium">
+        <div className="py-8 px-4 text-center space-y-1.5 bg-base-100 rounded-lg border border-base-300">
+          <Music2 className="h-6 w-6 text-base-content/60 mx-auto" />
+          <p className="text-xs text-base-content font-semibold">
             {activeTab === "djchart"
-              ? "Belum ada tangga lagu DJ."
+              ? "Belum Ada Statistik Tangga Lagu DJ"
               : activeTab === "djrecs"
-              ? "Belum ada riwayat putar yang cukup untuk rekomendasi DJ."
-              : "Belum ada rekomendasi lagu."}
+              ? "Data Riwayat Putar Belum Cukup"
+              : "Daftar Rekomendasi Belum Tersedia"}
           </p>
-          <p className="text-[10px] text-base-content/40">
+          <p className="text-xs text-base-content/70">
             {activeTab === "djchart" || activeTab === "djrecs"
-              ? "Putar lagu ke RadioBOSS untuk mulai mencatat tangga lagu studio Anda."
-              : "Pilih lagu di kolom kiri untuk memicu rekomendasi otomatis."}
+              ? "Kirim dan putar lagu ke RadioBOSS untuk mulai merekam frekuensi rotasi studio."
+              : "Pilih satu lagu dari hasil pencarian di atas untuk memicu rekomendasi terkait."}
           </p>
         </div>
       ) : (
-        <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+        <div className="divide-y divide-base-300 rounded-lg border border-base-300 bg-base-100 max-h-96 overflow-y-auto">
           {activeList.map((item, idx) => {
             const track = item as TrackItem & Partial<CachedTrackItem>;
             const isPlayingPreview = previewTrackId === track.video_id;
             const isSetDropdownOpen = activeSetDropdownTrackId === track.video_id;
             const rankNum = track.rank ?? idx + 1;
+            const rankStr = String(rankNum).padStart(2, "0");
 
             return (
               <div
                 key={track.video_id}
-                className="group relative flex items-center justify-between gap-2.5 p-2 rounded-xl bg-base-100 hover:bg-base-300/40 border border-base-300/60 transition-colors"
+                className="group relative flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-base-300/60 transition-colors"
               >
-                {/* Rank Badge for DJ Top Chart */}
-                {activeTab === "djchart" && (
-                  <div className="shrink-0 flex items-center justify-center w-6 text-center">
-                    {rankNum === 1 ? (
-                      <span className="badge bg-warning text-black font-black text-[10px] h-5 w-5 p-0 rounded-md shadow-sm">
-                        1
-                      </span>
-                    ) : rankNum === 2 ? (
-                      <span className="badge bg-slate-300 text-black font-bold text-[10px] h-5 w-5 p-0 rounded-md">
-                        2
-                      </span>
-                    ) : rankNum === 3 ? (
-                      <span className="badge bg-amber-700/80 text-white font-bold text-[10px] h-5 w-5 p-0 rounded-md">
-                        3
-                      </span>
+                {/* Left: Tabular Index/Rank + Artwork + Track Info */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <span
+                    className={`font-mono text-xs font-bold w-6 shrink-0 text-center rounded py-0.5 ${
+                      activeTab === "djchart" && rankNum <= 3
+                        ? "bg-primary/20 text-primary border border-primary/40"
+                        : "text-base-content/60"
+                    }`}
+                  >
+                    {rankStr}
+                  </span>
+
+                  <div className="relative shrink-0 w-10 h-10 rounded-md overflow-hidden bg-base-300 border border-base-300">
+                    {track.thumbnail_url ? (
+                      <Image
+                        src={track.thumbnail_url}
+                        alt={track.title}
+                        width={40}
+                        height={40}
+                        unoptimized
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <span className="text-[11px] font-mono font-bold text-base-content/40">
-                        {rankNum}
-                      </span>
+                      <div className="w-full h-full flex items-center justify-center text-base-content/60">
+                        <Music2 className="h-4 w-4" />
+                      </div>
                     )}
                   </div>
-                )}
 
-                {/* Track Thumbnail & Preview Trigger */}
-                <div className="relative shrink-0 w-11 h-11 rounded-lg overflow-hidden bg-base-300">
-                  {track.thumbnail_url ? (
-                    <Image
-                      src={track.thumbnail_url}
-                      alt={track.title}
-                      width={44}
-                      height={44}
-                      unoptimized
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-base-content/40 text-xs">
-                      🎵
+                  {/* Clickable Title & Artist to Load into Cue Deck */}
+                  <div
+                    onClick={() => onSelectTrack(track)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onSelectTrack(track);
+                      }
+                    }}
+                    className="min-w-0 flex-1 cursor-pointer"
+                    title="Klik untuk memuat ke Cue Deck"
+                  >
+                    <h4 className="text-sm font-semibold text-base-content truncate group-hover:text-primary transition-colors">
+                      {track.title}
+                    </h4>
+                    <div className="flex items-center gap-2 text-xs text-base-content/70 truncate mt-0.5">
+                      <span className="truncate">
+                        {track.artists.join(", ") || "YouTube Music"}
+                      </span>
+
+                      {track.play_count !== undefined && track.play_count > 0 && (
+                        <span className="inline-flex items-center gap-1 font-mono text-warning font-semibold shrink-0">
+                          <Flame className="h-3 w-3 fill-current" />
+                          <span>{track.play_count}x</span>
+                        </span>
+                      )}
+
+                      {track.is_cached && (
+                        <span className="inline-flex items-center gap-1 text-success font-medium shrink-0">
+                          <HardDrive className="h-3 w-3" />
+                          <span>Cache</span>
+                        </span>
+                      )}
+
+                      {track.last_played_relative && (
+                        <span className="text-base-content/60 font-mono shrink-0 hidden sm:inline-flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{track.last_played_relative}</span>
+                        </span>
+                      )}
                     </div>
-                  )}
+                  </div>
+                </div>
 
-                  {/* Headphone Preview Button Overlay */}
+                {/* Right: Always-Accessible Controls (Preview, +Set, Next, Queue) */}
+                <div className="flex items-center gap-1.5 shrink-0 relative">
+                  {/* Persistent Headphone Preview Button (fixes hover-only mobile issue) */}
                   <button
                     type="button"
                     onClick={() => handleTogglePreview(track)}
-                    className={`absolute inset-0 flex items-center justify-center bg-black/60 transition-opacity ${
+                    aria-label={isPlayingPreview ? "Jeda pratinjau" : "Dengarkan di headphone"}
+                    className={`btn btn-xs h-8 w-8 p-0 rounded-md border ${
                       isPlayingPreview
-                        ? "opacity-100 text-secondary"
-                        : "opacity-0 group-hover:opacity-100 text-white"
+                        ? "bg-accent text-accent-content border-accent"
+                        : "bg-base-200 border-base-300 text-base-content/80 hover:text-base-content hover:bg-base-300"
                     }`}
-                    title={isPlayingPreview ? "Pause Headphone Preview" : "Dengarkan di Headphone"}
+                    title={isPlayingPreview ? "Jeda Pratinjau Headphone" : "Pratinjau Headphone"}
                   >
                     {isPlayingPreview ? (
-                      <Pause className="h-4 w-4 fill-current animate-pulse" />
+                      <Pause className="h-3.5 w-3.5 fill-current" />
                     ) : (
-                      <Play className="h-4 w-4 fill-current ml-0.5" />
+                      <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
                     )}
                   </button>
-                </div>
 
-                {/* Track Details */}
-                <div
-                  onClick={() => onSelectTrack(track)}
-                  className="min-w-0 flex-1 cursor-pointer"
-                  title="Klik untuk memilih ke Dispatch Deck"
-                >
-                  <h4 className="text-xs font-bold text-base-content truncate group-hover:text-white transition-colors">
-                    {track.title}
-                  </h4>
-                  <div className="flex items-center gap-1.5 text-[10px] text-base-content/60 truncate mt-0.5">
-                    <span className="truncate">
-                      {track.artists.join(", ") || "YouTube Music"}
-                    </span>
-
-                    {/* Play count badge */}
-                    {track.play_count !== undefined && track.play_count > 0 && (
-                      <span className="inline-flex items-center gap-0.5 text-warning font-semibold shrink-0">
-                        <Flame className="h-2.5 w-2.5 fill-current" />
-                        <span>{track.play_count}x</span>
-                      </span>
-                    )}
-
-                    {/* Local Cache badge */}
-                    {track.is_cached && (
-                      <span className="badge badge-success/20 text-success text-[9px] gap-0.5 font-semibold py-0 h-4 shrink-0">
-                        <HardDrive className="h-2 w-2" />
-                        <span>Cache</span>
-                      </span>
-                    )}
-
-                    {/* Last played relative time */}
-                    {track.last_played_relative && (
-                      <span className="text-base-content/40 shrink-0 hidden sm:inline-flex items-center gap-0.5">
-                        <Clock className="h-2 w-2" />
-                        <span>{track.last_played_relative}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center gap-1 shrink-0 relative">
-                  {/* Quick Save to Set Dropdown */}
+                  {/* Save to Playlist Set */}
                   <div className="relative">
                     <button
                       type="button"
@@ -722,20 +698,20 @@ export function SmartRecommendationsWidget({
                           isSetDropdownOpen ? null : track.video_id
                         );
                       }}
-                      className="btn btn-ghost btn-xs text-[10px] text-base-content/60 hover:text-accent p-1 h-7 min-h-0"
-                      title="Simpan ke Playlist Set"
+                      className="btn btn-xs h-8 px-2 rounded-md bg-base-200 border border-base-300 text-xs font-semibold text-base-content/80 hover:text-base-content hover:bg-base-300"
+                      title="Simpan ke Set Playlist"
                     >
                       +Set
                     </button>
 
                     {isSetDropdownOpen && (
-                      <div className="absolute right-0 top-8 z-50 w-44 bg-base-100 border border-base-300 rounded-xl shadow-2xl p-1.5 space-y-1">
-                        <p className="text-[10px] font-bold text-base-content/50 px-2 py-0.5 uppercase tracking-wider">
-                          Pilih Playlist Set:
+                      <div className="absolute right-0 top-9 z-50 w-48 bg-base-200 border border-base-300 rounded-lg shadow-2xl p-2 space-y-1">
+                        <p className="text-xs font-bold text-base-content/70 px-2 py-1">
+                          Simpan ke Set Playlist:
                         </p>
                         {sets.length === 0 ? (
-                          <p className="text-[10px] text-base-content/50 px-2 py-1">
-                            Belum ada set dibuat di tab Set Playlist.
+                          <p className="text-xs text-base-content/70 px-2 py-1.5">
+                            Belum ada set dibuat di tab Set Koleksi.
                           </p>
                         ) : (
                           sets.map((s) => (
@@ -743,10 +719,10 @@ export function SmartRecommendationsWidget({
                               key={s.id}
                               type="button"
                               onClick={() => handleSaveTrackToSet(s.id, track)}
-                              className="w-full text-left text-xs px-2 py-1.5 rounded-lg hover:bg-base-200 text-base-content truncate transition-colors flex items-center justify-between"
+                              className="w-full text-left text-xs px-2.5 py-1.5 rounded-md hover:bg-base-300 text-base-content truncate transition-colors flex items-center justify-between gap-2"
                             >
-                              <span className="truncate">{s.name}</span>
-                              <span className="badge badge-ghost border border-base-300 badge-xs font-mono scale-90">
+                              <span className="truncate font-medium">{s.name}</span>
+                              <span className="font-mono text-xs text-base-content/70">
                                 {s.track_count}
                               </span>
                             </button>
@@ -756,25 +732,28 @@ export function SmartRecommendationsWidget({
                     )}
                   </div>
 
+                  {/* Play Next (pos=1) */}
                   <button
                     type="button"
                     onClick={() => onQueueTrack(track, 1)}
                     disabled={isQueueing}
-                    className="btn btn-ghost btn-xs text-[10px] text-secondary hover:bg-secondary/10 p-1.5 h-7 min-h-0 font-semibold"
-                    title="Mainkan selanjutnya di RadioBOSS (pos=1)"
+                    className="btn btn-primary btn-xs h-8 px-2.5 rounded-md text-xs font-bold text-primary-content gap-1"
+                    title="Putar berikutnya di RadioBOSS (pos=1)"
                   >
-                    Next
+                    <FastForward className="h-3 w-3 fill-current" />
+                    <span>Next</span>
                   </button>
 
+                  {/* Queue Bottom (pos=-1) */}
                   <button
                     type="button"
                     onClick={() => onQueueTrack(track, -1)}
                     disabled={isQueueing}
-                    className="btn btn-primary btn-xs text-[10px] gap-1 px-2 h-7 min-h-0 font-bold shadow-sm"
+                    className="btn btn-secondary btn-xs h-8 px-2.5 rounded-md border border-base-300 text-xs font-semibold text-secondary-content hover:bg-base-300 gap-1"
                     title="Tambahkan ke antrean paling bawah (pos=-1)"
                   >
-                    <Plus className="h-3 w-3" />
-                    <span>Antrean</span>
+                    <Plus className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Antrean</span>
                   </button>
                 </div>
               </div>
@@ -782,6 +761,6 @@ export function SmartRecommendationsWidget({
           })}
         </div>
       )}
-    </div>
+    </section>
   );
 }

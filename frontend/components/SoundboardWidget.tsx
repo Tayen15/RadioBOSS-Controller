@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Volume2,
   Square,
-  Sparkles,
   Radio,
   Zap,
   Flame,
@@ -13,6 +12,7 @@ import {
   RadioTower,
   BellRing,
   Headphones,
+  Disc,
 } from "lucide-react";
 import { CartItem } from "@/lib/types";
 import { triggerRadioBossCart, stopAllRadioBossCarts } from "@/lib/api";
@@ -89,6 +89,9 @@ interface SoundboardWidgetProps {
   onNotify?: (type: "success" | "error", message: string) => void;
 }
 
+/**
+ * 8-Pad Studio Cart Wall for triggering RadioBOSS cart slots or headphone synth cues.
+ */
 export function SoundboardWidget({
   connected,
   onNotify,
@@ -101,7 +104,9 @@ export function SoundboardWidget({
   const playLocalSynthEffect = (id: number) => {
     try {
       const AudioCtx =
-        window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
       const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -112,7 +117,6 @@ export function SoundboardWidget({
       const now = ctx.currentTime;
 
       if (id === 1) {
-        // Station ID - Uplifting major arpeggio
         osc.type = "sine";
         osc.frequency.setValueAtTime(440, now);
         osc.frequency.setValueAtTime(554.37, now + 0.12);
@@ -123,7 +127,6 @@ export function SoundboardWidget({
         osc.start(now);
         osc.stop(now + 0.9);
       } else if (id === 2) {
-        // Sweeper - Whoosh drop
         osc.type = "sawtooth";
         osc.frequency.setValueAtTime(1200, now);
         osc.frequency.exponentialRampToValueAtTime(150, now + 0.4);
@@ -132,7 +135,6 @@ export function SoundboardWidget({
         osc.start(now);
         osc.stop(now + 0.45);
       } else if (id === 4) {
-        // Air Horn - Brass dual pulse
         osc.type = "sawtooth";
         osc.frequency.setValueAtTime(370, now);
         gain.gain.setValueAtTime(0.3, now);
@@ -142,7 +144,6 @@ export function SoundboardWidget({
         osc.start(now);
         osc.stop(now + 0.6);
       } else {
-        // Crisp chime/drop for other carts
         osc.type = "triangle";
         osc.frequency.setValueAtTime(587.33, now);
         osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
@@ -160,7 +161,6 @@ export function SoundboardWidget({
     async (cart: CartItem) => {
       setActiveCartId(cart.id);
 
-      // Auto reset visual trigger animation after 1.4s
       setTimeout(() => {
         setActiveCartId((curr) => (curr === cart.id ? null : curr));
       }, 1400);
@@ -172,18 +172,25 @@ export function SoundboardWidget({
 
       if (mode === "radioboss" && !connected) {
         playLocalSynthEffect(cart.id);
-        onNotify?.("error", "RadioBOSS terputus. Memutar efek di headphone lokal.");
+        onNotify?.(
+          "error",
+          "RadioBOSS terputus. Memutar efek di headphone lokal."
+        );
         return;
       }
 
-      // RadioBOSS remote mode
       try {
         await triggerRadioBossCart(cart.id);
-        onNotify?.("success", `Cart #${cart.id} (${cart.label}) dipicu di RadioBOSS!`);
+        onNotify?.(
+          "success",
+          `Cart #${cart.id} (${cart.label}) dipicu di RadioBOSS!`
+        );
       } catch (err) {
-        // Fallback: also play local sound so operator is not left in silence
         playLocalSynthEffect(cart.id);
-        const msg = err instanceof Error ? err.message : "Gagal memicu Cart di RadioBOSS.";
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Gagal memicu Cart di RadioBOSS.";
         onNotify?.("error", msg);
       }
     },
@@ -199,7 +206,8 @@ export function SoundboardWidget({
         onNotify?.("success", "Semua jingle cart dihentikan.");
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Gagal menghentikan cart.";
+      const msg =
+        err instanceof Error ? err.message : "Gagal menghentikan cart.";
       onNotify?.("error", msg);
     } finally {
       setIsStopping(false);
@@ -209,7 +217,6 @@ export function SoundboardWidget({
   // Keyboard shortcut listener (Keys 1..8)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Avoid firing when typing in an input
       if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) {
         return;
       }
@@ -242,138 +249,121 @@ export function SoundboardWidget({
       case 7:
         return <Megaphone className="h-4 w-4" />;
       default:
-        return <Sparkles className="h-4 w-4" />;
+        return <Disc className="h-4 w-4" />;
     }
   };
 
   return (
-    <div className="card bg-base-200 border border-base-300 shadow-md">
-      <div className="card-body p-4 sm:p-5 space-y-4">
-        {/* Header Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Volume2 className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-base-content tracking-tight">
-                  Instant Soundboard Carts
-                </h3>
-                <span className="badge badge-primary badge-xs font-semibold">
-                  8 Pads
-                </span>
-              </div>
-              <p className="text-[10px] text-base-content/50">
-                Putar jingle, sweeper, dan SFX radio langsung dengan 1 klik atau tombol keyboard (1-8).
-              </p>
-            </div>
+    <div className="rounded-xl bg-base-200 border border-base-300 p-4 sm:p-5 space-y-4">
+      {/* Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Volume2 className="h-4 w-4" />
           </div>
+          <div>
+            <h3 className="text-sm font-bold text-base-content">
+              Instant Soundboard Carts
+            </h3>
+            <p className="text-xs text-base-content/70">
+              Picu jingle, sweeper, dan SFX dengan klik atau tombol angka (1-8)
+            </p>
+          </div>
+        </div>
 
-          {/* Mode Switch & Stop Button */}
-          <div className="flex items-center gap-2">
-            <div className="join bg-base-300/60 p-0.5 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setMode("radioboss")}
-                className={`join-item btn btn-xs text-[10px] border-none font-semibold ${
-                  mode === "radioboss"
-                    ? "btn-primary shadow-sm"
-                    : "btn-ghost text-base-content/60"
-                }`}
-                title="Picu Cart Wall di aplikasi RadioBOSS"
-              >
-                <Radio className="h-2.5 w-2.5 mr-1" />
-                <span>RadioBOSS Carts</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("local")}
-                className={`join-item btn btn-xs text-[10px] border-none font-semibold ${
-                  mode === "local"
-                    ? "btn-secondary shadow-sm"
-                    : "btn-ghost text-base-content/60"
-                }`}
-                title="Pratinjau efek instan di headphone/speaker penyiar"
-              >
-                <Headphones className="h-2.5 w-2.5 mr-1" />
-                <span>Headphone Synth</span>
-              </button>
-            </div>
-
+        {/* Mode Switch & Stop Button */}
+        <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-1 bg-base-100 p-1 rounded-lg border border-base-300">
             <button
               type="button"
-              onClick={handleStopAll}
-              disabled={isStopping}
-              className="btn btn-error btn-outline btn-xs gap-1 font-bold"
-              title="Hentikan semua cart yang sedang bersuara"
+              onClick={() => setMode("radioboss")}
+              className={`btn btn-xs h-7 rounded-md border-none font-semibold text-xs gap-1.5 ${
+                mode === "radioboss"
+                  ? "bg-primary text-primary-content"
+                  : "btn-ghost text-base-content/70"
+              }`}
+              title="Picu Cart Wall di aplikasi RadioBOSS"
             >
-              <Square className="h-3 w-3 fill-current" />
-              <span>Stop All</span>
+              <Radio className="h-3 w-3" />
+              <span>RadioBOSS</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("local")}
+              className={`btn btn-xs h-7 rounded-md border-none font-semibold text-xs gap-1.5 ${
+                mode === "local"
+                  ? "bg-secondary text-secondary-content"
+                  : "btn-ghost text-base-content/70"
+              }`}
+              title="Pratinjau efek instan di headphone/speaker penyiar"
+            >
+              <Headphones className="h-3 w-3" />
+              <span>Headphone</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={handleStopAll}
+            disabled={isStopping}
+            className="btn btn-error btn-outline btn-xs h-8 rounded-lg gap-1 font-bold text-xs"
+            title="Hentikan semua cart yang sedang bersuara"
+          >
+            <Square className="h-3 w-3 fill-current" />
+            <span>Stop</span>
+          </button>
         </div>
+      </div>
 
-        {/* Carts Pad Grid (8 Carts) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {DEFAULT_CARTS.map((cart) => {
-            const isActive = activeCartId === cart.id;
-            return (
-              <button
-                key={cart.id}
-                type="button"
-                onClick={() => handleTriggerCart(cart)}
-                className={`group relative flex flex-col justify-between p-3 rounded-2xl border text-left transition-all duration-150 active:scale-95 ${
-                  isActive
-                    ? "bg-primary/20 border-primary shadow-lg shadow-primary/20 scale-[0.98]"
-                    : "bg-base-100 hover:bg-base-300/60 border-base-300 hover:border-primary/40 shadow-sm"
-                }`}
-              >
-                {/* Top Badge: Slot Index & Shortcut */}
-                <div className="flex items-center justify-between w-full mb-2">
-                  <div
-                    className={`flex h-6 w-6 items-center justify-center rounded-lg transition-transform group-hover:scale-110 ${
-                      isActive
-                        ? "bg-primary text-primary-content"
-                        : "bg-base-200 text-base-content/70"
-                    }`}
-                  >
-                    {getCartIcon(cart.id)}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="badge badge-ghost badge-xs font-mono font-bold text-[9px] px-1.5 opacity-60">
-                      Key {cart.shortcut}
-                    </span>
-                  </div>
+      {/* Carts Pad Grid (8 Carts) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {DEFAULT_CARTS.map((cart) => {
+          const isActive = activeCartId === cart.id;
+          return (
+            <button
+              key={cart.id}
+              type="button"
+              onClick={() => handleTriggerCart(cart)}
+              className={`group relative flex flex-col justify-between p-3 rounded-lg border text-left transition-colors duration-150 ${
+                isActive
+                  ? "bg-primary/15 border-primary"
+                  : "bg-base-100 hover:bg-base-300/60 border-base-300 hover:border-primary/40"
+              }`}
+            >
+              {/* Top Row: Icon & Shortcut */}
+              <div className="flex items-center justify-between w-full mb-2">
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-md ${
+                    isActive
+                      ? "bg-primary text-primary-content"
+                      : "bg-base-200 text-base-content/70"
+                  }`}
+                >
+                  {getCartIcon(cart.id)}
                 </div>
+                <span className="px-1.5 py-0.5 rounded bg-base-200 border border-base-300 font-mono font-bold text-xs text-base-content/70 tabular-nums">
+                  {cart.shortcut}
+                </span>
+              </div>
 
-                {/* Cart Labels */}
-                <div className="min-w-0 w-full space-y-0.5">
-                  <h4
-                    className={`text-xs font-bold truncate transition-colors ${
-                      isActive ? "text-primary" : "text-base-content group-hover:text-primary"
-                    }`}
-                  >
-                    {cart.label}
-                  </h4>
-                  <p className="text-[10px] text-base-content/50 truncate">
-                    {cart.sublabel}
-                  </p>
-                </div>
-
-                {/* Animated Visualizer Bar when playing */}
-                {isActive && (
-                  <div className="flex items-center gap-0.5 mt-2 h-1.5 w-full">
-                    <span className="bg-primary h-full w-1/4 rounded-full animate-pulse" />
-                    <span className="bg-accent h-full w-1/3 rounded-full animate-bounce" />
-                    <span className="bg-secondary h-full w-1/4 rounded-full animate-pulse" />
-                    <span className="bg-primary h-full w-1/4 rounded-full animate-bounce" />
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
+              {/* Cart Labels */}
+              <div className="min-w-0 w-full space-y-0.5">
+                <h4
+                  className={`text-xs font-bold truncate ${
+                    isActive
+                      ? "text-primary"
+                      : "text-base-content group-hover:text-primary"
+                  }`}
+                >
+                  {cart.label}
+                </h4>
+                <p className="text-xs text-base-content/60 truncate">
+                  {cart.sublabel}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

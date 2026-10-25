@@ -2,7 +2,7 @@
  * Type definitions for Radio Caster Request Bridge Frontend.
  */
 
-export const APP_VERSION = "0.6.0";
+export const APP_VERSION = "0.7.0";
 
 export interface TrackItem {
   video_id: string;

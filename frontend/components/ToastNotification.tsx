@@ -24,7 +24,7 @@ function ToastItem({
   useEffect(() => {
     const timer = setTimeout(() => {
       onDismiss(toast.id);
-    }, 2800);
+    }, 3200);
     return () => clearTimeout(timer);
   }, [toast.id, onDismiss]);
 
@@ -32,14 +32,17 @@ function ToastItem({
 
   return (
     <div
+      role="status"
       onClick={() => onDismiss(toast.id)}
-      className="pointer-events-auto cursor-pointer group flex items-center gap-2.5 px-4 py-2 rounded-full shadow-2xl bg-slate-900/95 text-slate-100 border border-slate-700/80 backdrop-blur-xl text-xs font-medium transition-all duration-200 hover:scale-[1.02] active:scale-95 animate-in fade-in slide-in-from-top-3"
+      className={`pointer-events-auto cursor-pointer flex items-center gap-3 px-3.5 py-2.5 rounded-lg shadow-2xl bg-base-200 text-base-content border text-xs font-medium transition-colors duration-150 ${
+        isSuccess ? "border-success/40" : "border-error/40"
+      }`}
     >
       <div
-        className={`flex h-5 w-5 items-center justify-center rounded-full shrink-0 ${
+        className={`flex h-6 w-6 items-center justify-center rounded-md shrink-0 ${
           isSuccess
-            ? "bg-emerald-500/20 text-emerald-400"
-            : "bg-rose-500/20 text-rose-400"
+            ? "bg-success/15 text-success"
+            : "bg-error/15 text-error"
         }`}
       >
         {isSuccess ? (
@@ -49,7 +52,7 @@ function ToastItem({
         )}
       </div>
 
-      <span className="truncate max-w-xs sm:max-w-md tracking-tight">
+      <span className="truncate max-w-xs sm:max-w-md">
         {toast.text}
       </span>
 
@@ -59,15 +62,19 @@ function ToastItem({
           e.stopPropagation();
           onDismiss(toast.id);
         }}
-        className="text-slate-400 hover:text-white p-0.5 ml-0.5 rounded-full hover:bg-white/10 transition-colors"
+        className="btn btn-ghost btn-xs h-6 w-6 p-0 min-h-0 rounded-md text-base-content/60 hover:text-base-content"
         title="Tutup notifikasi"
+        aria-label="Tutup notifikasi"
       >
-        <X className="h-3 w-3" />
+        <X className="h-3.5 w-3.5" />
       </button>
     </div>
   );
 }
 
+/**
+ * Studio console toast notification stack.
+ */
 export function ToastNotification({
   toasts,
   onDismiss,
@@ -82,5 +89,3 @@ export function ToastNotification({
     </div>
   );
 }
-
-

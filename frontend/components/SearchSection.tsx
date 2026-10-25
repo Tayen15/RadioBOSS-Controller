@@ -6,9 +6,9 @@ import {
   Search,
   Link as LinkIcon,
   Music2,
-  Sparkles,
   Check,
-  Clock,
+  Disc3,
+  X,
 } from "lucide-react";
 import { TrackItem } from "@/lib/types";
 
@@ -22,6 +22,17 @@ interface SearchSectionProps {
   selectedTrackId?: string;
 }
 
+function isDirectYouTubeUrl(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  return (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.includes("youtube.com/") ||
+    trimmed.includes("music.youtube.com/") ||
+    trimmed.includes("youtu.be/")
+  );
+}
+
 export function SearchSection({
   onSelectTrack,
   onSearch,
@@ -31,212 +42,212 @@ export function SearchSection({
   isResolving,
   selectedTrackId,
 }: SearchSectionProps) {
-  const [activeTab, setActiveTab] = useState<"search" | "url">("search");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [directUrl, setDirectUrl] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const isUrlMode = isDirectYouTubeUrl(inputValue);
+  const isBusy = isSearching || isResolving;
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      onSearch(searchQuery.trim());
-    }
-  };
+    const trimmed = inputValue.trim();
+    if (!trimmed) return;
 
-  const handleUrlSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (directUrl.trim()) {
-      onResolveUrl(directUrl.trim());
+    if (isDirectYouTubeUrl(trimmed)) {
+      onResolveUrl(trimmed);
+    } else {
+      onSearch(trimmed);
     }
   };
 
   return (
-    <section className="card rounded-2xl bg-base-200 border border-base-300 shadow-md">
-      <div className="card-body p-4 sm:p-5">
-        {/* Tab Switcher */}
-        <div className="tabs tabs-box bg-base-100 border border-base-300 p-1 rounded-2xl w-full flex">
-          <button
-            type="button"
-            onClick={() => setActiveTab("search")}
-            className={`tab flex-1 gap-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
-              activeTab === "search"
-                ? "tab-active bg-primary text-primary-content shadow-sm"
-                : "text-base-content/70 hover:text-base-content"
-            }`}
-          >
-            <Sparkles className="h-4 w-4" />
-            <span>Cari Studio Track</span>
-            <span className="badge badge-success badge-xs font-bold uppercase hidden sm:inline-flex">
-              Official
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("url")}
-            className={`tab flex-1 gap-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
-              activeTab === "url"
-                ? "tab-active bg-primary text-primary-content shadow-sm"
-                : "text-base-content/70 hover:text-base-content"
-            }`}
-          >
-            <LinkIcon className="h-4 w-4" />
-            <span>Paste Link URL</span>
-          </button>
+    <section
+      aria-label="Pencarian Katalog Studio"
+      className="rounded-xl bg-base-200 border border-base-300 p-4 sm:p-5 space-y-4"
+    >
+      {/* Header & Mode Indicator */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-bold text-base-content tracking-tight">
+            Pencarian Katalog &amp; Ekstraktor URL
+          </h3>
+          <p className="text-xs text-base-content/70">
+            Ketik judul atau artis untuk mencari rilis resmi YouTube Music, atau tempel tautan langsung.
+          </p>
         </div>
 
-        {/* Tab 1: YouTube Music Studio Search */}
-        {activeTab === "search" && (
-          <div className="mt-3 space-y-4">
-            <form onSubmit={handleSearchSubmit} className="join w-full shadow-sm">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-base-content/40" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Ketik judul lagu atau nama artis..."
-                  className="input input-bordered join-item w-full pl-10 bg-base-100 text-sm focus:outline-none"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isSearching || !searchQuery.trim()}
-                className="btn btn-primary join-item px-5 text-sm font-semibold"
-              >
-                {isSearching ? (
-                  <span className="loading loading-spinner loading-xs" />
-                ) : (
-                  "Cari"
-                )}
-              </button>
-            </form>
-
-            {/* Search Results List */}
-            {searchResults.length > 0 && (
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between text-xs text-base-content/60 px-1">
-                  <span className="font-medium">
-                    Hasil Studio Master ({searchResults.length}):
-                  </span>
-                  <span className="badge badge-ghost badge-xs text-base-content/50">
-                    Topic / Audio Master
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  {searchResults.map((track) => {
-                    const isSelected = selectedTrackId === track.video_id;
-                    return (
-                      <div
-                        key={track.video_id}
-                        onClick={() => onSelectTrack(track)}
-                        className={`group relative flex cursor-pointer items-center gap-3 rounded-xl border p-2.5 transition-all ${
-                          isSelected
-                            ? "border-base-content/60 bg-base-300 shadow-md ring-1 ring-base-content/30"
-                            : "border-base-300 bg-base-100 hover:border-base-content/40 hover:bg-base-200/80"
-                        }`}
-                      >
-                        {/* Artwork */}
-                        <div className="avatar shrink-0">
-                          <div className="w-13 h-13 rounded-lg overflow-hidden bg-base-300">
-                            {track.thumbnail_url ? (
-                              <Image
-                                src={track.thumbnail_url}
-                                alt={track.title}
-                                width={52}
-                                height={52}
-                                className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-base-content/40">
-                                <Music2 className="h-5 w-5" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Text */}
-                        <div className="min-w-0 flex-1">
-                          <h4 className="truncate text-xs sm:text-sm font-semibold text-base-content group-hover:text-white transition-colors">
-                            {track.title}
-                          </h4>
-                          <p className="truncate text-xs text-base-content/70">
-                            {track.artists.join(", ") || "Unknown Artist"}
-                          </p>
-                          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-base-content/50">
-                            {track.album && (
-                              <>
-                                <span className="truncate max-w-[220px] sm:max-w-xs text-base-content/70 font-medium" title={track.album}>
-                                  {track.album}
-                                </span>
-                                <span>•</span>
-                              </>
-                            )}
-                            <span className="inline-flex items-center gap-0.5 font-mono">
-                              <Clock className="h-2.5 w-2.5" />
-                              {track.duration_formatted}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Select Icon */}
-                        <div className="shrink-0 pr-1">
-                          {isSelected ? (
-                            <div className="badge badge-primary badge-circle h-6 w-6 p-0 flex items-center justify-center text-primary-content">
-                              <Check className="h-3.5 w-3.5 stroke-[3]" />
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-xs text-base-content/70 opacity-60 group-hover:opacity-100 group-hover:text-white"
-                            >
-                              Pilih
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab 2: Direct URL Input */}
-        {activeTab === "url" && (
-          <div className="mt-3 space-y-3">
-            <form onSubmit={handleUrlSubmit} className="join w-full shadow-sm">
-              <div className="relative flex-1">
-                <LinkIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-base-content/40" />
-                <input
-                  type="text"
-                  value={directUrl}
-                  onChange={(e) => setDirectUrl(e.target.value)}
-                  placeholder="Paste URL YouTube / YT Music..."
-                  className="input input-bordered join-item w-full pl-10 bg-base-100 text-sm focus:outline-none"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isResolving || !directUrl.trim()}
-                className="btn btn-primary join-item px-5 text-sm font-semibold"
-              >
-                {isResolving ? (
-                  <span className="loading loading-spinner loading-xs" />
-                ) : (
-                  "Proses Link"
-                )}
-              </button>
-            </form>
-            <p className="text-xs text-base-content/60 leading-relaxed">
-              Mendukung link <code className="px-1.5 py-0.5 rounded bg-base-200 border border-base-300 font-mono text-[11px] text-base-content/80">youtube.com/watch?v=...</code>,{" "}
-              <code className="px-1.5 py-0.5 rounded bg-base-200 border border-base-300 font-mono text-[11px] text-base-content/80">music.youtube.com/...</code>, atau shortlink{" "}
-              <code className="px-1.5 py-0.5 rounded bg-base-200 border border-base-300 font-mono text-[11px] text-base-content/80">youtu.be/...</code>.
-            </p>
-          </div>
-        )}
+        <span className="font-mono text-xs text-base-content/70 px-2.5 py-1 rounded-md bg-base-100 border border-base-300">
+          {isUrlMode ? "MODE: URL LANGSUNG" : "MODE: STUDIO MASTER"}
+        </span>
       </div>
+
+      {/* Unified Smart Omnibox */}
+      <form onSubmit={handleSubmit} className="flex items-stretch gap-2">
+        <div className="relative flex-1 min-w-0">
+          {isUrlMode ? (
+            <LinkIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-accent" />
+          ) : (
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-base-content/60" />
+          )}
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Cari judul lagu, nama artis, atau tempel link YouTube / YT Music..."
+            className="input input-bordered w-full h-11 pl-10 pr-9 bg-base-100 border-base-300 rounded-lg text-sm text-base-content placeholder:text-base-content/60"
+          />
+          {inputValue && (
+            <button
+              type="button"
+              onClick={() => setInputValue("")}
+              aria-label="Bersihkan pencarian"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 w-6 rounded flex items-center justify-center text-base-content/60 hover:text-base-content hover:bg-base-300"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isBusy || !inputValue.trim()}
+          className="btn btn-primary h-11 px-5 rounded-lg text-sm font-bold text-primary-content shrink-0"
+        >
+          {isBusy ? (
+            <>
+              <span className="loading loading-spinner loading-xs" />
+              <span>{isUrlMode ? "Mengekstrak..." : "Mencari..."}</span>
+            </>
+          ) : isUrlMode ? (
+            "Ekstrak URL"
+          ) : (
+            "Cari Lagu"
+          )}
+        </button>
+      </form>
+
+      {/* Single-Column Studio Tracklist Results */}
+      {isSearching ? (
+        <div className="py-8 text-center space-y-2 rounded-lg bg-base-100 border border-base-300">
+          <span className="loading loading-spinner loading-sm text-primary" />
+          <p className="text-xs text-base-content/70">
+            Memindai katalog studio master YouTube Music...
+          </p>
+        </div>
+      ) : searchResults.length > 0 ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-base-content/70 px-1">
+            <span className="font-semibold text-base-content">
+              Hasil Katalog Studio ({searchResults.length} lagu)
+            </span>
+            <span className="font-mono">Klik baris untuk memuat ke Cue Deck</span>
+          </div>
+
+          <div className="divide-y divide-base-300 rounded-lg border border-base-300 bg-base-100 overflow-hidden">
+            {searchResults.map((track, index) => {
+              const isSelected = selectedTrackId === track.video_id;
+              const indexStr = String(index + 1).padStart(2, "0");
+
+              return (
+                <div
+                  key={track.video_id}
+                  onClick={() => onSelectTrack(track)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectTrack(track);
+                    }
+                  }}
+                  className={`group flex items-center justify-between gap-3 px-3 py-2.5 cursor-pointer transition-colors ${
+                    isSelected
+                      ? "bg-primary/10 border-l-2 border-l-primary"
+                      : "hover:bg-base-300/60"
+                  }`}
+                >
+                  {/* Left: Tabular Index + Artwork + Full Title/Artist */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span
+                      className={`font-mono text-xs font-bold w-5 shrink-0 ${
+                        isSelected ? "text-primary" : "text-base-content/60"
+                      }`}
+                    >
+                      {indexStr}
+                    </span>
+
+                    <div className="w-11 h-11 rounded-md overflow-hidden bg-base-300 border border-base-300 shrink-0">
+                      {track.thumbnail_url ? (
+                        <Image
+                          src={track.thumbnail_url}
+                          alt={track.title}
+                          width={44}
+                          height={44}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-base-content/60">
+                          <Music2 className="h-4 w-4" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-sm font-semibold text-base-content truncate">
+                        {track.title}
+                      </h4>
+                      <div className="flex items-center gap-1.5 text-xs text-base-content/70 truncate mt-0.5">
+                        <span className="font-medium text-base-content/80 truncate">
+                          {track.artists.join(", ") || "Artis Tidak Diketahui"}
+                        </span>
+                        {track.album && (
+                          <>
+                            <span className="text-base-content/60">•</span>
+                            <span
+                              className="truncate text-base-content/70"
+                              title={track.album}
+                            >
+                              {track.album}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Tabular Duration + Cue Status */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-mono text-xs font-medium text-base-content/80 tabular-nums">
+                      {track.duration_formatted}
+                    </span>
+
+                    {isSelected ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 h-8 rounded-md bg-primary text-primary-content text-xs font-bold">
+                        <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                        <span>Di Cue</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 h-8 rounded-md bg-base-200 border border-base-300 text-xs font-semibold text-base-content/80 group-hover:border-primary/50 group-hover:text-base-content transition-colors">
+                        Muat Cue
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg bg-base-100 border border-base-300 px-4 py-4 flex items-center justify-between gap-3 text-xs text-base-content/70">
+          <div className="flex items-center gap-2.5">
+            <Disc3 className="h-4 w-4 text-base-content/60 shrink-0" />
+            <span>
+              Belum ada hasil pencarian aktif. Ketik judul lagu di atas atau pilih dari tab rekomendasi di bawah.
+            </span>
+          </div>
+          <span className="hidden sm:inline font-mono text-base-content/60 shrink-0">
+            320kbps CBR Relay
+          </span>
+        </div>
+      )}
     </section>
   );
 }

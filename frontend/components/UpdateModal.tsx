@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import {
-  Sparkles,
   Download,
   CheckCircle2,
   AlertCircle,
@@ -33,6 +32,9 @@ interface UpdateModalProps {
   onUpdateDetected?: (result: UpdateCheckResult) => void;
 }
 
+/**
+ * Application Auto-Updater Modal with GitHub Release inspector and installer progress.
+ */
 export function UpdateModal({
   isOpen,
   onClose,
@@ -67,25 +69,40 @@ export function UpdateModal({
     setCheckResult(initialCheckResult);
   }
 
-  const handleCheck = useCallback(async (force: boolean = true) => {
-    setIsChecking(true);
-    setErrorMsg(null);
-    try {
-      const res = await checkForUpdates(force);
-      setCheckResult(res);
-      if (onUpdateDetected && res.update_available) {
-        onUpdateDetected(res);
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
       }
-    } catch (err) {
-      setErrorMsg(
-        err instanceof Error
-          ? err.message
-          : "Gagal memeriksa pembaruan dari server GitHub."
-      );
-    } finally {
-      setIsChecking(false);
-    }
-  }, [onUpdateDetected]);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const handleCheck = useCallback(
+    async (force: boolean = true) => {
+      setIsChecking(true);
+      setErrorMsg(null);
+      try {
+        const res = await checkForUpdates(force);
+        setCheckResult(res);
+        if (onUpdateDetected && res.update_available) {
+          onUpdateDetected(res);
+        }
+      } catch (err) {
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : "Gagal memeriksa pembaruan dari server GitHub."
+        );
+      } finally {
+        setIsChecking(false);
+      }
+    },
+    [onUpdateDetected]
+  );
 
   // Asynchronous background check when modal opens if not yet checked
   useEffect(() => {
@@ -129,8 +146,8 @@ export function UpdateModal({
             pollIntervalRef.current = null;
           }
         }
-      } catch (err) {
-        console.error("Failed to poll update status:", err);
+      } catch {
+        // Ignore transient poll errors
       }
     }, 800);
   }, []);
@@ -176,23 +193,23 @@ export function UpdateModal({
   const latestVer = checkResult?.latest_version || currentVer;
   const isAvailable = checkResult?.update_available ?? false;
 
-  const formatSize = (bytes: number) => {
+  const formatSize = (bytes: number): string => {
     if (!bytes || bytes === 0) return "0 MB";
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
-    <dialog className="modal modal-open z-50">
-      <div className="modal-box rounded-2xl bg-base-200 border border-base-300 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl p-5 sm:p-6 space-y-4">
+    <dialog className="modal modal-open z-50" aria-modal="true">
+      <div className="modal-box rounded-xl bg-base-200 border border-base-300 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl p-5 sm:p-6 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-base-300 pb-3">
           <div className="flex items-center gap-3">
-            <div className="relative h-10 w-10 shrink-0 rounded-xl overflow-hidden shadow-lg border border-base-300 bg-base-100 flex items-center justify-center">
+            <div className="relative h-9 w-9 shrink-0 rounded-lg overflow-hidden border border-base-300 bg-base-100 flex items-center justify-center">
               <Image
                 src="/logo.png"
                 alt="App Logo"
-                width={40}
-                height={40}
+                width={36}
+                height={36}
                 className="object-contain p-1"
               />
             </div>
@@ -202,19 +219,21 @@ export function UpdateModal({
                   Pembaruan Sistem
                 </h3>
                 {isAvailable && (
-                  <span className="badge badge-accent badge-xs font-bold animate-pulse">
-                    Baru
+                  <span className="px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/30 text-xs font-mono font-bold">
+                    UPDATE
                   </span>
                 )}
               </div>
-              <p className="text-xs text-base-content/60">
+              <p className="text-xs text-base-content/70">
                 Radio Caster Bridge Auto Updater
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:text-white"
+            className="btn btn-ghost btn-sm h-8 w-8 p-0 min-h-0 rounded-lg text-base-content/70 hover:text-base-content"
+            aria-label="Tutup jendela pembaruan"
           >
             <X className="h-4 w-4" />
           </button>
@@ -222,34 +241,34 @@ export function UpdateModal({
 
         {/* Error Alert */}
         {errorMsg && (
-          <div className="alert alert-error text-error-content text-xs py-2.5 rounded-xl font-medium">
+          <div className="alert alert-error text-error-content text-xs py-2.5 rounded-lg font-medium">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {/* Version Compare Banner */}
-        <div className="flex items-center justify-between p-3.5 rounded-xl bg-base-100 border border-base-300">
+        <div className="flex items-center justify-between p-3.5 rounded-lg bg-base-100 border border-base-300">
           <div className="space-y-0.5">
-            <span className="text-[10px] uppercase font-bold text-base-content/50 tracking-wider">
+            <span className="text-xs uppercase font-bold text-base-content/60 tracking-wider">
               Versi Terpasang
             </span>
-            <div className="text-sm font-bold text-base-content font-mono">
+            <div className="text-sm font-bold text-base-content font-mono tabular-nums">
               v{currentVer}
             </div>
           </div>
 
-          <div className="flex items-center justify-center h-7 w-7 rounded-full bg-base-200 text-base-content/40">
+          <div className="flex items-center justify-center h-7 w-7 rounded-md bg-base-200 text-base-content/60">
             <ArrowRight className="h-3.5 w-3.5" />
           </div>
 
           <div className="space-y-0.5 text-right">
-            <span className="text-[10px] uppercase font-bold text-base-content/50 tracking-wider">
+            <span className="text-xs uppercase font-bold text-base-content/60 tracking-wider">
               Versi Rilis Terbaru
             </span>
             <div
-              className={`text-sm font-bold font-mono ${
-                isAvailable ? "text-accent" : "text-success"
+              className={`text-sm font-bold font-mono tabular-nums ${
+                isAvailable ? "text-primary" : "text-success"
               }`}
             >
               v{latestVer}
@@ -261,29 +280,29 @@ export function UpdateModal({
         {isChecking ? (
           <div className="py-8 text-center space-y-2">
             <span className="loading loading-spinner loading-md text-primary" />
-            <p className="text-xs text-base-content/60">
+            <p className="text-xs text-base-content/70">
               Menghubungkan ke GitHub Releases...
             </p>
           </div>
         ) : !isAvailable ? (
-          <div className="p-4 rounded-xl bg-base-100/60 border border-base-300 text-center space-y-3">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-success/15 text-success">
+          <div className="p-4 rounded-lg bg-base-100 border border-base-300 text-center space-y-3">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-success/15 text-success">
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
               <h4 className="text-sm font-bold text-base-content">
-                Aplikasi Anda Sudah Menggunakan Versi Terbaru
+                Aplikasi Anda Menggunakan Versi Terbaru
               </h4>
-              <p className="text-xs text-base-content/60 mt-1">
+              <p className="text-xs text-base-content/70 mt-1">
                 Semua fitur streaming YouTube Music dan controller RadioBOSS sudah berada pada versi paling mutakhir.
               </p>
             </div>
             <button
               type="button"
               onClick={() => handleCheck(true)}
-              className="btn btn-ghost btn-xs gap-1.5 text-base-content/70 hover:text-white"
+              className="btn btn-secondary btn-sm h-8 rounded-lg gap-1.5 text-xs font-semibold"
             >
-              <RefreshCw className="h-3 w-3" />
+              <RefreshCw className="h-3.5 w-3.5" />
               <span>Cek Pembaruan Ulang</span>
             </button>
           </div>
@@ -291,24 +310,21 @@ export function UpdateModal({
           /* Update Available View */
           <div className="space-y-3.5">
             {/* Release Info Card */}
-            <div className="p-3.5 rounded-xl bg-base-100 border border-base-300 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4 text-accent" />
-                  <span className="text-xs font-bold text-base-content">
-                    {checkResult?.release_name || `Versi Baru ${latestVer}`}
-                  </span>
-                </div>
+            <div className="p-3.5 rounded-lg bg-base-100 border border-base-300 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-base-content">
+                  {checkResult?.release_name || `Versi Baru ${latestVer}`}
+                </span>
                 {checkResult?.html_url && (
                   <a
                     href={checkResult.html_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[10px] text-accent hover:underline flex items-center gap-1"
+                    className="text-xs text-accent hover:underline flex items-center gap-1 font-medium"
                     title="Buka rilis resmi di GitHub"
                   >
                     <span>Lihat di GitHub</span>
-                    <ExternalLink className="h-2.5 w-2.5" />
+                    <ExternalLink className="h-3 w-3" />
                   </a>
                 )}
               </div>
@@ -316,10 +332,10 @@ export function UpdateModal({
               {/* Release Notes */}
               {checkResult?.release_notes && (
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-base-content/50">
+                  <span className="text-xs uppercase font-bold text-base-content/60">
                     Catatan Perubahan (Changelog):
                   </span>
-                  <div className="max-h-36 overflow-y-auto rounded-lg bg-base-200/70 p-2.5 text-[11px] text-base-content/80 font-sans leading-relaxed whitespace-pre-wrap border border-base-300/50">
+                  <div className="max-h-36 overflow-y-auto rounded-lg bg-base-200 p-2.5 text-xs text-base-content/80 font-sans leading-relaxed whitespace-pre-wrap border border-base-300">
                     {checkResult.release_notes}
                   </div>
                 </div>
@@ -327,14 +343,14 @@ export function UpdateModal({
 
               {/* Asset Details */}
               {checkResult?.asset && (
-                <div className="flex items-center justify-between pt-1 text-[11px] text-base-content/60 border-t border-base-300/40">
+                <div className="flex items-center justify-between pt-2 text-xs text-base-content/70 border-t border-base-300">
                   <div className="flex items-center gap-1.5 truncate">
                     <HardDrive className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate font-mono">
                       {checkResult.asset.name}
                     </span>
                   </div>
-                  <span className="shrink-0 font-medium">
+                  <span className="shrink-0 font-mono tabular-nums font-medium">
                     {formatSize(checkResult.asset.size)}
                   </span>
                 </div>
@@ -343,13 +359,13 @@ export function UpdateModal({
 
             {/* Download Progress Card */}
             {downloadStatus.status === "downloading" && (
-              <div className="p-3.5 rounded-xl bg-base-100 border border-primary/40 space-y-2">
+              <div className="p-3.5 rounded-lg bg-base-100 border border-primary/40 space-y-2">
                 <div className="flex items-center justify-between text-xs font-semibold">
                   <span className="text-primary flex items-center gap-1.5">
                     <span className="loading loading-spinner loading-xs" />
                     Mengunduh installer...
                   </span>
-                  <span className="font-mono text-base-content">
+                  <span className="font-mono tabular-nums text-base-content">
                     {downloadStatus.progress}%
                   </span>
                 </div>
@@ -358,7 +374,7 @@ export function UpdateModal({
                   value={downloadStatus.progress}
                   max="100"
                 />
-                <div className="flex items-center justify-between text-[10px] text-base-content/60 font-mono">
+                <div className="flex items-center justify-between text-xs text-base-content/70 font-mono tabular-nums">
                   <span>
                     {formatSize(downloadStatus.downloaded_bytes)} /{" "}
                     {formatSize(downloadStatus.total_bytes)}
@@ -370,13 +386,13 @@ export function UpdateModal({
 
             {/* Downloaded State Banner */}
             {downloadStatus.status === "downloaded" && (
-              <div className="p-3.5 rounded-xl bg-success/10 border border-success/30 flex items-center gap-2.5 text-xs text-success-content">
+              <div className="p-3.5 rounded-lg bg-success/10 border border-success/30 flex items-center gap-2.5 text-xs">
                 <ShieldCheck className="h-5 w-5 text-success shrink-0" />
                 <div>
                   <p className="font-bold text-success">
-                    Installer Siap Dijalankan!
+                    Installer Siap Dijalankan
                   </p>
-                  <p className="text-[10px] text-base-content/70">
+                  <p className="text-xs text-base-content/70 mt-0.5">
                     Klik tombol di bawah untuk memulai instalasi pembaruan. Aplikasi akan menutup secara otomatis.
                   </p>
                 </div>
@@ -390,7 +406,7 @@ export function UpdateModal({
           <button
             type="button"
             onClick={onClose}
-            className="btn btn-ghost btn-sm text-xs font-medium"
+            className="btn btn-ghost btn-sm h-9 text-xs font-medium"
           >
             Tutup
           </button>
@@ -401,7 +417,7 @@ export function UpdateModal({
                 <button
                   type="button"
                   onClick={handleStartDownload}
-                  className="btn btn-primary btn-sm rounded-xl gap-1.5 text-xs font-bold shadow-lg text-primary-content"
+                  className="btn btn-primary btn-sm h-9 rounded-lg gap-1.5 text-xs font-bold text-primary-content"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Unduh &amp; Pasang Otomatis</span>
@@ -412,7 +428,7 @@ export function UpdateModal({
                 <button
                   type="button"
                   disabled
-                  className="btn btn-primary btn-sm rounded-xl gap-1.5 text-xs font-bold"
+                  className="btn btn-primary btn-sm h-9 rounded-lg gap-1.5 text-xs font-bold"
                 >
                   <span className="loading loading-spinner loading-xs" />
                   <span>Mengunduh ({downloadStatus.progress}%)...</span>
@@ -424,7 +440,7 @@ export function UpdateModal({
                   type="button"
                   onClick={handleApply}
                   disabled={isApplying}
-                  className="btn btn-success btn-sm rounded-xl gap-1.5 text-xs font-bold shadow-lg animate-pulse"
+                  className="btn btn-success btn-sm h-9 rounded-lg gap-1.5 text-xs font-bold"
                 >
                   {isApplying ? (
                     <>
@@ -433,7 +449,7 @@ export function UpdateModal({
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-3.5 w-3.5" />
+                      <CheckCircle2 className="h-3.5 w-3.5" />
                       <span>Mulai Ulang &amp; Pasang Sekarang</span>
                     </>
                   )}
@@ -444,7 +460,7 @@ export function UpdateModal({
                 <button
                   type="button"
                   onClick={handleStartDownload}
-                  className="btn btn-warning btn-sm rounded-xl gap-1.5 text-xs font-bold"
+                  className="btn btn-warning btn-sm h-9 rounded-lg gap-1.5 text-xs font-bold"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                   <span>Coba Unduh Ulang</span>

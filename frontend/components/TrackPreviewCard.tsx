@@ -52,7 +52,6 @@ export function TrackPreviewCard({
   const [audioError, setAudioError] = useState<string | null>(null);
   const [isLyricsOpen, setIsLyricsOpen] = useState<boolean>(false);
 
-  // Editable broadcast metadata state
   const [editedTitle, setEditedTitle] = useState(track.title);
   const [editedArtist, setEditedArtist] = useState(
     track.artists.filter(Boolean).join(", ")
@@ -60,7 +59,7 @@ export function TrackPreviewCard({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [prevTrackId, setPrevTrackId] = useState(track.video_id);
 
-  // Sync state during render when track changes
+  // Sync state during render when selected track changes
   if (track.video_id !== prevTrackId) {
     setPrevTrackId(track.video_id);
     setEditedTitle(track.title);
@@ -84,18 +83,25 @@ export function TrackPreviewCard({
   const relayUrl = getStreamRelayUrl(track.video_id);
 
   return (
-    <div className="card rounded-2xl bg-base-200 border border-base-300 shadow-xl overflow-hidden">
-      <div className="card-body p-4 sm:p-5 space-y-4">
-        {/* Card Header */}
+    <section
+      aria-label="Cue Deck & Studio Dispatch"
+      className="rounded-xl bg-base-200 border border-base-300 overflow-hidden"
+    >
+      <div className="p-4 sm:p-5 space-y-4">
+        {/* Console Deck Header */}
         <div className="flex items-center justify-between border-b border-base-300 pb-3">
           <div className="flex items-center gap-2">
-            <span className="badge badge-primary gap-1 font-semibold text-xs text-primary-content">
-              <Disc3 className="h-3.5 w-3.5 animate-spin" />
-              Lagu Terpilih
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/15 border border-primary/40 text-primary font-mono text-xs font-bold uppercase tracking-wider">
+              <Disc3
+                className={`h-3.5 w-3.5 ${
+                  audioState === "playing" ? "animate-spin" : ""
+                }`}
+              />
+              <span>CUE DECK</span>
             </span>
-            <span className="badge badge-ghost border border-base-300 badge-xs font-semibold gap-1 text-base-content/80">
-              <ShieldCheck className="h-3 w-3 text-success" />
-              Studio Master
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-base-100 border border-base-300 text-xs font-medium text-base-content/80">
+              <ShieldCheck className="h-3.5 w-3.5 text-success shrink-0" />
+              <span>Studio Master</span>
             </span>
           </div>
 
@@ -103,44 +109,42 @@ export function TrackPreviewCard({
             href={track.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="link link-hover text-xs text-base-content/60 hover:text-white flex items-center gap-1"
+            className="inline-flex items-center gap-1 text-xs font-medium text-base-content/70 hover:text-primary transition-colors py-1 px-2 rounded-md hover:bg-base-100"
           >
-            <span>Buka YouTube</span>
-            <ExternalLink className="h-3 w-3" />
+            <span>Buka Sumber</span>
+            <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
 
         {/* Track Visual & Details */}
         <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start text-center sm:text-left">
           {/* Cover Art */}
-          <div className="avatar shrink-0">
-            <div className="w-28 h-28 rounded-2xl overflow-hidden bg-base-300 shadow-md border border-base-content/10">
-              {track.thumbnail_url ? (
-                <Image
-                  src={track.thumbnail_url}
-                  alt={track.title}
-                  width={112}
-                  height={112}
-                  className="h-full w-full object-cover"
-                  priority={true}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-base-content/40">
-                  <Music2 className="h-8 w-8" />
-                </div>
-              )}
-            </div>
+          <div className="w-24 h-24 rounded-lg overflow-hidden bg-base-100 border border-base-300 shrink-0">
+            {track.thumbnail_url ? (
+              <Image
+                src={track.thumbnail_url}
+                alt={track.title}
+                width={96}
+                height={96}
+                className="h-full w-full object-cover"
+                priority={true}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-base-content/60">
+                <Music2 className="h-8 w-8" />
+              </div>
+            )}
           </div>
 
-          {/* Details */}
-          <div className="flex-1 min-w-0">
+          {/* Track Metadata */}
+          <div className="flex-1 min-w-0 w-full">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <h3 className="text-base sm:text-lg font-bold text-base-content tracking-tight leading-snug line-clamp-2">
                   {editedTitle}
                 </h3>
-                <p className="mt-1 text-sm font-semibold text-base-content/80 truncate">
-                  {editedArtist || "Unknown Artist"}
+                <p className="mt-0.5 text-sm font-medium text-base-content/80 truncate">
+                  {editedArtist || "Artis Tidak Diketahui"}
                 </p>
               </div>
 
@@ -148,34 +152,32 @@ export function TrackPreviewCard({
               <button
                 type="button"
                 onClick={() => setIsEditOpen((prev) => !prev)}
-                className={`btn btn-xs rounded-lg gap-1 shrink-0 ${
+                className={`btn btn-xs h-8 px-2.5 rounded-lg gap-1.5 shrink-0 text-xs font-semibold ${
                   isEditOpen || isMetadataCustomized
                     ? "btn-primary text-primary-content"
-                    : "btn-outline border-base-300 text-base-content/70 hover:text-white"
+                    : "bg-base-100 border border-base-300 text-base-content/80 hover:bg-base-300"
                 }`}
-                title="Edit judul siaran atau bersihkan tag remaster"
+                title="Ubah metadata siaran atau bersihkan label remaster"
               >
-                <Edit3 className="h-3 w-3" />
-                <span className="text-[11px]">
-                  {isMetadataCustomized ? "Disesuaikan" : "Edit Metadata"}
-                </span>
+                <Edit3 className="h-3.5 w-3.5" />
+                <span>{isMetadataCustomized ? "Disesuaikan" : "Metadata"}</span>
               </button>
             </div>
 
             {/* Editable Broadcast Metadata Panel */}
             {isEditOpen && (
-              <div className="mt-3 p-3 rounded-xl bg-base-100 border border-base-300 space-y-2 text-left">
+              <div className="mt-3 p-3 rounded-lg bg-base-100 border border-base-300 space-y-2.5 text-left">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-base-content flex items-center gap-1.5">
                     <Edit3 className="h-3.5 w-3.5 text-primary" />
-                    Penyesuaian Metadata Siaran
+                    <span>Penyesuaian Metadata ID3 &amp; Siaran</span>
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={handleCleanTitle}
-                      className="btn btn-xs btn-outline border-base-300 gap-1 rounded-lg hover:bg-base-300 text-warning"
-                      title="Bersihkan tag (2008 Remastered), (Official Video), [Remaster], dll"
+                      className="btn btn-xs h-7 px-2 rounded-md bg-base-200 border border-base-300 hover:bg-base-300 text-warning gap-1 text-xs font-semibold"
+                      title="Bersihkan tag (2008 Remastered), (Official Video), dll"
                     >
                       <Wand2 className="h-3 w-3" />
                       <span>Bersihkan</span>
@@ -184,8 +186,8 @@ export function TrackPreviewCard({
                       <button
                         type="button"
                         onClick={handleResetMetadata}
-                        className="btn btn-xs btn-ghost gap-1 rounded-lg text-base-content/50 hover:text-white"
-                        title="Reset ke metadata asli YouTube"
+                        className="btn btn-xs btn-ghost h-7 px-2 rounded-md text-xs text-base-content/70 hover:text-base-content gap-1"
+                        title="Kembalikan ke metadata asli"
                       >
                         <RotateCcw className="h-3 w-3" />
                         <span>Reset</span>
@@ -194,84 +196,90 @@ export function TrackPreviewCard({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-base-content/50 block mb-1">
-                      Judul Lagu (Title)
+                    <label className="text-xs font-semibold text-base-content/70 block mb-1">
+                      Judul Lagu
                     </label>
                     <input
                       type="text"
                       value={editedTitle}
                       onChange={(e) => setEditedTitle(e.target.value)}
-                      className="input input-xs input-bordered bg-base-200 w-full text-xs font-medium rounded-lg"
+                      className="input input-sm input-bordered bg-base-200 w-full text-xs font-medium rounded-md h-9"
                       placeholder="Judul lagu..."
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-base-content/50 block mb-1">
-                      Nama Artis (Artist)
+                    <label className="text-xs font-semibold text-base-content/70 block mb-1">
+                      Nama Artis
                     </label>
                     <input
                       type="text"
                       value={editedArtist}
                       onChange={(e) => setEditedArtist(e.target.value)}
-                      className="input input-xs input-bordered bg-base-200 w-full text-xs font-medium rounded-lg"
+                      className="input input-sm input-bordered bg-base-200 w-full text-xs font-medium rounded-md h-9"
                       placeholder="Nama artis..."
                     />
                   </div>
                 </div>
-                <p className="text-[10px] text-base-content/50 leading-tight">
-                  💡 Metadata ini akan disematkan ke tag ID3 file MP3 cache dan dikirimkan sebagai streaming title ke RadioBOSS.
+                <p className="text-xs text-base-content/70 leading-normal">
+                  Metadata ini disematkan ke tag ID3 file MP3 cache dan dikirimkan sebagai judul siaran ke RadioBOSS.
                 </p>
               </div>
             )}
 
+            {/* Technical Metadata Readout Chips */}
             <div className="mt-2.5 flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-xs">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-base-100 border border-base-300 font-mono font-semibold text-primary tabular-nums">
+                <Clock className="h-3 w-3 shrink-0" />
+                <span>{track.duration_formatted}</span>
+              </span>
+
               {track.album && (
                 <span
-                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-base-100 border border-base-300 text-xs font-medium text-base-content/80 max-w-[320px] sm:max-w-md truncate"
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-base-100 border border-base-300 font-medium text-base-content/80 max-w-[240px] truncate"
                   title={track.album}
                 >
-                  <Disc3 className="h-3 w-3 text-base-content/50 shrink-0" />
+                  <Disc3 className="h-3 w-3 text-base-content/60 shrink-0" />
                   <span className="truncate">{track.album}</span>
                 </span>
               )}
+
               {track.year && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-100 border border-base-300 text-xs text-base-content/70">
-                  <Calendar className="h-3 w-3 text-base-content/50 shrink-0" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-base-100 border border-base-300 font-mono text-base-content/70">
+                  <Calendar className="h-3 w-3 text-base-content/60 shrink-0" />
                   <span>{track.year}</span>
                 </span>
               )}
+
               {track.genre && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-100 border border-base-300 text-xs text-base-content/70">
-                  <Tag className="h-3 w-3 text-base-content/50 shrink-0" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-base-100 border border-base-300 text-base-content/70">
+                  <Tag className="h-3 w-3 text-base-content/60 shrink-0" />
                   <span>{track.genre}</span>
                 </span>
               )}
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-base-100 border border-base-300 text-xs font-mono text-base-content/70">
-                <Clock className="h-3 w-3 text-base-content/40 shrink-0" />
-                <span>{track.duration_formatted}</span>
-              </span>
+
               {(track as Partial<CachedTrackItem>).play_count !== undefined &&
                 ((track as Partial<CachedTrackItem>).play_count ?? 0) > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-warning/10 border border-warning/20 text-xs font-bold text-warning">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-warning/10 border border-warning/30 font-mono font-bold text-warning">
                     <Flame className="h-3 w-3 fill-current" />
-                    <span>{(track as Partial<CachedTrackItem>).play_count}x Diputar</span>
+                    <span>{(track as Partial<CachedTrackItem>).play_count}x</span>
                   </span>
                 )}
+
               {(track as Partial<CachedTrackItem>).is_cached && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-success/10 border border-success/20 text-xs font-semibold text-success">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-success/10 border border-success/30 font-semibold text-success">
                   <HardDrive className="h-3 w-3" />
-                  <span>Cache Studio</span>
+                  <span>Tersimpan di Cache</span>
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Audio Headphone Preview Player & Lyrics Action Row */}
+        {/* Headphone Preview & Announcer Script Tools */}
         <div className="space-y-2 pt-1">
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {!showPreviewAudio && (
               <button
                 type="button"
@@ -280,48 +288,51 @@ export function TrackPreviewCard({
                   setAudioState("loading");
                   setAudioError(null);
                 }}
-                className="btn btn-outline btn-sm rounded-xl flex-1 gap-1.5 border-base-300 text-xs font-medium text-base-content hover:bg-base-300 hover:text-white"
+                className="btn btn-sm h-10 rounded-lg bg-base-100 border border-base-300 hover:bg-base-300 text-xs font-semibold text-base-content gap-2"
               >
-                <Headphones className="h-4 w-4 text-base-content/80" />
-                <span>Headphone Preview</span>
+                <Headphones className="h-4 w-4 text-accent" />
+                <span>Pratinjau Headphone</span>
               </button>
             )}
 
             <button
               type="button"
               onClick={() => setIsLyricsOpen(true)}
-              className="btn btn-outline btn-sm rounded-xl flex-1 gap-1.5 border-base-300 hover:bg-base-300 text-xs font-medium text-base-content hover:text-white"
+              className={`btn btn-sm h-10 rounded-lg bg-base-100 border border-base-300 hover:bg-base-300 text-xs font-semibold text-base-content gap-2 ${
+                showPreviewAudio ? "sm:col-span-2" : ""
+              }`}
             >
-              <Mic2 className="h-4 w-4 text-base-content/80" />
-              <span>Lirik &amp; Cue Siaran</span>
+              <Mic2 className="h-4 w-4 text-primary" />
+              <span>Lirik &amp; Naskah Siaran</span>
             </button>
           </div>
 
           {showPreviewAudio && (
-            <div className="rounded-xl bg-base-100 border border-base-300 p-3 space-y-2">
+            <div className="rounded-lg bg-base-100 border border-base-300 p-3 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 font-semibold text-base-content">
-                  <Headphones className="h-3.5 w-3.5 text-base-content/80" />
-                  Preview Headphone
+                <span className="flex items-center gap-2 font-semibold text-base-content">
+                  <Headphones className="h-4 w-4 text-accent" />
+                  <span>Monitor Headphone</span>
                   {audioState === "loading" && (
-                    <span className="badge badge-warning badge-xs gap-1 ml-1 text-warning-content font-bold">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-warning/15 text-warning font-mono text-xs font-semibold">
                       <span className="loading loading-spinner loading-xs" />
-                      Memuat...
+                      <span>Memuat stream...</span>
                     </span>
                   )}
                   {audioState === "playing" && (
-                    <span className="badge badge-success badge-xs ml-1 text-success-content font-bold">
-                      ● Memutar
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-success/15 text-success font-mono text-xs font-semibold">
+                      <span>AKTIF</span>
                     </span>
                   )}
                 </span>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowPreviewAudio(false);
                     setAudioState("idle");
                     setAudioError(null);
                   }}
-                  className="btn btn-ghost btn-xs text-base-content/60 hover:text-white"
+                  className="btn btn-ghost btn-xs h-7 px-2 text-xs text-base-content/70 hover:text-base-content"
                 >
                   Tutup
                 </button>
@@ -338,7 +349,7 @@ export function TrackPreviewCard({
                 autoPlay
                 controls
                 src={relayUrl}
-                className="w-full h-8 rounded"
+                className="w-full h-9 rounded"
                 preload="auto"
                 onWaiting={() => setAudioState("loading")}
                 onCanPlay={() => {
@@ -351,24 +362,24 @@ export function TrackPreviewCard({
                 onPause={() => setAudioState("paused")}
                 onError={() => {
                   setAudioState("error");
-                  setAudioError("Gagal memuat stream audio dari server.");
+                  setAudioError("Gagal memuat stream audio dari server lokal.");
                 }}
               />
             </div>
           )}
         </div>
 
-        {/* Studio Master Cache Toggle */}
-        <div className="rounded-xl bg-base-100 border border-base-300 p-3">
+        {/* Studio Master Cache & ID3 Relay Switch */}
+        <div className="rounded-lg bg-base-100 border border-base-300 p-3">
           <label className="flex items-center justify-between gap-3 cursor-pointer">
             <div className="flex items-start gap-2.5 min-w-0 flex-1">
               <Radio className="h-4 w-4 text-base-content/70 shrink-0 mt-0.5" />
               <div className="min-w-0 flex-1">
                 <span className="block text-xs font-semibold text-base-content leading-tight">
-                  Studio Master Cache &amp; ID3 Tags
+                  Transcode MP3 320kbps &amp; Tag ID3 Lengkap
                 </span>
-                <p className="text-[11px] text-base-content/60 leading-normal mt-0.5">
-                  Metadata lengkap (Artis, Judul, Album, Durasi &amp; Cover Art) ke RadioBOSS.
+                <p className="text-xs text-base-content/70 leading-normal mt-0.5">
+                  Sematkan Artis, Judul, Album, dan Cover Art langsung ke RadioBOSS.
                 </p>
               </div>
             </div>
@@ -381,10 +392,10 @@ export function TrackPreviewCard({
           </label>
         </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-1 gap-2.5 pt-1">
-          {/* Play Next */}
+        {/* Primary & Secondary Broadcast Dispatch Buttons */}
+        <div className="grid grid-cols-1 gap-2 pt-1">
           <button
+            type="button"
             onClick={() =>
               onQueue(1, useRelay, {
                 title: editedTitle.trim(),
@@ -392,7 +403,7 @@ export function TrackPreviewCard({
               })
             }
             disabled={isQueueing}
-            className="btn btn-primary btn-block rounded-xl gap-2 shadow-md font-bold text-primary-content"
+            className="btn btn-primary h-11 btn-block rounded-lg gap-2 font-bold text-sm text-primary-content"
           >
             {isQueueing && activePos === 1 ? (
               <>
@@ -401,14 +412,14 @@ export function TrackPreviewCard({
               </>
             ) : (
               <>
-                <FastForward className="h-4 w-4" />
+                <FastForward className="h-4 w-4 fill-current" />
                 <span>Putar Berikutnya (Play Next)</span>
               </>
             )}
           </button>
 
-          {/* Append to Bottom */}
           <button
+            type="button"
             onClick={() =>
               onQueue(-1, useRelay, {
                 title: editedTitle.trim(),
@@ -416,7 +427,7 @@ export function TrackPreviewCard({
               })
             }
             disabled={isQueueing}
-            className="btn btn-outline btn-block rounded-xl gap-2 font-bold border-base-300 text-base-content hover:bg-base-300 hover:text-white"
+            className="btn btn-secondary h-11 btn-block rounded-lg gap-2 font-semibold text-sm border border-base-300 text-secondary-content hover:bg-base-300"
           >
             {isQueueing && activePos === -1 ? (
               <>
@@ -433,12 +444,12 @@ export function TrackPreviewCard({
         </div>
       </div>
 
-      {/* Announcer Lyrics & Cue Points Modal */}
+      {/* Announcer Lyrics & Cue Sheet Modal */}
       <LyricsModal
         track={track}
         isOpen={isLyricsOpen}
         onClose={() => setIsLyricsOpen(false)}
       />
-    </div>
+    </section>
   );
 }

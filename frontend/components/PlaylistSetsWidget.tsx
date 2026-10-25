@@ -19,6 +19,7 @@ import {
   ListX,
   X,
   FastForward,
+  Music2,
 } from "lucide-react";
 import { PlaylistSet, PlaylistSetDetails, PlaylistSetItem, TrackItem } from "@/lib/types";
 import {
@@ -57,35 +58,29 @@ export function PlaylistSetsWidget({
     useState<PlaylistSetDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
 
-  // New set modal/form states
   const [isCreatingSet, setIsCreatingSet] = useState<boolean>(false);
   const [newSetName, setNewSetName] = useState<string>("");
   const [newSetDesc, setNewSetDesc] = useState<string>("");
 
-  // Playlist Importer states
   const [isImporterOpen, setIsImporterOpen] = useState<boolean>(false);
   const [importUrl, setImportUrl] = useState<string>("");
   const [isResolvingPlaylist, setIsResolvingPlaylist] = useState<boolean>(false);
   const [resolvedTracks, setResolvedTracks] = useState<TrackItem[]>([]);
   const [resolvedTitle, setResolvedTitle] = useState<string>("");
 
-  // Batch queue states
   const [isBatchQueueing, setIsBatchQueueing] = useState<boolean>(false);
   const [batchProgress, setBatchProgress] = useState<{
     current: number;
     total: number;
   }>({ current: 0, total: 0 });
 
-  // Audio preview states
   const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // In-set filter search
   const [filterQuery, setFilterQuery] = useState<string>("");
-
   const [prevSelectedSetId, setPrevSelectedSetId] = useState<string | null>(null);
 
-  // Synchronize detail loading & clearing state during render phase (avoids cascading render warnings)
+  // Synchronize detail loading state during render phase
   if (selectedSetId !== prevSelectedSetId) {
     setPrevSelectedSetId(selectedSetId);
     if (!selectedSetId) {
@@ -114,7 +109,6 @@ export function PlaylistSetsWidget({
     }
   }, [onAddToast]);
 
-  // Initial load of playlist sets on mount
   useEffect(() => {
     let isMounted = true;
     fetchPlaylistSets()
@@ -159,7 +153,6 @@ export function PlaylistSetsWidget({
     [onAddToast]
   );
 
-  // Synchronize set details whenever selectedSetId changes
   useEffect(() => {
     if (!selectedSetId) return;
 
@@ -190,7 +183,7 @@ export function PlaylistSetsWidget({
 
     try {
       const created = await createPlaylistSet(newSetName.trim(), newSetDesc.trim());
-      onAddToast("success", `Set "${created.name}" berhasil dibuat!`);
+      onAddToast("success", `Set "${created.name}" berhasil dibuat.`);
       setNewSetName("");
       setNewSetDesc("");
       setIsCreatingSet(false);
@@ -247,7 +240,7 @@ export function PlaylistSetsWidget({
       const res = await resolvePlaylistUrl(importUrl.trim(), 40);
       setResolvedTitle(res.title);
       setResolvedTracks(res.tracks);
-      onAddToast("success", `Berhasil mengekstrak ${res.count} lagu dari playlist!`);
+      onAddToast("success", `Berhasil mengekstrak ${res.count} lagu dari playlist.`);
     } catch (err) {
       onAddToast(
         "error",
@@ -268,7 +261,7 @@ export function PlaylistSetsWidget({
       }
       onAddToast(
         "success",
-        `${resolvedTracks.length} lagu berhasil disimpan ke set!`
+        `${resolvedTracks.length} lagu berhasil disimpan ke set.`
       );
       setResolvedTracks([]);
       setImportUrl("");
@@ -319,17 +312,16 @@ export function PlaylistSetsWidget({
         );
         successCount++;
       } catch {
-        // Continue queueing remaining songs even if one fails
+        // Continue queueing remaining songs
       }
 
-      // Small pause between insertions to allow RadioBOSS API to commit
       await new Promise((r) => setTimeout(r, 600));
     }
 
     setIsBatchQueueing(false);
     onAddToast(
       "success",
-      `Batch Selesai: ${successCount} dari ${tracksToQueue.length} lagu berhasil dikirim ke RadioBOSS!`
+      `Pengiriman selesai: ${successCount} dari ${tracksToQueue.length} lagu masuk ke RadioBOSS.`
     );
     if (onQueueComplete) {
       onQueueComplete();
@@ -358,7 +350,7 @@ export function PlaylistSetsWidget({
   };
 
   const totalDurationFormatted = useMemo(() => {
-    if (!selectedSetDetails?.tracks?.length) return "0 mnt";
+    if (!selectedSetDetails?.tracks?.length) return "00:00";
     const totalSecs = selectedSetDetails.tracks.reduce(
       (acc, t) => acc + (t.duration_seconds || 0),
       0
@@ -418,7 +410,7 @@ export function PlaylistSetsWidget({
     }
     try {
       await clearPlaylistSetTracks(selectedSetId);
-      onAddToast("success", "Semua lagu berhasil dikosongkan.");
+      onAddToast("success", "Semua lagu di set berhasil dikosongkan.");
       loadSetDetails(selectedSetId);
       loadSets();
     } catch (err) {
@@ -448,7 +440,7 @@ export function PlaylistSetsWidget({
         );
         onAddToast(
           "success",
-          `Lagu dikirim ke RadioBOSS (${pos === 1 ? "Putar Berikutnya" : "Antrean Bawah"})!`
+          `Lagu dikirim ke RadioBOSS (${pos === 1 ? "Putar Berikutnya" : "Antrean Bawah"}).`
         );
         if (onQueueComplete) onQueueComplete();
       } catch (err) {
@@ -461,109 +453,104 @@ export function PlaylistSetsWidget({
   };
 
   return (
-    <div className="card rounded-2xl bg-base-200 border border-base-300 p-5 shadow-sm space-y-4">
-      {/* Hidden audio element for preview */}
+    <section
+      aria-label="Koleksi Set Playlist & Importer"
+      className="rounded-xl bg-base-200 border border-base-300 p-4 sm:p-5 space-y-4"
+    >
       <audio
         ref={audioRef}
         onEnded={handleAudioEnded}
         onError={() => setPreviewTrackId(null)}
         className="hidden"
       />
+
       {/* Top Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-base-300 text-base-content">
-            <FolderHeart className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-sm text-base-content flex items-center gap-1.5">
-              <span>Koleksi Set Playlist &amp; Importer</span>
-              <span className="badge badge-accent badge-xs font-bold scale-90 text-accent-content">
-                SQLite Local DB
-              </span>
-            </h3>
-            <p className="text-[10px] text-base-content/60">
-              Preset koleksi siaran &amp; impor playlist YouTube / YT Music
-            </p>
-          </div>
+        <div>
+          <h3 className="font-bold text-sm text-base-content">
+            Koleksi Set Playlist &amp; Importer
+          </h3>
+          <p className="text-xs text-base-content/70">
+            Susun daftar lagu program siaran atau impor playlist dari YouTube Music
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setIsImporterOpen(!isImporterOpen)}
-            className="btn btn-outline btn-accent btn-xs gap-1 font-semibold"
+            className="btn btn-xs h-8 px-3 rounded-lg bg-base-100 border border-base-300 hover:bg-base-300 text-xs font-semibold text-base-content gap-1.5"
             title="Impor playlist dari YouTube atau YouTube Music"
           >
-            <LinkIcon className="h-3 w-3" />
-            <span>Impor Playlist URL</span>
+            <LinkIcon className="h-3.5 w-3.5 text-accent" />
+            <span>Impor URL Playlist</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsCreatingSet(!isCreatingSet)}
-            className="btn btn-primary btn-xs gap-1 font-bold shadow-sm"
+            className="btn btn-primary btn-xs h-8 px-3 rounded-lg gap-1.5 text-xs font-bold text-primary-content"
           >
-            <Plus className="h-3 w-3" />
-            <span>Set Baru</span>
+            <Plus className="h-3.5 w-3.5" />
+            <span>Buat Set Baru</span>
           </button>
         </div>
       </div>
 
-      {/* Form: Create Set */}
+      {/* Form: Create New Set */}
       {isCreatingSet && (
         <form
           onSubmit={handleCreateSet}
-          className="bg-base-100 p-3.5 rounded-xl border border-base-300 space-y-3"
+          className="bg-base-100 p-3.5 rounded-lg border border-base-300 space-y-3"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-base-content flex items-center gap-1.5">
-              <Plus className="h-3.5 w-3.5" />
-              <span>Buat Playlist Set Baru</span>
+              <Plus className="h-3.5 w-3.5 text-primary" />
+              <span>Buat Set Siaran Baru</span>
             </span>
             <button
               type="button"
               onClick={() => setIsCreatingSet(false)}
-              className="btn btn-ghost btn-xs text-base-content/50"
+              className="btn btn-ghost btn-xs h-7 px-2 text-xs text-base-content/70 hover:text-base-content"
             >
               Batal
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <input
               type="text"
               value={newSetName}
               onChange={(e) => setNewSetName(e.target.value)}
-              placeholder="Nama Set (contoh: Morning Show Hits, Indie Sore)"
+              placeholder="Nama Set (contoh: Morning Show, Pop Sore)"
               required
-              className="input input-bordered input-xs bg-base-200 text-xs w-full"
+              className="input input-bordered input-sm h-9 bg-base-200 text-xs w-full rounded-md"
             />
             <input
               type="text"
               value={newSetDesc}
               onChange={(e) => setNewSetDesc(e.target.value)}
-              placeholder="Deskripsi singkat (opsional)"
-              className="input input-bordered input-xs bg-base-200 text-xs w-full"
+              placeholder="Deskripsi singkat program (opsional)"
+              className="input input-bordered input-sm h-9 bg-base-200 text-xs w-full rounded-md"
             />
           </div>
 
           <button
             type="submit"
-            className="btn btn-primary btn-xs font-bold w-full"
+            className="btn btn-primary btn-sm h-9 rounded-md font-bold text-xs w-full text-primary-content"
           >
-            Simpan Set ke Database
+            Simpan Set Playlist
           </button>
         </form>
       )}
 
       {/* Form: YouTube Playlist Importer */}
       {isImporterOpen && (
-        <div className="bg-base-100 p-3.5 rounded-xl border border-accent/40 space-y-3">
+        <div className="bg-base-100 p-3.5 rounded-lg border border-accent/40 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-accent flex items-center gap-1.5">
               <LinkIcon className="h-3.5 w-3.5" />
-              <span>Impor YouTube / YT Music Playlist</span>
+              <span>Impor Playlist YouTube / YT Music</span>
             </span>
             <button
               type="button"
@@ -571,54 +558,53 @@ export function PlaylistSetsWidget({
                 setIsImporterOpen(false);
                 setResolvedTracks([]);
               }}
-              className="btn btn-ghost btn-xs text-base-content/50"
+              className="btn btn-ghost btn-xs h-7 px-2 text-xs text-base-content/70 hover:text-base-content"
             >
               Tutup
             </button>
           </div>
 
-          <form onSubmit={handleResolvePlaylist} className="join w-full">
+          <form onSubmit={handleResolvePlaylist} className="flex items-stretch gap-2">
             <input
               type="url"
               value={importUrl}
               onChange={(e) => setImportUrl(e.target.value)}
-              placeholder="Paste URL Playlist (contoh: https://music.youtube.com/playlist?list=...)"
+              placeholder="Tempel URL Playlist (contoh: https://music.youtube.com/playlist?list=...)"
               required
-              className="input input-bordered input-xs join-item w-full bg-base-200 text-xs font-mono"
+              className="input input-bordered input-sm h-9 flex-1 bg-base-200 text-xs font-mono rounded-md"
             />
             <button
               type="submit"
               disabled={isResolvingPlaylist}
-              className="btn btn-accent btn-xs join-item font-bold shrink-0"
+              className="btn btn-accent btn-sm h-9 px-3 rounded-md font-bold text-xs text-accent-content shrink-0 gap-1.5"
             >
               {isResolvingPlaylist ? (
                 <>
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   <span>Mengekstrak...</span>
                 </>
               ) : (
-                <span>Ekstrak Lagu</span>
+                <span>Ekstrak Playlist</span>
               )}
             </button>
           </form>
 
-          {/* Resolved Tracks Preview */}
           {resolvedTracks.length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-base-300">
-              <div className="flex items-center justify-between text-xs">
+            <div className="space-y-2.5 pt-2.5 border-t border-base-300">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <span className="font-bold text-base-content truncate">
                   {resolvedTitle} ({resolvedTracks.length} lagu)
                 </span>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleBatchQueue(resolvedTracks)}
                     disabled={isBatchQueueing}
-                    className="btn btn-xs btn-primary font-bold gap-1"
+                    className="btn btn-xs btn-primary h-8 px-3 rounded-md font-bold text-xs text-primary-content gap-1.5"
                     title="Kirim semua lagu hasil impor langsung ke RadioBOSS"
                   >
                     <Send className="h-3 w-3" />
-                    <span>Kirim Langsung ke RadioBOSS</span>
+                    <span>Kirim Semua ke RadioBOSS</span>
                   </button>
 
                   {selectedSetId && (
@@ -626,7 +612,7 @@ export function PlaylistSetsWidget({
                       type="button"
                       onClick={handleSaveImportedToSet}
                       disabled={isResolvingPlaylist}
-                      className="btn btn-xs btn-outline btn-accent font-semibold"
+                      className="btn btn-xs h-8 px-3 rounded-md bg-base-200 border border-accent/40 text-accent hover:bg-base-300 text-xs font-semibold"
                     >
                       Simpan ke Set Aktif
                     </button>
@@ -634,31 +620,31 @@ export function PlaylistSetsWidget({
                 </div>
               </div>
 
-              <div className="max-h-48 overflow-y-auto space-y-1 pr-1 bg-base-200/50 p-2 rounded-lg">
+              <div className="max-h-48 overflow-y-auto divide-y divide-base-300 bg-base-200 rounded-md border border-base-300 px-3 py-1">
                 {resolvedTracks.slice(0, 15).map((track, i) => (
                   <div
                     key={track.video_id || i}
-                    className="flex items-center justify-between text-[11px] py-1 border-b border-base-300/40 last:border-none"
+                    className="flex items-center justify-between text-xs py-1.5 gap-2"
                   >
-                    <div className="truncate flex items-center gap-1.5 flex-1 pr-2">
-                      <span className="text-base-content/40 font-mono w-5">
-                        {i + 1}.
+                    <div className="truncate flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-base-content/60 font-mono w-6 shrink-0">
+                        {String(i + 1).padStart(2, "0")}
                       </span>
-                      <span className="font-bold truncate text-base-content">
+                      <span className="font-semibold truncate text-base-content">
                         {track.title}
                       </span>
-                      <span className="text-base-content/60 truncate">
-                        - {track.artists.join(", ")}
+                      <span className="text-base-content/70 truncate">
+                        • {track.artists.join(", ")}
                       </span>
                     </div>
-                    <span className="text-base-content/40 text-[10px] shrink-0">
+                    <span className="text-base-content/70 font-mono text-xs shrink-0 tabular-nums">
                       {track.duration_formatted}
                     </span>
                   </div>
                 ))}
                 {resolvedTracks.length > 15 && (
-                  <p className="text-[10px] text-center text-base-content/50 italic py-1">
-                    ... dan {resolvedTracks.length - 15} lagu lainnya
+                  <p className="text-xs text-center text-base-content/70 py-2 font-mono">
+                    + {resolvedTracks.length - 15} lagu lainnya siap disimpan
                   </p>
                 )}
               </div>
@@ -667,15 +653,15 @@ export function PlaylistSetsWidget({
         </div>
       )}
 
-      {/* Batch Queue Progress Bar */}
+      {/* Batch Queue Progress Readout */}
       {isBatchQueueing && (
-        <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl space-y-1.5 animate-pulse">
+        <div className="p-3 bg-primary/10 border border-primary/40 rounded-lg space-y-1.5">
           <div className="flex items-center justify-between text-xs font-bold text-primary">
             <span className="flex items-center gap-1.5">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              <span>Mengirim batch lagu ke RadioBOSS...</span>
+              <span>Mengirim batch lagu ke antrean RadioBOSS...</span>
             </span>
-            <span>
+            <span className="font-mono tabular-nums">
               {batchProgress.current} / {batchProgress.total}
             </span>
           </div>
@@ -687,25 +673,26 @@ export function PlaylistSetsWidget({
         </div>
       )}
 
-      {/* Set Selector Pills */}
+      {/* Set Selector Tabs & Active Set Tracklist */}
       {isLoadingSets ? (
-        <div className="py-6 text-center space-y-1">
-          <span className="loading loading-spinner loading-xs text-accent" />
-          <p className="text-[11px] text-base-content/60">Memuat playlist sets...</p>
+        <div className="py-8 text-center space-y-2 rounded-lg bg-base-100 border border-base-300">
+          <span className="loading loading-spinner loading-sm text-primary" />
+          <p className="text-xs text-base-content/70">Memuat koleksi playlist set...</p>
         </div>
       ) : sets.length === 0 ? (
-        <div className="py-6 text-center space-y-1 bg-base-100 rounded-xl border border-dashed border-base-300">
-          <FolderHeart className="h-6 w-6 text-base-content/30 mx-auto" />
-          <p className="text-xs text-base-content/70 font-semibold">
-            Belum ada Playlist Set.
+        <div className="py-8 px-4 text-center space-y-1.5 bg-base-100 rounded-lg border border-base-300">
+          <FolderHeart className="h-6 w-6 text-base-content/60 mx-auto" />
+          <p className="text-xs text-base-content font-semibold">
+            Belum Ada Koleksi Set Playlist
           </p>
-          <p className="text-[10px] text-base-content/50">
-            Klik tombol &quot;+ Set Baru&quot; di atas untuk membuat koleksi siaran Anda.
+          <p className="text-xs text-base-content/70">
+            Gunakan tombol &quot;Buat Set Baru&quot; di atas untuk menyimpan daftar lagu per program siaran.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+          {/* Set Selector Strip */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
             {sets.map((s) => {
               const isSelected = selectedSetId === s.id;
               return (
@@ -713,39 +700,41 @@ export function PlaylistSetsWidget({
                   key={s.id}
                   type="button"
                   onClick={() => setSelectedSetId(s.id)}
-                  className={`btn btn-xs rounded-lg gap-1.5 shrink-0 transition-all ${
+                  className={`btn btn-xs h-8 px-3 rounded-md gap-2 shrink-0 text-xs transition-colors ${
                     isSelected
-                      ? "btn-accent text-accent-content font-bold shadow-sm"
-                      : "btn-ghost bg-base-100 text-base-content/70 hover:bg-base-300"
+                      ? "bg-primary text-primary-content font-bold"
+                      : "bg-base-100 border border-base-300 text-base-content/80 hover:text-base-content hover:bg-base-300"
                   }`}
                 >
-                  <FolderOpen className="h-3 w-3" />
-                  <span className="max-w-[120px] truncate">{s.name}</span>
-                  <span className="badge badge-ghost border border-base-300 badge-xs font-mono scale-90">
-                    {s.track_count}
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  <span className="max-w-[140px] truncate">{s.name}</span>
+                  <span className="font-mono text-xs opacity-80">
+                    ({s.track_count})
                   </span>
                 </button>
               );
             })}
           </div>
 
-          {/* Active Set Details & Tracks List */}
+          {/* Active Set Details */}
           {selectedSetDetails && (
-            <div className="bg-base-100 rounded-xl border border-base-300 p-3.5 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300/60 pb-2">
+            <div className="bg-base-100 rounded-lg border border-base-300 p-3.5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 pb-2.5">
                 <div>
-                  <h4 className="text-xs font-bold text-base-content flex items-center gap-1.5 flex-wrap">
-                    <span>{selectedSetDetails.name}</span>
-                    <span className="badge badge-accent badge-xs font-bold">
-                      {selectedSetDetails.tracks.length} Lagu
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-sm font-bold text-base-content">
+                      {selectedSetDetails.name}
+                    </h4>
+                    <span className="px-2 py-0.5 rounded bg-base-200 border border-base-300 font-mono text-xs font-semibold text-base-content/80">
+                      {selectedSetDetails.tracks.length} lagu
                     </span>
-                    <span className="badge badge-ghost badge-xs font-mono text-[10px] gap-1">
-                      <Clock className="h-2.5 w-2.5" />
-                      {totalDurationFormatted}
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-base-200 border border-base-300 font-mono text-xs text-primary">
+                      <Clock className="h-3 w-3" />
+                      <span>{totalDurationFormatted}</span>
                     </span>
-                  </h4>
+                  </div>
                   {selectedSetDetails.description && (
-                    <p className="text-[10px] text-base-content/60 truncate mt-0.5">
+                    <p className="text-xs text-base-content/70 mt-0.5">
                       {selectedSetDetails.description}
                     </p>
                   )}
@@ -758,7 +747,7 @@ export function PlaylistSetsWidget({
                     disabled={
                       isBatchQueueing || selectedSetDetails.tracks.length === 0
                     }
-                    className="btn btn-primary btn-xs gap-1 font-bold shadow-sm"
+                    className="btn btn-primary btn-xs h-8 px-3 rounded-md gap-1.5 text-xs font-bold text-primary-content"
                     title="Kirim semua lagu di set ini secara berurutan ke RadioBOSS"
                   >
                     <Send className="h-3 w-3" />
@@ -769,10 +758,11 @@ export function PlaylistSetsWidget({
                     <button
                       type="button"
                       onClick={handleClearSetTracks}
-                      className="btn btn-ghost btn-xs text-base-content/60 hover:text-error p-1 h-6 min-h-0"
+                      className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-xs font-medium text-base-content/80 hover:text-warning hover:bg-base-300 gap-1"
                       title="Kosongkan semua lagu di set ini"
                     >
                       <ListX className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Kosongkan</span>
                     </button>
                   )}
 
@@ -784,54 +774,56 @@ export function PlaylistSetsWidget({
                         selectedSetDetails.name
                       )
                     }
-                    className="btn btn-ghost btn-xs text-error hover:bg-error/10 p-1 h-6 min-h-0"
+                    className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-xs font-medium text-error hover:bg-error/15 gap-1"
                     title="Hapus set ini"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Hapus Set</span>
                   </button>
                 </div>
               </div>
 
-              {/* In-Set Search Filter */}
+              {/* In-Set Filter */}
               {selectedSetDetails.tracks.length > 3 && (
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-base-content/40" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-base-content/60" />
                   <input
                     type="text"
                     value={filterQuery}
                     onChange={(e) => setFilterQuery(e.target.value)}
-                    placeholder="Filter lagu di set ini (judul atau artis)..."
-                    className="input input-xs input-bordered w-full pl-8 pr-7 bg-base-200/50 text-xs rounded-lg"
+                    placeholder="Saring lagu di dalam set ini..."
+                    className="input input-sm input-bordered w-full h-9 pl-9 pr-8 bg-base-200 text-xs rounded-md"
                   />
                   {filterQuery && (
                     <button
                       type="button"
                       onClick={() => setFilterQuery("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded text-base-content/60 hover:text-base-content"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
               )}
 
-              {/* Tracks in Set */}
+              {/* Tracks List */}
               {isLoadingDetails ? (
-                <div className="py-6 text-center space-y-1">
+                <div className="py-6 text-center">
                   <span className="loading loading-spinner loading-xs text-primary" />
                 </div>
               ) : selectedSetDetails.tracks.length === 0 ? (
-                <div className="py-6 text-center text-xs text-base-content/50">
-                  Set ini masih kosong. Cari lagu atau impor playlist untuk mengisinya!
+                <div className="py-6 text-center text-xs text-base-content/70">
+                  Set ini masih kosong. Simpan lagu dari hasil pencarian atau gunakan Impor URL Playlist.
                 </div>
               ) : filteredTracks.length === 0 ? (
-                <div className="py-4 text-center text-xs text-base-content/50">
+                <div className="py-4 text-center text-xs text-base-content/70">
                   Tidak ditemukan lagu yang cocok dengan &quot;{filterQuery}&quot;.
                 </div>
               ) : (
-                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                <div className="divide-y divide-base-300 rounded-md border border-base-300 bg-base-200/50 max-h-80 overflow-y-auto">
                   {filteredTracks.map((item, index) => {
                     const isPlayingPreview = previewTrackId === item.video_id;
+                    const indexStr = String(index + 1).padStart(2, "0");
                     const trackObj: TrackItem = {
                       video_id: item.video_id,
                       title: item.title,
@@ -848,125 +840,134 @@ export function PlaylistSetsWidget({
                     return (
                       <div
                         key={item.id}
-                        className="group flex items-center justify-between gap-2 p-1.5 rounded-lg bg-base-200/60 hover:bg-base-200 text-xs transition-colors"
+                        className="group flex items-center justify-between gap-2.5 px-3 py-2 hover:bg-base-300/60 text-xs transition-colors"
                       >
-                        {/* Track Info & Preview Overlay */}
-                        <div className="min-w-0 flex-1 flex items-center gap-2">
-                          <span className="font-mono text-[10px] text-base-content/40 w-4 text-right shrink-0">
-                            {index + 1}.
+                        {/* Left: Index + Artwork + Title */}
+                        <div className="min-w-0 flex-1 flex items-center gap-2.5">
+                          <span className="font-mono text-xs font-bold text-base-content/60 w-5 shrink-0">
+                            {indexStr}
                           </span>
 
-                          <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-base-300 shrink-0">
+                          <div className="relative w-9 h-9 rounded-md overflow-hidden bg-base-300 border border-base-300 shrink-0">
                             {item.thumbnail_url ? (
                               <Image
                                 src={item.thumbnail_url}
                                 alt={item.title}
-                                width={32}
-                                height={32}
+                                width={36}
+                                height={36}
                                 unoptimized
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-[10px]">
-                                🎵
+                              <div className="w-full h-full flex items-center justify-center text-base-content/60">
+                                <Music2 className="h-4 w-4" />
                               </div>
                             )}
-
-                            {/* Headphone Audio Preview Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleTogglePreview(trackObj)}
-                              className={`absolute inset-0 flex items-center justify-center bg-black/60 transition-opacity ${
-                                isPlayingPreview
-                                  ? "opacity-100 text-accent"
-                                  : "opacity-0 group-hover:opacity-100 text-white"
-                              }`}
-                              title={isPlayingPreview ? "Pause Preview" : "Dengarkan di Headphone"}
-                            >
-                              {isPlayingPreview ? (
-                                <Pause className="h-3.5 w-3.5 fill-current animate-pulse" />
-                              ) : (
-                                <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
-                              )}
-                            </button>
                           </div>
 
                           <div
                             onClick={() => onSelectTrack(trackObj)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onSelectTrack(trackObj);
+                              }
+                            }}
                             className="min-w-0 flex-1 cursor-pointer"
-                            title="Klik untuk memilih ke Dispatch Deck"
+                            title="Klik untuk memuat ke Cue Deck"
                           >
-                            <p className="font-bold truncate text-base-content group-hover:text-white transition-colors">
+                            <p className="text-sm font-semibold truncate text-base-content group-hover:text-primary transition-colors">
                               {item.title}
                             </p>
-                            <p className="text-[10px] text-base-content/60 truncate">
+                            <p className="text-xs text-base-content/70 truncate">
                               {item.artists.join(", ") || "YouTube Music"}
                             </p>
                           </div>
                         </div>
 
-                        {/* Action Buttons: Next, +Antrean, Reorder Up/Down, Remove */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-[10px] text-base-content/40 font-mono mr-1">
+                        {/* Right: Duration + Persistent Preview + Queue + Reorder + Delete */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-xs text-base-content/70 font-mono tabular-nums mr-1 hidden sm:inline">
                             {item.duration_formatted}
                           </span>
 
-                          {/* Quick 1-Click Queue: Next */}
+                          {/* Headphone Preview Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePreview(trackObj)}
+                            aria-label={isPlayingPreview ? "Jeda pratinjau" : "Pratinjau headphone"}
+                            className={`btn btn-xs h-8 w-8 p-0 rounded-md border ${
+                              isPlayingPreview
+                                ? "bg-accent text-accent-content border-accent"
+                                : "bg-base-100 border-base-300 text-base-content/80 hover:text-base-content"
+                            }`}
+                            title={isPlayingPreview ? "Jeda Pratinjau" : "Dengarkan di Headphone"}
+                          >
+                            {isPlayingPreview ? (
+                              <Pause className="h-3.5 w-3.5 fill-current" />
+                            ) : (
+                              <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
+                            )}
+                          </button>
+
+                          {/* Next */}
                           <button
                             type="button"
                             onClick={() => handleQueueSingle(trackObj, 1)}
                             disabled={isQueueing}
-                            className="btn btn-ghost btn-xs text-base-content hover:bg-base-300 px-1.5 h-6 min-h-0 font-bold text-[10px] gap-0.5"
-                            title="Putar Sebagai Lagu Berikutnya (Posisi 1 di RadioBOSS)"
+                            className="btn btn-primary btn-xs h-8 px-2.5 rounded-md font-bold text-xs text-primary-content gap-1"
+                            title="Putar berikutnya di RadioBOSS (pos=1)"
                           >
-                            <FastForward className="h-3 w-3" />
+                            <FastForward className="h-3 w-3 fill-current" />
                             <span>Next</span>
                           </button>
 
-                          {/* Quick 1-Click Queue: Bottom */}
+                          {/* Queue Bottom */}
                           <button
                             type="button"
                             onClick={() => handleQueueSingle(trackObj, -1)}
                             disabled={isQueueing}
-                            className="btn btn-ghost btn-xs text-base-content/70 hover:text-base-content hover:bg-base-300 px-1.5 h-6 min-h-0 font-medium text-[10px] gap-0.5"
-                            title="Tambahkan ke Antrean Paling Bawah di RadioBOSS"
+                            className="btn btn-secondary btn-xs h-8 px-2 rounded-md border border-base-300 font-semibold text-xs text-secondary-content hover:bg-base-300 gap-1"
+                            title="Tambahkan ke antrean bawah di RadioBOSS"
                           >
-                            <Plus className="h-3 w-3" />
-                            <span>Antrean</span>
+                            <Plus className="h-3.5 w-3.5" />
+                            <span className="hidden md:inline">Antrean</span>
                           </button>
 
-                          {/* Reorder Up / Down (only when not searching) */}
+                          {/* Reorder Up/Down */}
                           {!filterQuery && (
-                            <div className="flex flex-col">
+                            <div className="flex items-center gap-0.5">
                               <button
                                 type="button"
                                 onClick={() => handleMoveTrack(index, "up")}
                                 disabled={index === 0}
-                                className="btn btn-ghost btn-xs text-base-content/40 hover:text-base-content p-0 h-3 min-h-0 disabled:opacity-20"
-                                title="Pindah ke Atas"
+                                className="btn btn-ghost btn-xs h-8 w-7 p-0 rounded-md text-base-content/70 hover:text-base-content disabled:opacity-25"
+                                title="Pindah ke atas"
                               >
-                                <ChevronUp className="h-2.5 w-2.5" />
+                                <ChevronUp className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleMoveTrack(index, "down")}
                                 disabled={index === selectedSetDetails.tracks.length - 1}
-                                className="btn btn-ghost btn-xs text-base-content/40 hover:text-base-content p-0 h-3 min-h-0 disabled:opacity-20"
-                                title="Pindah ke Bawah"
+                                className="btn btn-ghost btn-xs h-8 w-7 p-0 rounded-md text-base-content/70 hover:text-base-content disabled:opacity-25"
+                                title="Pindah ke bawah"
                               >
-                                <ChevronDown className="h-2.5 w-2.5" />
+                                <ChevronDown className="h-3.5 w-3.5" />
                               </button>
                             </div>
                           )}
 
-                          {/* Remove from set */}
+                          {/* Remove Track */}
                           <button
                             type="button"
                             onClick={() => handleRemoveTrack(item.id)}
-                            className="btn btn-ghost btn-xs text-base-content/40 hover:text-error p-1 h-6 min-h-0 ml-0.5"
-                            title="Hapus dari set"
+                            className="btn btn-ghost btn-xs h-8 w-8 p-0 rounded-md text-base-content/70 hover:text-error hover:bg-error/10"
+                            title="Hapus lagu dari set"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </div>
@@ -978,6 +979,6 @@ export function PlaylistSetsWidget({
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }
