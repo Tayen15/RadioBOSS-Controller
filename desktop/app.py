@@ -219,6 +219,12 @@ def main():
         cfg = settings_service.get_config()
         base_port = cfg.server_port or 8000
         port, already_running = _resolve_port(base_port)
+        os.environ["SERVER_PORT"] = str(port)
+        try:
+            from app.config import get_settings
+            get_settings().SERVER_PORT = port
+        except Exception:
+            pass
 
         server_thread = None
         if not already_running:

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import time
 from fastapi import APIRouter, HTTPException
 from app.config import get_settings
 from app.schemas.track import (
@@ -20,7 +21,6 @@ from app.services.ytdlp_service import ytdlp_service
 from app.services.settings_service import settings_service
 from app.services.cache_service import cache_service
 from app.services.history_service import history_service
-import time
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["RadioBOSS"])
@@ -107,7 +107,7 @@ async def queue_track(request: QueueRequest):
     year = request.year or meta.get("year") or ""
     genre = request.genre or meta.get("genre") or "Pop"
 
-    # Cache metadata for stream relay and fallback
+    # Cache metadata for stream relay and fallback search
     ytdlp_service._meta_cache[clean_id] = {
         "title": song_title,
         "artist": artist,
@@ -139,20 +139,31 @@ async def queue_track(request: QueueRequest):
         target_filename = cached_file
         logger.info(f"Queuing local studio master MP3 with ID3 & artwork to RadioBOSS: {target_filename}")
     elif request.use_relay:
-        # Smart Stream Relay URL fallback
-        target_filename = f"http://{settings.SERVER_HOST}:{settings.SERVER_PORT}/api/stream/{request.video_id}.mp3"
+        # Verify stream is actually resolvable before sending relay URL to RadioBOSS
+        # Prevents queuing a broken 'Network Stream' item that fails with BASS Error code 2
+        stream_url, _ = await asyncio.to_thread(ytdlp_service.get_live_stream_details, clean_id)
+        if not stream_url:
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    f"Gagal mengekstrak audio untuk '{artist} - {song_title}' dari YouTube "
+                    f"(stream diblokir atau tidak tersedia). Coba pilih versi lagu lain dari hasil pencarian."
+                ),
+            )
+        cfg = settings_service.get_config()
+        active_port = cfg.server_port or settings.SERVER_PORT
+        target_filename = f"http://{settings.SERVER_HOST}:{active_port}/api/stream/{clean_id}.mp3"
+        logger.info(f"Queuing verified stream relay URL to RadioBOSS: {target_filename}")
     elif request.direct_stream_url:
         target_filename = request.direct_stream_url
     else:
-        # Resolve direct stream URL on the fly
-        _, direct_url = ytdlp_service.extract_track_info(request.video_id)
+        _, direct_url = await asyncio.to_thread(ytdlp_service.extract_track_info, clean_id)
         if not direct_url:
             raise HTTPException(
                 status_code=400,
-                detail="Tidak dapat mengekstrak audio stream untuk lagu ini."
+                detail="Tidak dapat mengekstrak audio stream untuk lagu ini.",
             )
         target_filename = direct_url
-
 
     # Format broadcast title according to user setting
     # None means 'radioboss_native' -> RadioBOSS will format using embedded ID3 tags

@@ -15,11 +15,39 @@ DIST_DIR = os.path.join(ROOT_DIR, "dist")
 BUILD_DIR = os.path.join(ROOT_DIR, "build")
 
 
+def ensure_ffmpeg_in_dist() -> str | None:
+    """Ensure ffmpeg.exe is present in dist/ for Inno Setup and Portable ZIP."""
+    if sys.platform != "win32":
+        return None
+    os.makedirs(DIST_DIR, exist_ok=True)
+    target_ffmpeg = os.path.join(DIST_DIR, "ffmpeg.exe")
+    if os.path.isfile(target_ffmpeg) and os.path.getsize(target_ffmpeg) > 100000:
+        return target_ffmpeg
+
+    candidates = [
+        shutil.which("ffmpeg"),
+        r"D:\Apps\ffmpeg\bin\ffmpeg.exe",
+        os.path.join(ROOT_DIR, "ffmpeg.exe"),
+    ]
+    for c in candidates:
+        if c and os.path.isfile(c):
+            try:
+                shutil.copy2(c, target_ffmpeg)
+                print(f"[+] Bundled ffmpeg.exe into dist: {target_ffmpeg}")
+                return target_ffmpeg
+            except Exception as e:
+                print(f"[!] Could not copy ffmpeg.exe from {c}: {e}")
+    return None
+
+
 def create_windows_portable_zip(zip_path: str, exe_path: str):
     """Create a self-contained Portable ZIP package for Windows."""
     print(f"[*] Packaging Portable ZIP: {zip_path}")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.write(exe_path, "RadioBOSSCaster.exe")
+        ffmpeg_dist = os.path.join(DIST_DIR, "ffmpeg.exe")
+        if os.path.isfile(ffmpeg_dist):
+            zf.write(ffmpeg_dist, "ffmpeg.exe")
         zf.writestr(
             "portable.txt",
             "Radio Caster Bridge Portable Mode Active\r\n"
@@ -205,6 +233,7 @@ def main():
 
         # Windows: Keep standard RadioBOSSCaster.exe copy for local run.bat
         if is_windows:
+            ensure_ffmpeg_in_dist()
             std_exe = os.path.join(DIST_DIR, "RadioBOSSCaster.exe")
             try:
                 shutil.copy2(built_bin_path, std_exe)

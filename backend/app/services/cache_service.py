@@ -1,4 +1,5 @@
 """Studio Master Cache Service: Pre-caches studio audio files with full ID3v2 tags and cover art for RadioBOSS."""
+import glob
 import logging
 import os
 import re
@@ -74,6 +75,49 @@ class CacheService:
             pass
         return default_dir
 
+    def get_cached_file_by_id(self, video_id: str) -> Optional[str]:
+        """Locate an already cached MP3 file on disk by its YouTube video_id or metadata."""
+        clean_id = video_id.replace(".mp3", "").strip()
+        if not clean_id:
+            return None
+
+        # 1. Check SQLite cached_tracks table
+        try:
+            from app.services.db_service import db_service
+            with db_service.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT file_path FROM cached_tracks WHERE video_id = ? AND is_cached = 1 LIMIT 1;",
+                    (clean_id,),
+                )
+                row = cursor.fetchone()
+                if row and row["file_path"]:
+                    p = row["file_path"]
+                    if os.path.isfile(p) and os.path.getsize(p) > 50000:
+                        return p
+        except Exception as e:
+            logger.debug(f"Could not query cached_tracks for {clean_id}: {e}")
+
+        # 2. Check in-memory metadata cache for Artist - Title filename match
+        meta = ytdlp_service._meta_cache.get(clean_id)
+        if meta:
+            artist = (meta.get("artist") or "").strip()
+            title = (meta.get("title") or "").strip()
+            if title and title != "YouTube Audio":
+                safe_base = f"{artist} - {title}".strip(" -") if artist else title
+                safe_name = re.sub(r'[\\/*?:"<>|]', "", safe_base).strip()
+                if safe_name:
+                    candidate = os.path.join(self.cache_dir, f"{safe_name}.mp3")
+                    if os.path.isfile(candidate) and os.path.getsize(candidate) > 50000:
+                        return candidate
+
+        # 3. Direct video_id.mp3 check
+        direct_candidate = os.path.join(self.cache_dir, f"{clean_id}.mp3")
+        if os.path.isfile(direct_candidate) and os.path.getsize(direct_candidate) > 50000:
+            return direct_candidate
+
+        return None
+
     def get_cache_stats(self) -> dict:
         """Calculate number of cached tracks, total disk usage, limit, and sync with DB."""
         total_files = 0
@@ -123,7 +167,6 @@ class CacheService:
             if not os.path.isdir(self.cache_dir):
                 return 0
 
-            # Calculate current total size
             entries = []
             total_size = 0
             for entry in os.scandir(self.cache_dir):
@@ -135,14 +178,12 @@ class CacheService:
             if total_size <= limit_bytes:
                 return 0
 
-            # Target 90% of limit to prevent immediate re-trigger
             target_size = int(limit_bytes * 0.90)
             bytes_to_reclaim = total_size - target_size
             freed_bytes = 0
             pruned_count = 0
 
             from app.services.db_service import db_service
-            # Query tracks ordered by least airplay and oldest last_played
             tracked_candidates = []
             try:
                 with db_service.get_connection() as conn:
@@ -161,7 +202,6 @@ class CacheService:
 
             deleted_paths = set()
 
-            # Evict from database tracked files first (LRU / Least Played)
             for row in tracked_candidates:
                 if freed_bytes >= bytes_to_reclaim:
                     break
@@ -173,7 +213,6 @@ class CacheService:
                         freed_bytes += sz
                         pruned_count += 1
                         deleted_paths.add(path)
-                        # Also remove sidecar .jpg cover if exists
                         sidecar_jpg = os.path.splitext(path)[0] + ".jpg"
                         if os.path.isfile(sidecar_jpg):
                             try:
@@ -184,9 +223,8 @@ class CacheService:
                     except Exception as e:
                         logger.debug(f"Could not remove cached file {path}: {e}")
 
-            # If still over limit, evict any remaining files by oldest mtime
             if freed_bytes < bytes_to_reclaim:
-                entries.sort(key=lambda x: x[2])  # Sort by mtime ascending (oldest first)
+                entries.sort(key=lambda x: x[2])
                 for path, sz, _ in entries:
                     if freed_bytes >= bytes_to_reclaim:
                         break
@@ -211,7 +249,6 @@ class CacheService:
         except Exception as e:
             logger.error(f"Error enforcing cache limit: {e}")
             return 0
-
 
     def sync_disk_cache(self):
         """Scan cache directory and register existing MP3s into SQLite cached_tracks table."""
@@ -276,7 +313,6 @@ class CacheService:
                 os.startfile(self.cache_dir)
                 return True
             else:
-                import subprocess
                 subprocess.Popen(["xdg-open", self.cache_dir])
                 return True
         except Exception as e:
@@ -310,6 +346,69 @@ class CacheService:
             logger.error(f"Error clearing cache: {e}")
         return deleted
 
+    def _build_ffmpeg_transcode_cmd(
+        self,
+        ffmpeg_bin: str,
+        input_source: str,
+        target_mp3: str,
+        cover_path: Optional[str],
+        title: str,
+        artist: str,
+        album: str,
+        year: str,
+        genre: str,
+        is_network_stream: bool = True,
+        user_agent: Optional[str] = None,
+    ) -> list:
+        """Construct FFmpeg command to transcode audio and embed ID3v2.3 tags and MJPEG cover art."""
+        cmd = [ffmpeg_bin, "-y"]
+        if is_network_stream:
+            cmd.extend([
+                "-reconnect", "1",
+                "-reconnect_streamed", "1",
+                "-reconnect_delay_max", "5",
+            ])
+            if user_agent:
+                cmd.extend(["-user_agent", user_agent])
+
+        cmd.extend(["-i", input_source])
+
+        has_cover = cover_path and os.path.isfile(cover_path) and os.path.getsize(cover_path) > 1000
+        if has_cover:
+            cmd.extend([
+                "-i", cover_path,
+                "-map", "0:a",
+                "-map", "1:v",
+                "-c:v", "mjpeg",
+                "-metadata:s:v", "title=Album cover",
+                "-metadata:s:v", "comment=Cover (front)",
+            ])
+        else:
+            cmd.append("-vn")
+
+        # EBU R128 Loudness Normalization (-14 LUFS, Target True Peak -1.5 dB)
+        try:
+            cfg = settings_service.get_config()
+            if getattr(cfg, "enable_loudnorm", True):
+                cmd.extend(["-af", "loudnorm=I=-14:LRA=7:tp=-1.5"])
+        except Exception as e:
+            logger.warning(f"Could not apply loudnorm filter: {e}")
+
+        cmd.extend([
+            "-c:a", "libmp3lame",
+            "-b:a", "320k",
+            "-id3v2_version", "3",
+            "-write_id3v1", "1",
+            "-metadata", f"title={title}",
+            "-metadata", f"artist={artist or 'YouTube Music'}",
+            "-metadata", f"album={album or 'Single'}",
+            "-metadata", f"date={year or ''}",
+            "-metadata", f"year={year or ''}",
+            "-metadata", f"genre={genre or 'Pop'}",
+            target_mp3,
+        ])
+        return cmd
+
     def prepare_studio_cache(
         self,
         video_id: str,
@@ -323,6 +422,7 @@ class CacheService:
         """
         Download and transcode audio to local MP3 with complete ID3 tags, Year, Genre,
         and high-res Cover Art (both embedded ID3v2 APIC and sidecar .jpg for RadioBOSS).
+        Includes automatic fallback to native yt-dlp chunked download if direct FFmpeg stream fails.
         """
         clean_id = video_id.replace(".mp3", "").strip()
 
@@ -365,9 +465,6 @@ class CacheService:
 
         try:
             stream_url, headers = ytdlp_service.get_live_stream_details(clean_id)
-            if not stream_url:
-                logger.error(f"Failed to get stream url for {clean_id}")
-                return None
 
             # Retrieve updated metadata if fetched fresh by ytdlp
             fresh_meta = ytdlp_service.get_track_metadata(clean_id)
@@ -396,63 +493,71 @@ class CacheService:
                     logger.debug(f"Could not download thumbnail for {clean_id}: {e}")
                     cover_tmp = None
 
-            # Build FFmpeg command
-            ffmpeg_cmd = [
-                ffmpeg_bin,
-                "-y",
-                "-reconnect", "1",
-                "-reconnect_streamed", "1",
-                "-reconnect_delay_max", "5",
-            ]
-
-            user_agent = headers.get("User-Agent") if headers else None
-            if user_agent:
-                ffmpeg_cmd.extend(["-user_agent", user_agent])
-
-            ffmpeg_cmd.extend(["-i", stream_url])
-
-            has_cover = cover_tmp and os.path.isfile(cover_tmp) and os.path.getsize(cover_tmp) > 1000
-            if has_cover:
-                ffmpeg_cmd.extend([
-                    "-i", cover_tmp,
-                    "-map", "0:a",
-                    "-map", "1:v",
-                    "-c:v", "mjpeg",
-                    "-metadata:s:v", "title=Album cover",
-                    "-metadata:s:v", "comment=Cover (front)",
-                ])
-            else:
-                ffmpeg_cmd.append("-vn")
-
-            # EBU R128 Loudness Normalization (-14 LUFS, Target True Peak -1.5 dB)
-            try:
-                cfg = settings_service.get_config()
-                if getattr(cfg, "enable_loudnorm", True):
-                    ffmpeg_cmd.extend(["-af", "loudnorm=I=-14:LRA=7:tp=-1.5"])
-            except Exception as e:
-                logger.warning(f"Could not apply loudnorm filter: {e}")
-
-            ffmpeg_cmd.extend([
-                "-c:a", "libmp3lame",
-                "-b:a", "320k",
-                "-id3v2_version", "3",
-                "-write_id3v1", "1",
-                "-metadata", f"title={title}",
-                "-metadata", f"artist={artist or 'YouTube Music'}",
-                "-metadata", f"album={album or 'Single'}",
-                "-metadata", f"date={year or ''}",
-                "-metadata", f"year={year or ''}",
-                "-metadata", f"genre={genre or 'Pop'}",
-                target_mp3,
-            ])
-
-            popen_kwargs = {"capture_output": True, "timeout": 60}
+            popen_kwargs = {"capture_output": True, "timeout": 75}
             if sys.platform == "win32":
                 popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
 
-            proc = subprocess.run(ffmpeg_cmd, **popen_kwargs)
+            transcode_ok = False
 
-            if proc.returncode == 0 and os.path.isfile(target_mp3) and os.path.getsize(target_mp3) > 50000:
+            # Attempt 1: Direct FFmpeg stream transcode from stream_url
+            if stream_url:
+                user_agent = headers.get("User-Agent") if headers else None
+                ffmpeg_cmd = self._build_ffmpeg_transcode_cmd(
+                    ffmpeg_bin=ffmpeg_bin,
+                    input_source=stream_url,
+                    target_mp3=target_mp3,
+                    cover_path=cover_tmp,
+                    title=title,
+                    artist=artist,
+                    album=album,
+                    year=year or "",
+                    genre=genre or "Pop",
+                    is_network_stream=True,
+                    user_agent=user_agent,
+                )
+                proc = subprocess.run(ffmpeg_cmd, **popen_kwargs)
+                if proc.returncode == 0 and os.path.isfile(target_mp3) and os.path.getsize(target_mp3) > 50000:
+                    transcode_ok = True
+                else:
+                    logger.warning(
+                        f"Direct FFmpeg stream transcode failed for {clean_id} (code {proc.returncode}). "
+                        f"Falling back to native yt-dlp download..."
+                    )
+                    if os.path.isfile(target_mp3):
+                        try:
+                            os.remove(target_mp3)
+                        except Exception:
+                            pass
+
+            # Attempt 2: Fallback to yt-dlp native chunked audio download + local FFmpeg transcode
+            if not transcode_ok:
+                temp_stem = os.path.join(self.cache_dir, f"_tmp_{clean_id}_{int(time.time())}")
+                downloaded_raw = ytdlp_service.download_audio_to_file(clean_id, temp_stem)
+                if downloaded_raw and os.path.isfile(downloaded_raw):
+                    try:
+                        ffmpeg_cmd = self._build_ffmpeg_transcode_cmd(
+                            ffmpeg_bin=ffmpeg_bin,
+                            input_source=downloaded_raw,
+                            target_mp3=target_mp3,
+                            cover_path=cover_tmp,
+                            title=title,
+                            artist=artist,
+                            album=album,
+                            year=year or "",
+                            genre=genre or "Pop",
+                            is_network_stream=False,
+                        )
+                        proc = subprocess.run(ffmpeg_cmd, **popen_kwargs)
+                        if proc.returncode == 0 and os.path.isfile(target_mp3) and os.path.getsize(target_mp3) > 50000:
+                            transcode_ok = True
+                    finally:
+                        for f_tmp in glob.glob(f"{glob.escape(temp_stem)}*"):
+                            try:
+                                os.remove(f_tmp)
+                            except Exception:
+                                pass
+
+            if transcode_ok and os.path.isfile(target_mp3) and os.path.getsize(target_mp3) > 50000:
                 logger.info(f"Studio master MP3 created successfully with ID3 & artwork: {target_mp3}")
                 try:
                     from app.services.db_service import db_service
@@ -478,9 +583,15 @@ class CacheService:
                     pass
 
                 return target_mp3
-            else:
-                logger.warning(f"FFmpeg failed to create cached MP3. Exit code: {proc.returncode}")
-                return None
+
+            if os.path.isfile(target_mp3) and os.path.getsize(target_mp3) <= 50000:
+                try:
+                    os.remove(target_mp3)
+                except Exception:
+                    pass
+
+            logger.error(f"Could not create studio cache MP3 for {clean_id}")
+            return None
 
         except Exception as e:
             logger.error(f"Error preparing studio cache for {clean_id}: {e}")
