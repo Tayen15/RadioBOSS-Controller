@@ -19,7 +19,12 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
+#if AppArch == "x64"
+ArchitecturesInstallIn64BitMode=x64compatible
 DefaultDirName={autopf}\{#MyAppName}
+#else
+DefaultDirName={autopf32}\{#MyAppName}
+#endif
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\dist
@@ -27,10 +32,7 @@ OutputBaseFilename=RadioBOSSCaster-Setup-{#AppArch}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
-#if AppArch == "x64"
-ArchitecturesInstallIn64BitMode=x64compatible
-#endif
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=dialog
 DisableProgramGroupPage=yes
 SetupIconFile=..\assets\icon.ico
