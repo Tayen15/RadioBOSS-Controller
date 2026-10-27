@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Save,
   Tag,
-  ChevronDown,
   Check,
   Folder,
   FolderOpen,
@@ -22,13 +21,23 @@ import {
   ListMusic,
   Scissors,
   Download,
+  Activity,
+  Sliders,
+  Info,
+  ExternalLink,
+  RotateCcw,
 } from "lucide-react";
-import { AppConfig, TitleFormatMode, CacheStats, CachedTrackItem } from "@/lib/types";
+import {
+  AppConfig,
+  TitleFormatMode,
+  CacheStats,
+  CachedTrackItem,
+  APP_VERSION,
+} from "@/lib/types";
 import {
   getAppSettings,
   saveAppSettings,
   fetchCacheStats,
-  openCacheFolder,
   openSpecificFolder,
   browseFolder,
   clearAudioCache,
@@ -43,38 +52,58 @@ interface SettingsModalProps {
   onOpenUpdateModal?: () => void;
 }
 
+type SettingsTab = "connection" | "broadcast" | "storage" | "system";
+
+const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
+  { id: "connection", label: "Koneksi RadioBOSS", icon: Radio },
+  { id: "broadcast", label: "Format & Audio", icon: Sliders },
+  { id: "storage", label: "Penyimpanan & Disk", icon: HardDrive },
+  { id: "system", label: "Sistem & Info", icon: Info },
+];
+
 const FORMAT_OPTIONS: {
   value: TitleFormatMode;
   label: string;
+  example: string;
   badge?: string;
-  desc: string;
 }[] = [
   {
     value: "radioboss_native",
-    label: "RadioBOSS Standar: %artist - %title",
-    badge: "Direkomendasikan",
-    desc: "Mengikuti metadata ID3 tag file atau decoder bawaan RadioBOSS",
+    label: "Standar RadioBOSS (%artist - %title)",
+    example: "NIKI - Backburner",
+    badge: "Rekomendasi",
   },
   {
     value: "artist_title",
-    label: "Format: Nama Artis - Judul Lagu",
-    desc: "Format standar siaran radio (contoh: NIKI - Backburner)",
+    label: "Nama Artis - Judul Lagu",
+    example: "Coldplay - Yellow",
   },
   {
     value: "title_artist",
-    label: "Format: Judul Lagu - Nama Artis",
-    desc: "Format judul mendahului artis (contoh: Backburner - NIKI)",
+    label: "Judul Lagu - Nama Artis",
+    example: "Yellow - Coldplay",
   },
   {
     value: "title_only",
-    label: "Format: Hanya Judul Lagu",
-    desc: "Menampilkan judul lagu saja tanpa nama artis",
+    label: "Hanya Judul Lagu",
+    example: "Yellow",
   },
   {
     value: "custom",
-    label: "Kustom Format Manual...",
-    desc: "Gunakan template variabel {artist} dan {title}",
+    label: "Format Kustom Manual",
+    example: "{artist} - {title}",
   },
+];
+
+const BITRATE_OPTIONS: {
+  value: "128k" | "192k" | "256k" | "320k";
+  label: string;
+  desc: string;
+}[] = [
+  { value: "320k", label: "320 kbps", desc: "Studio Master" },
+  { value: "256k", label: "256 kbps", desc: "Kualitas Tinggi" },
+  { value: "192k", label: "192 kbps", desc: "Standar Siaran" },
+  { value: "128k", label: "128 kbps", desc: "Hemat Bandwidth" },
 ];
 
 export function SettingsModal({
@@ -83,20 +112,23 @@ export function SettingsModal({
   onSettingsSaved,
   onOpenUpdateModal,
 }: SettingsModalProps) {
+  const [activeTab, setActiveTab] = useState<SettingsTab>("connection");
+
   const [host, setHost] = useState("http://127.0.0.1");
   const [port, setPort] = useState(9000);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
   const [titleFormatMode, setTitleFormatMode] =
     useState<TitleFormatMode>("radioboss_native");
   const [customFormat, setCustomFormat] = useState("{artist} - {title}");
-  const [isFormatDropdownOpen, setIsFormatDropdownOpen] = useState(false);
 
   const [serverPort, setServerPort] = useState(8000);
   const [audioQuality, setAudioQuality] = useState<
     "128k" | "192k" | "256k" | "320k"
   >("320k");
   const [enableLoudnorm, setEnableLoudnorm] = useState(true);
+
   const [customCacheDir, setCustomCacheDir] = useState<string>("");
   const [customDataDir, setCustomDataDir] = useState<string>("");
   const [maxCacheSizeMb, setMaxCacheSizeMb] = useState<number>(2048);
@@ -105,12 +137,20 @@ export function SettingsModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
+
   const [isOpeningFolder, setIsOpeningFolder] = useState(false);
   const [isOpeningDataFolder, setIsOpeningDataFolder] = useState(false);
   const [isBrowsingCache, setIsBrowsingCache] = useState(false);
   const [isBrowsingData, setIsBrowsingData] = useState(false);
+
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [isTrimmingCache, setIsTrimmingCache] = useState(false);
+
+  const [testStatus, setTestStatus] = useState<
+    "idle" | "testing" | "connected" | "failed"
+  >("idle");
+  const [testMsg, setTestMsg] = useState<string>("");
+
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -144,10 +184,12 @@ export function SettingsModal({
     if (isOpen) {
       setIsLoading(true);
       setFeedback(null);
+      setTestStatus("idle");
+      setTestMsg("");
     }
   }
 
-  // Close modal on Escape key (R-26 & R-32)
+  // Close modal on Escape key
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -159,9 +201,9 @@ export function SettingsModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Load active settings on mount/open
   useEffect(() => {
     if (!isOpen) return;
-
     let isMounted = true;
     loadCacheStats();
 
@@ -177,7 +219,9 @@ export function SettingsModal({
         setAudioQuality(
           (cfg.audio_quality as "128k" | "192k" | "256k" | "320k") || "320k"
         );
-        setEnableLoudnorm(cfg.enable_loudnorm !== undefined ? cfg.enable_loudnorm : true);
+        setEnableLoudnorm(
+          cfg.enable_loudnorm !== undefined ? cfg.enable_loudnorm : true
+        );
         setCustomCacheDir(cfg.custom_cache_dir || "");
         setCustomDataDir(cfg.custom_data_dir || "");
         setMaxCacheSizeMb(
@@ -196,15 +240,48 @@ export function SettingsModal({
         });
       })
       .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       });
 
     return () => {
       isMounted = false;
     };
   }, [isOpen]);
+
+  // Direct Interactive Connection Ping
+  const handleTestConnection = async () => {
+    setTestStatus("testing");
+    setTestMsg("");
+    try {
+      const config: AppConfig = {
+        radioboss_host: host.trim(),
+        radioboss_port: Number(port) || 9000,
+        radioboss_password: password,
+        title_format_mode: titleFormatMode,
+        custom_title_format: customFormat.trim(),
+        server_port: Number(serverPort) || 8000,
+        audio_quality: audioQuality,
+        enable_loudnorm: enableLoudnorm,
+        custom_cache_dir: customCacheDir.trim(),
+        custom_data_dir: customDataDir.trim(),
+        max_cache_size_mb: Number(maxCacheSizeMb) ?? 2048,
+        auto_cleanup_cache: autoCleanupCache,
+      };
+      const res = await saveAppSettings(config);
+      if (res.connected) {
+        setTestStatus("connected");
+        setTestMsg("Koneksi ke RadioBOSS berhasil!");
+      } else {
+        setTestStatus("failed");
+        setTestMsg(res.message || "RadioBOSS belum merespons.");
+      }
+    } catch (err) {
+      setTestStatus("failed");
+      setTestMsg(
+        err instanceof Error ? err.message : "Gagal menghubungi backend."
+      );
+    }
+  };
 
   const handleBrowseCacheDir = async () => {
     setIsBrowsingCache(true);
@@ -222,7 +299,7 @@ export function SettingsModal({
         message:
           err instanceof Error
             ? err.message
-            : "Gagal membuka dialog pilih folder cache.",
+            : "Gagal membuka dialog pilih folder.",
       });
     } finally {
       setIsBrowsingCache(false);
@@ -245,7 +322,7 @@ export function SettingsModal({
         message:
           err instanceof Error
             ? err.message
-            : "Gagal membuka dialog pilih folder data.",
+            : "Gagal membuka dialog pilih folder.",
       });
     } finally {
       setIsBrowsingData(false);
@@ -260,16 +337,14 @@ export function SettingsModal({
       setFeedback({
         type: "error",
         message:
-          err instanceof Error
-            ? err.message
-            : "Gagal membuka folder data di Explorer.",
+          err instanceof Error ? err.message : "Gagal membuka folder di Explorer.",
       });
     } finally {
       setIsOpeningDataFolder(false);
     }
   };
 
-  const handleOpenFolder = async () => {
+  const handleOpenCacheFolder = async () => {
     setIsOpeningFolder(true);
     try {
       await openSpecificFolder(customCacheDir || cacheStats?.cache_dir);
@@ -277,9 +352,7 @@ export function SettingsModal({
       setFeedback({
         type: "error",
         message:
-          err instanceof Error
-            ? err.message
-            : "Gagal membuka folder cache di Explorer.",
+          err instanceof Error ? err.message : "Gagal membuka folder di Explorer.",
       });
     } finally {
       setIsOpeningFolder(false);
@@ -308,18 +381,17 @@ export function SettingsModal({
 
   const handleClearCache = async (days?: number) => {
     const confirmMsg = days
-      ? `Hapus file cache lagu yang lebih lama dari ${days} hari?`
-      : "Hapus SEMUA file audio yang sudah di-cache di penyimpanan lokal?";
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
+      ? `Hapus file cache audio yang lebih lama dari ${days} hari?`
+      : "Hapus SEMUA file audio cache di penyimpanan lokal?";
+    if (!window.confirm(confirmMsg)) return;
+
     setIsClearingCache(true);
     try {
       const res = await clearAudioCache(days);
       loadCacheStats();
       setFeedback({
         type: "success",
-        message: `${res.deleted_count} file cache audio berhasil dibersihkan.`,
+        message: `${res.deleted_count} file cache audio dibersihkan.`,
       });
     } catch (err) {
       setFeedback({
@@ -333,8 +405,6 @@ export function SettingsModal({
       setIsClearingCache(false);
     }
   };
-
-  if (!isOpen) return null;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -361,13 +431,8 @@ export function SettingsModal({
       if (res.success) {
         setFeedback({
           type: "success",
-          message:
-            res.message ||
-            (res.connected
-              ? "Pengaturan disimpan dan koneksi RadioBOSS terverifikasi."
-              : "Pengaturan disimpan, tetapi RadioBOSS belum terhubung. Periksa port dan password."),
+          message: res.message || "Pengaturan berhasil disimpan.",
         });
-
         setTimeout(() => {
           onSettingsSaved();
         }, 800);
@@ -390,21 +455,23 @@ export function SettingsModal({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <dialog className="modal modal-open z-50">
-      <div className="modal-box rounded-xl bg-base-200 border border-base-300 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-5 sm:p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-base-300 pb-3">
+      <div className="modal-box rounded-2xl bg-base-200 border border-base-300 max-w-3xl w-full p-0 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+        {/* Top Header */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-base-300 bg-base-200/90 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-base-100 border border-base-300 text-primary">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-base-100 border border-base-300 text-primary">
               <SettingsIcon className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-base-content">
-                Pengaturan Konsol &amp; Penyimpanan
+              <h3 className="font-bold text-sm text-base-content leading-tight">
+                Pengaturan Konsol
               </h3>
-              <p className="text-xs text-base-content/70">
-                Konfigurasi jaringan RadioBOSS, format metadata, dan ruang disk cache
+              <p className="text-[11px] text-base-content/60">
+                RadioBOSS Web Remote, Format Siaran, dan Audio Engine
               </p>
             </div>
           </div>
@@ -412,701 +479,767 @@ export function SettingsModal({
             type="button"
             onClick={onClose}
             aria-label="Tutup pengaturan"
-            className="btn btn-ghost btn-sm h-9 w-9 p-0 rounded-lg text-base-content/70 hover:text-base-content"
+            className="btn btn-ghost btn-xs h-8 w-8 p-0 rounded-lg text-base-content/60 hover:text-base-content hover:bg-base-300"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Feedback Alert */}
+        {/* Global Feedback Alert */}
         {feedback && (
           <div
             className={`alert ${
               feedback.type === "success"
                 ? "alert-success text-success-content"
                 : "alert-error text-error-content"
-            } mt-4 text-xs py-2.5 rounded-lg font-semibold`}
+            } mx-4 mt-3 text-xs py-2 px-3 rounded-lg font-semibold shrink-0 flex items-center justify-between`}
           >
-            {feedback.type === "success" ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-            ) : (
-              <AlertCircle className="h-4 w-4 shrink-0" />
-            )}
-            <span>{feedback.message}</span>
+            <div className="flex items-center gap-2 min-w-0">
+              {feedback.type === "success" ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+              ) : (
+                <AlertCircle className="h-4 w-4 shrink-0" />
+              )}
+              <span className="truncate">{feedback.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFeedback(null)}
+              className="btn btn-ghost btn-xs h-6 w-6 p-0"
+            >
+              ✕
+            </button>
           </div>
         )}
 
+        {/* Main Body: Tabs Navigation + Content */}
         {isLoading ? (
-          <div className="py-12 text-center space-y-2">
+          <div className="py-20 text-center space-y-2">
             <span className="loading loading-spinner loading-md text-primary" />
-            <p className="text-xs text-base-content/70">Memuat konfigurasi sistem...</p>
+            <p className="text-xs text-base-content/60">
+              Memuat konfigurasi konsol...
+            </p>
           </div>
         ) : (
-          <form onSubmit={handleSave} className="mt-4 space-y-5">
-            {/* Section 1: RadioBOSS Connection */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold text-base-content uppercase tracking-wider">
-                <Radio className="h-3.5 w-3.5 text-primary" />
-                <span>Koneksi Web Remote RadioBOSS</span>
-              </div>
+          <form
+            onSubmit={handleSave}
+            className="flex flex-col flex-1 min-h-0 overflow-hidden"
+          >
+            <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+              {/* Tab Navigation Rail */}
+              <nav className="w-full md:w-52 border-b md:border-b-0 md:border-r border-base-300 bg-base-100/50 p-2 md:p-3 flex md:flex-col gap-1 overflow-x-auto shrink-0">
+                {TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors shrink-0 text-left ${
+                        isActive
+                          ? "bg-primary text-primary-content shadow-sm"
+                          : "text-base-content/70 hover:text-base-content hover:bg-base-200"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 form-control">
-                  <label className="label py-1">
-                    <span className="label-text text-xs font-semibold text-base-content">
-                      Host RadioBOSS
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={host}
-                    onChange={(e) => setHost(e.target.value)}
-                    placeholder="http://127.0.0.1"
-                    required
-                    className="input input-bordered input-sm h-9 bg-base-100 rounded-lg text-xs font-mono"
-                  />
-                </div>
+              {/* Tab Content Panels */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+                {/* TAB 1: KONEKSI RADIOBOSS */}
+                {activeTab === "connection" && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div>
+                      <h4 className="text-xs font-bold text-base-content uppercase tracking-wider mb-1">
+                        Koneksi RadioBOSS Web Remote API
+                      </h4>
+                      <p className="text-xs text-base-content/60">
+                        Sesuaikan dengan menu Settings &gt; Remote Control di RadioBOSS.
+                      </p>
+                    </div>
 
-                <div className="form-control">
-                  <label className="label py-1">
-                    <span className="label-text text-xs font-semibold text-base-content">
-                      Port API
-                    </span>
-                  </label>
-                  <input
-                    type="number"
-                    value={port}
-                    onChange={(e) => setPort(Number(e.target.value))}
-                    placeholder="9000"
-                    required
-                    className="input input-bordered input-sm h-9 bg-base-100 rounded-lg text-xs font-mono tabular-nums"
-                  />
-                </div>
-              </div>
+                    <div className="p-4 rounded-xl bg-base-100 border border-base-300 space-y-3.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2 form-control">
+                          <label className="text-xs font-semibold text-base-content mb-1 block">
+                            Host URL RadioBOSS
+                          </label>
+                          <input
+                            type="text"
+                            value={host}
+                            onChange={(e) => setHost(e.target.value)}
+                            placeholder="http://127.0.0.1"
+                            required
+                            className="input input-sm input-bordered bg-base-200 rounded-lg text-xs font-mono h-9"
+                          />
+                        </div>
 
-              <div className="form-control">
-                <label className="label py-1">
-                  <span className="label-text text-xs font-semibold text-base-content">
-                    Password Web Remote Control
-                  </span>
-                </label>
-                <div className="flex items-stretch gap-2">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Kosongkan jika tanpa password"
-                    className="input input-bordered input-sm h-9 flex-1 bg-base-100 rounded-lg text-xs font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="btn btn-sm h-9 px-3 rounded-lg bg-base-100 border border-base-300 text-base-content/80 hover:text-base-content"
-                    title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-base-content/70 mt-1">
-                  Sesuaikan dengan pengaturan di menu Settings &gt; Remote Control pada aplikasi RadioBOSS.
-                </p>
-              </div>
-            </div>
+                        <div className="form-control">
+                          <label className="text-xs font-semibold text-base-content mb-1 block">
+                            Port API
+                          </label>
+                          <input
+                            type="number"
+                            value={port}
+                            onChange={(e) => setPort(Number(e.target.value))}
+                            placeholder="9000"
+                            required
+                            className="input input-sm input-bordered bg-base-200 rounded-lg text-xs font-mono h-9"
+                          />
+                        </div>
+                      </div>
 
-            {/* Section 2: Metadata Format */}
-            <div className="space-y-3 pt-2 border-t border-base-300">
-              <div className="flex items-center gap-2 text-xs font-bold text-base-content uppercase tracking-wider pt-2">
-                <Tag className="h-3.5 w-3.5 text-primary" />
-                <span>Format Judul Siaran</span>
-              </div>
+                      <div className="form-control">
+                        <label className="text-xs font-semibold text-base-content mb-1 block">
+                          Password Remote Control
+                        </label>
+                        <div className="flex items-stretch gap-2">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Kosongkan jika tanpa password"
+                            className="input input-sm input-bordered bg-base-200 rounded-lg text-xs font-mono flex-1 h-9"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="btn btn-sm h-9 px-3 rounded-lg bg-base-200 border border-base-300 text-base-content/70 hover:text-base-content"
+                            title={showPassword ? "Sembunyikan password" : "Lihat password"}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
 
-              <div className="form-control relative">
-                <label className="label py-1">
-                  <span className="label-text text-xs font-semibold text-base-content">
-                    Pola Pengiriman Judul
-                  </span>
-                </label>
+                      {/* Interactive Test Connection Ping Bar */}
+                      <div className="pt-2 border-t border-base-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span
+                            className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+                              testStatus === "connected"
+                                ? "bg-success shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                                : testStatus === "failed"
+                                ? "bg-error"
+                                : testStatus === "testing"
+                                ? "bg-warning animate-pulse"
+                                : "bg-base-content/30"
+                            }`}
+                          />
+                          <span className="font-medium text-base-content/80 truncate">
+                            {testStatus === "testing"
+                              ? "Menguji koneksi ke RadioBOSS..."
+                              : testStatus === "connected"
+                              ? "✓ Terhubung dengan RadioBOSS"
+                              : testStatus === "failed"
+                              ? testMsg || "Koneksi gagal"
+                              : "Status koneksi belum diuji"}
+                          </span>
+                        </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsFormatDropdownOpen(!isFormatDropdownOpen)}
-                  className="input input-bordered input-sm h-10 w-full bg-base-100 rounded-lg flex items-center justify-between text-xs px-3 hover:border-primary/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="font-semibold text-base-content truncate">
-                      {FORMAT_OPTIONS.find((opt) => opt.value === titleFormatMode)
-                        ?.label || "RadioBOSS Standar"}
-                    </span>
-                    {FORMAT_OPTIONS.find((opt) => opt.value === titleFormatMode)
-                      ?.badge && (
-                      <span className="px-2 py-0.5 rounded bg-primary/15 border border-primary/40 text-primary font-mono text-xs font-bold">
-                        {
-                          FORMAT_OPTIONS.find((opt) => opt.value === titleFormatMode)
-                            ?.badge
-                        }
-                      </span>
-                    )}
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 text-base-content/70 transition-transform ${
-                      isFormatDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {isFormatDropdownOpen && (
-                  <div className="absolute top-[102%] left-0 right-0 z-50 mt-1 bg-base-100 border border-base-300 rounded-lg shadow-2xl p-1.5 space-y-1">
-                    {FORMAT_OPTIONS.map((opt) => {
-                      const isSelected = titleFormatMode === opt.value;
-                      return (
                         <button
-                          key={opt.value}
                           type="button"
-                          onClick={() => {
-                            setTitleFormatMode(opt.value);
-                            setIsFormatDropdownOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between gap-3 p-2.5 rounded-md text-left transition-colors ${
-                            isSelected
-                              ? "bg-primary/15 border border-primary/40 text-base-content font-semibold"
-                              : "hover:bg-base-200 text-base-content"
-                          }`}
+                          onClick={handleTestConnection}
+                          disabled={testStatus === "testing"}
+                          className="btn btn-xs h-8 px-3 rounded-md bg-base-200 border border-base-300 hover:bg-base-300 text-xs font-semibold gap-1.5 shrink-0"
                         >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold truncate">
-                                {opt.label}
-                              </span>
-                              {opt.badge && (
-                                <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary font-mono text-xs font-semibold">
-                                  {opt.badge}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-base-content/70 truncate mt-0.5">
-                              {opt.desc}
-                            </p>
-                          </div>
-                          {isSelected && (
-                            <Check className="h-4 w-4 text-primary shrink-0" />
+                          {testStatus === "testing" ? (
+                            <span className="loading loading-spinner loading-xs text-primary" />
+                          ) : (
+                            <Activity className="h-3.5 w-3.5 text-primary" />
                           )}
+                          <span>Tes Koneksi</span>
                         </button>
-                      );
-                    })}
+                      </div>
+                    </div>
                   </div>
                 )}
-              </div>
 
-              {titleFormatMode === "custom" && (
-                <div className="form-control">
-                  <label className="label py-1">
-                    <span className="label-text text-xs font-semibold text-base-content">
-                      Template Kustom
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={customFormat}
-                    onChange={(e) => setCustomFormat(e.target.value)}
-                    placeholder="{artist} - {title}"
-                    className="input input-bordered input-sm h-9 bg-base-100 rounded-lg text-xs font-mono"
-                  />
-                  <p className="text-xs text-base-content/70 mt-1">
-                    Gunakan variabel <code className="font-mono text-primary">&#123;artist&#125;</code> dan <code className="font-mono text-primary">&#123;title&#125;</code>.
-                  </p>
-                </div>
-              )}
-            </div>
+                {/* TAB 2: FORMAT SIARAN & AUDIO */}
+                {activeTab === "broadcast" && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div>
+                      <h4 className="text-xs font-bold text-base-content uppercase tracking-wider mb-1">
+                        Format Siaran &amp; Kualitas Audio
+                      </h4>
+                      <p className="text-xs text-base-content/60">
+                        Atur tampilan metadata judul siaran dan parameter transcode streaming.
+                      </p>
+                    </div>
 
-            {/* Section 3: Studio Audio Cache & Storage */}
-            <div className="space-y-3 pt-2 border-t border-base-300">
-              <div className="flex items-center justify-between pt-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-base-content uppercase tracking-wider">
-                  <HardDrive className="h-3.5 w-3.5 text-primary" />
-                  <span>Penyimpanan &amp; Cache Audio Studio</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={loadCacheStats}
-                  className="btn btn-ghost btn-xs h-8 px-2.5 rounded-md bg-base-100 border border-base-300 text-xs font-medium text-base-content/80 gap-1.5 hover:text-base-content"
-                  title="Perbarui ukuran cache"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  <span>Hitung Ulang</span>
-                </button>
-              </div>
+                    {/* Title Format Cards */}
+                    <div className="p-4 rounded-xl bg-base-100 border border-base-300 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-xs font-bold text-base-content">
+                          Format Judul Siaran (Metadata ID3)
+                        </span>
+                      </div>
 
-              <div className="bg-base-100 border border-base-300 rounded-lg p-3.5 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-base-content/80 font-medium">
-                    Status Penyimpanan:
-                  </span>
-                  <span className="font-mono font-bold text-accent tabular-nums">
-                    {cacheStats
-                      ? `${cacheStats.total_files} file (${cacheStats.total_size_mb} MB)`
-                      : "Memuat..."}
-                  </span>
-                </div>
-
-                {/* Cache Capacity Progress Bar */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-base-content/70">Kapasitas Terpakai:</span>
-                    <span className="font-mono font-semibold text-base-content tabular-nums">
-                      {cacheStats ? (
-                        maxCacheSizeMb > 0 ? (
-                          <>
-                            {cacheStats.total_size_mb} MB / {maxCacheSizeMb} MB{" "}
-                            <span
-                              className={`ml-1 font-bold ${
-                                (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 90
-                                  ? "text-error"
-                                  : (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 70
-                                  ? "text-warning"
-                                  : "text-success"
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {FORMAT_OPTIONS.map((opt) => {
+                          const isSelected = titleFormatMode === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setTitleFormatMode(opt.value)}
+                              className={`p-2.5 rounded-lg border text-left transition-all flex items-start justify-between gap-2 ${
+                                isSelected
+                                  ? "bg-primary/10 border-primary text-base-content shadow-sm"
+                                  : "bg-base-200 border-base-300 text-base-content/80 hover:bg-base-300"
                               }`}
                             >
-                              (
-                              {Math.min(
-                                100,
-                                Math.round(
-                                  (cacheStats.total_size_mb / maxCacheSizeMb) * 100
-                                )
-                              )}
-                              %)
-                            </span>
-                          </>
-                        ) : (
-                          `${cacheStats.total_size_mb} MB (Tanpa Batas)`
-                        )
-                      ) : (
-                        "Memuat..."
-                      )}
-                    </span>
-                  </div>
-                  {maxCacheSizeMb > 0 && cacheStats && (
-                    <progress
-                      className={`progress w-full h-2 ${
-                        (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 90
-                          ? "progress-error"
-                          : (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 70
-                          ? "progress-warning"
-                          : "progress-success"
-                      }`}
-                      value={cacheStats.total_size_mb}
-                      max={maxCacheSizeMb}
-                    />
-                  )}
-                </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-bold truncate">
+                                    {opt.label}
+                                  </span>
+                                  {opt.badge && (
+                                    <span className="px-1.5 py-0.2 rounded bg-primary/20 text-primary font-mono text-[10px] font-bold">
+                                      {opt.badge}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] font-mono text-base-content/60 mt-0.5 truncate">
+                                  Contoh: {opt.example}
+                                </p>
+                              </div>
+                              <span
+                                className={`h-4 w-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
+                                  isSelected
+                                    ? "border-primary bg-primary text-primary-content"
+                                    : "border-base-300 bg-base-100"
+                                }`}
+                              >
+                                {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                {/* Storage Cache Limit Selector */}
-                <div className="space-y-2.5 pt-2.5 border-t border-base-300">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <span className="text-xs font-semibold text-base-content block">
-                        Batas Kapasitas Cache
-                      </span>
-                      <span className="text-xs text-base-content/70 block">
-                        Batas ruang disk untuk penyimpanan lagu MP3 lokal
-                      </span>
-                    </div>
-                    <select
-                      value={maxCacheSizeMb}
-                      onChange={(e) => setMaxCacheSizeMb(Number(e.target.value))}
-                      className="select select-bordered select-sm h-9 w-full sm:w-60 bg-base-200 rounded-md text-xs font-mono font-semibold shrink-0"
-                    >
-                      <option value={500}>500 MB (Hemat Disk)</option>
-                      <option value={1024}>1 GB / 1024 MB</option>
-                      <option value={2048}>2 GB / 2048 MB (Standar)</option>
-                      <option value={5120}>5 GB / 5120 MB (Koleksi Besar)</option>
-                      <option value={10240}>10 GB / 10240 MB</option>
-                      <option value={0}>Tanpa Batas (Unlimited)</option>
-                    </select>
-                  </div>
-
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none pt-0.5">
-                    <input
-                      type="checkbox"
-                      checked={autoCleanupCache}
-                      onChange={(e) => setAutoCleanupCache(e.target.checked)}
-                      className="checkbox checkbox-primary checkbox-sm rounded"
-                    />
-                    <span className="text-xs text-base-content/80">
-                      Pangkas otomatis saat penuh (hapus lagu yang paling jarang diputar terlebih dahulu)
-                    </span>
-                  </label>
-                </div>
-
-                {/* Custom Database Directory */}
-                <div className="form-control space-y-1.5 pt-2 border-t border-base-300">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-base-content/80 font-semibold">
-                      Lokasi Database &amp; Data Aplikasi:
-                    </span>
-                    {customDataDir ? (
-                      <button
-                        type="button"
-                        onClick={() => setCustomDataDir("")}
-                        className="btn btn-ghost btn-xs h-7 px-2 text-xs text-accent hover:underline"
-                      >
-                        Reset ke Default (Drive C:)
-                      </button>
-                    ) : (
-                      <span className="text-xs font-mono text-base-content/70">
-                        Default (Drive C:)
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-stretch gap-2">
-                    <input
-                      type="text"
-                      value={customDataDir}
-                      onChange={(e) => setCustomDataDir(e.target.value)}
-                      placeholder={
-                        cacheStats?.storage_dir ||
-                        "D:\\RadioBOSS-Data (kosongkan untuk default)"
-                      }
-                      className="input input-bordered input-sm h-9 flex-1 min-w-0 bg-base-200 rounded-md text-xs font-mono text-base-content placeholder:text-base-content/60"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleBrowseDataDir}
-                      disabled={isBrowsingData}
-                      className="btn btn-sm h-9 px-3 rounded-md bg-base-200 border border-base-300 text-base-content hover:bg-base-300 gap-1.5 shrink-0 text-xs font-semibold"
-                      title="Pilih folder database melalui dialog Windows"
-                    >
-                      {isBrowsingData ? (
-                        <span className="loading loading-spinner loading-xs" />
-                      ) : (
-                        <Folder className="h-3.5 w-3.5 text-primary" />
-                      )}
-                      <span>Pilih Folder</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenDataFolder}
-                      disabled={isOpeningDataFolder}
-                      className="btn btn-sm h-9 px-3 rounded-md bg-secondary border border-base-300 text-secondary-content hover:bg-base-300 gap-1.5 shrink-0 text-xs font-semibold"
-                      title="Buka folder database aktif di File Explorer"
-                    >
-                      <FolderOpen className="h-3.5 w-3.5 text-primary" />
-                      <span>Buka Folder</span>
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-base-content/70 leading-normal flex items-center gap-1.5 flex-wrap">
-                    <span>Database aktif:</span>
-                    <button
-                      type="button"
-                      onClick={handleOpenDataFolder}
-                      className="font-mono text-accent hover:underline break-all inline-flex items-center gap-1 text-left cursor-pointer"
-                      title="Klik untuk membuka folder database di File Explorer"
-                    >
-                      <span>{cacheStats?.db_path || "Memuat..."}</span>
-                      <FolderOpen className="h-3 w-3 inline shrink-0" />
-                    </button>
-                  </p>
-                </div>
-
-                {/* Custom Cache Folder */}
-                <div className="form-control space-y-1.5 pt-2 border-t border-base-300">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-base-content/80 font-semibold">
-                      Folder Cache Audio MP3:
-                    </span>
-                    {customCacheDir ? (
-                      <button
-                        type="button"
-                        onClick={() => setCustomCacheDir("")}
-                        className="btn btn-ghost btn-xs h-7 px-2 text-xs text-accent hover:underline"
-                      >
-                        Reset ke Default (Drive C:)
-                      </button>
-                    ) : (
-                      <span className="text-xs font-mono text-base-content/70">
-                        Default (Drive C:)
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-stretch gap-2">
-                    <input
-                      type="text"
-                      value={customCacheDir}
-                      onChange={(e) => setCustomCacheDir(e.target.value)}
-                      placeholder={
-                        cacheStats?.cache_dir ||
-                        "D:\\RadioCache (kosongkan untuk default)"
-                      }
-                      className="input input-bordered input-sm h-9 flex-1 min-w-0 bg-base-200 rounded-md text-xs font-mono text-base-content placeholder:text-base-content/60"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleBrowseCacheDir}
-                      disabled={isBrowsingCache}
-                      className="btn btn-sm h-9 px-3 rounded-md bg-base-200 border border-base-300 text-base-content hover:bg-base-300 gap-1.5 shrink-0 text-xs font-semibold"
-                      title="Pilih folder cache audio melalui dialog Windows"
-                    >
-                      {isBrowsingCache ? (
-                        <span className="loading loading-spinner loading-xs" />
-                      ) : (
-                        <Folder className="h-3.5 w-3.5 text-primary" />
-                      )}
-                      <span>Pilih Folder</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenFolder}
-                      disabled={isOpeningFolder}
-                      className="btn btn-sm h-9 px-3 rounded-md bg-secondary border border-base-300 text-secondary-content hover:bg-base-300 gap-1.5 shrink-0 text-xs font-semibold"
-                      title="Buka folder cache aktif di File Explorer"
-                    >
-                      <FolderOpen className="h-3.5 w-3.5 text-primary" />
-                      <span>Buka Folder</span>
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-base-content/70 leading-normal flex items-center gap-1.5 flex-wrap">
-                    <span>Folder aktif:</span>
-                    <button
-                      type="button"
-                      onClick={handleOpenFolder}
-                      className="font-mono text-accent hover:underline break-all inline-flex items-center gap-1 text-left cursor-pointer"
-                      title="Klik untuk membuka folder cache di File Explorer"
-                    >
-                      <span>{cacheStats?.cache_dir || "Memuat..."}</span>
-                      <FolderOpen className="h-3 w-3 inline shrink-0" />
-                    </button>
-                  </p>
-                </div>
-
-                {/* Cache Management Actions */}
-                <div className="pt-2.5 border-t border-base-300 space-y-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={handleToggleCacheList}
-                      className="btn btn-xs h-8 px-3 rounded-md bg-base-200 border border-base-300 text-base-content gap-1.5 text-xs font-semibold hover:bg-base-300"
-                    >
-                      <ListMusic className="h-3.5 w-3.5 text-primary" />
-                      <span>
-                        {showCacheList ? "Tutup Daftar Cache" : "Lihat Lagu Cache"}
-                      </span>
-                    </button>
-
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={handleTrimCache}
-                        disabled={
-                          isTrimmingCache ||
-                          !cacheStats ||
-                          cacheStats.total_files === 0
-                        }
-                        className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-primary gap-1 hover:bg-base-300 text-xs font-semibold"
-                      >
-                        {isTrimmingCache ? (
-                          <span className="loading loading-spinner loading-xs" />
-                        ) : (
-                          <Scissors className="h-3.5 w-3.5" />
-                        )}
-                        <span>Pangkas ke Batas</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleClearCache(7)}
-                        disabled={
-                          isClearingCache ||
-                          !cacheStats ||
-                          cacheStats.total_files === 0
-                        }
-                        className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-warning hover:bg-warning/15 text-xs font-semibold"
-                      >
-                        <span>Hapus &gt; 7 Hari</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleClearCache()}
-                        disabled={
-                          isClearingCache ||
-                          !cacheStats ||
-                          cacheStats.total_files === 0
-                        }
-                        className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-error gap-1 hover:bg-error/15 text-xs font-semibold"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span>Kosongkan Semua</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Expandable Cached Tracks List */}
-                {showCacheList && (
-                  <div className="pt-2.5 border-t border-base-300 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-base-content">
-                      <span>
-                        Daftar Lagu Cache ({cachedTracks.length} lagu):
-                      </span>
-                      {isLoadingCachedTracks && (
-                        <span className="loading loading-spinner loading-xs text-primary" />
+                      {titleFormatMode === "custom" && (
+                        <div className="pt-2 border-t border-base-300 space-y-1">
+                          <label className="text-xs font-semibold text-base-content block">
+                            Template Variabel Kustom
+                          </label>
+                          <input
+                            type="text"
+                            value={customFormat}
+                            onChange={(e) => setCustomFormat(e.target.value)}
+                            placeholder="{artist} - {title}"
+                            className="input input-sm input-bordered bg-base-200 rounded-lg text-xs font-mono w-full h-9"
+                          />
+                          <p className="text-[11px] text-base-content/60">
+                            Gunakan variabel <code className="text-primary font-mono">&#123;artist&#125;</code> dan <code className="text-primary font-mono">&#123;title&#125;</code>.
+                          </p>
+                        </div>
                       )}
                     </div>
-                    {cachedTracks.length === 0 ? (
-                      <p className="text-xs text-base-content/70 py-3 text-center">
-                        Belum ada lagu yang tersimpan di cache lokal.
-                      </p>
-                    ) : (
-                      <div className="max-h-48 overflow-y-auto divide-y divide-base-300 rounded-md border border-base-300 bg-base-200 text-xs">
-                        {cachedTracks.map((t, idx) => (
-                          <div
-                            key={t.video_id || idx}
-                            className="flex items-center justify-between gap-2 px-3 py-2"
+
+                    {/* Audio Transcode Bitrate Segmented Buttons */}
+                    <div className="p-4 rounded-xl bg-base-100 border border-base-300 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-base-content">
+                          Bitrate Transcoding Audio (FFmpeg)
+                        </span>
+                        <span className="font-mono text-xs font-bold text-primary">
+                          {audioQuality.toUpperCase()}bps
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {BITRATE_OPTIONS.map((b) => {
+                          const isSelected = audioQuality === b.value;
+                          return (
+                            <button
+                              key={b.value}
+                              type="button"
+                              onClick={() => setAudioQuality(b.value)}
+                              className={`py-2 px-3 rounded-lg border text-center transition-all ${
+                                isSelected
+                                  ? "bg-primary text-primary-content border-primary font-bold shadow-sm"
+                                  : "bg-base-200 border-base-300 text-base-content/80 hover:bg-base-300"
+                              }`}
+                            >
+                              <div className="text-xs">{b.label}</div>
+                              <div
+                                className={`text-[10px] truncate ${
+                                  isSelected
+                                    ? "text-primary-content/80 font-medium"
+                                    : "text-base-content/50"
+                                }`}
+                              >
+                                {b.desc}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Loudness Normalization Toggle */}
+                    <div className="p-4 rounded-xl bg-base-100 border border-base-300 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-base-content">
+                            Normalisasi Volume (EBU R128)
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-primary/15 text-primary font-mono text-[10px] font-bold">
+                            -14 LUFS
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-base-content/60 mt-0.5">
+                          Menyamaratakan level kenyaringan antar lagu YouTube Music secara otomatis.
+                        </p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={enableLoudnorm}
+                        onChange={(e) => setEnableLoudnorm(e.target.checked)}
+                        className="toggle toggle-primary toggle-sm shrink-0"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: PENYIMPANAN & CACHE */}
+                {activeTab === "storage" && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-base-content uppercase tracking-wider mb-1">
+                          Ruang Disk &amp; Manajemen Cache
+                        </h4>
+                        <p className="text-xs text-base-content/60">
+                          Pengaturan direktori penyimpanan lokal dan pembersihan berkas audio.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={loadCacheStats}
+                        className="btn btn-ghost btn-xs h-7 px-2 rounded-md bg-base-100 border border-base-300 text-base-content/70 gap-1 text-[11px]"
+                        title="Hitung ulang kapasitas disk"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        <span>Hitung</span>
+                      </button>
+                    </div>
+
+                    {/* Storage Capacity Gauge Card */}
+                    <div className="p-4 rounded-xl bg-base-100 border border-base-300 space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-base-content/80">
+                          Kapasitas Terpakai:
+                        </span>
+                        <span className="font-mono font-bold text-base-content tabular-nums">
+                          {cacheStats ? (
+                            maxCacheSizeMb > 0 ? (
+                              <>
+                                {cacheStats.total_size_mb} MB / {maxCacheSizeMb} MB{" "}
+                                <span
+                                  className={`ml-1 font-bold ${
+                                    (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 90
+                                      ? "text-error"
+                                      : (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 70
+                                      ? "text-warning"
+                                      : "text-success"
+                                  }`}
+                                >
+                                  (
+                                  {Math.min(
+                                    100,
+                                    Math.round(
+                                      (cacheStats.total_size_mb / maxCacheSizeMb) * 100
+                                    )
+                                  )}
+                                  %)
+                                </span>
+                              </>
+                            ) : (
+                              `${cacheStats.total_size_mb} MB (Tanpa Batas)`
+                            )
+                          ) : (
+                            "Memuat..."
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      {maxCacheSizeMb > 0 && cacheStats && (
+                        <progress
+                          className={`progress w-full h-2 ${
+                            (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 90
+                              ? "progress-error"
+                              : (cacheStats.total_size_mb / maxCacheSizeMb) * 100 > 70
+                              ? "progress-warning"
+                              : "progress-success"
+                          }`}
+                          value={cacheStats.total_size_mb}
+                          max={maxCacheSizeMb}
+                        />
+                      )}
+
+                      {/* Cache Limit Controls */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-base-300">
+                        <div className="text-xs font-medium text-base-content/80">
+                          Batas Maksimum Cache:
+                        </div>
+                        <select
+                          value={maxCacheSizeMb}
+                          onChange={(e) => setMaxCacheSizeMb(Number(e.target.value))}
+                          className="select select-bordered select-xs h-8 bg-base-200 rounded-md text-xs font-mono font-semibold"
+                        >
+                          <option value={500}>500 MB (Hemat)</option>
+                          <option value={1024}>1 GB / 1024 MB</option>
+                          <option value={2048}>2 GB / 2048 MB (Standar)</option>
+                          <option value={5120}>5 GB / 5120 MB (Besar)</option>
+                          <option value={10240}>10 GB / 10240 MB</option>
+                          <option value={0}>Tanpa Batas (Unlimited)</option>
+                        </select>
+                      </div>
+
+                      <label className="flex items-center gap-2 cursor-pointer pt-0.5">
+                        <input
+                          type="checkbox"
+                          checked={autoCleanupCache}
+                          onChange={(e) => setAutoCleanupCache(e.target.checked)}
+                          className="checkbox checkbox-primary checkbox-xs rounded"
+                        />
+                        <span className="text-[11px] text-base-content/70">
+                          Pangkas otomatis lagu jarang diputar saat kapasitas penuh
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Directory Folder Slot Cards */}
+                    <div className="space-y-2.5">
+                      {/* Cache MP3 Directory Slot */}
+                      <div className="p-3.5 rounded-xl bg-base-100 border border-base-300 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-base-content flex items-center gap-1.5">
+                            <Folder className="h-3.5 w-3.5 text-primary" />
+                            <span>Folder Cache Audio MP3</span>
+                          </span>
+                          {customCacheDir && (
+                            <button
+                              type="button"
+                              onClick={() => setCustomCacheDir("")}
+                              className="text-[11px] text-accent hover:underline flex items-center gap-1"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              <span>Reset ke Default</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={customCacheDir}
+                            onChange={(e) => setCustomCacheDir(e.target.value)}
+                            placeholder={cacheStats?.cache_dir || "Drive Default (C:)"}
+                            className="input input-xs input-bordered h-8 flex-1 bg-base-200 rounded-md text-xs font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleBrowseCacheDir}
+                            disabled={isBrowsingCache}
+                            className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-base-content hover:bg-base-300 gap-1 text-xs font-semibold shrink-0"
+                            title="Pilih folder melalui dialog Windows"
                           >
-                            <div className="min-w-0 flex-1 truncate">
-                              <p className="font-semibold text-xs text-base-content truncate">
-                                {t.title}
-                              </p>
-                              <p className="text-xs text-base-content/70 truncate">
-                                {t.artist || t.artists?.join(", ") || "Artis"}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0 text-xs font-mono tabular-nums">
-                              {t.play_count > 0 && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-warning/15 text-warning font-bold">
-                                  <Flame className="h-3 w-3 fill-current" />
-                                  <span>{t.play_count}x</span>
-                                </span>
-                              )}
-                              {t.is_cached && (
-                                <span className="px-1.5 py-0.5 rounded bg-success/15 text-success font-medium">
-                                  {t.file_size_mb} MB
-                                </span>
-                              )}
-                              {t.last_played_relative && (
-                                <span className="text-base-content/70 hidden sm:inline">
-                                  {t.last_played_relative}
-                                </span>
-                              )}
-                            </div>
+                            {isBrowsingCache ? (
+                              <span className="loading loading-spinner loading-xs" />
+                            ) : (
+                              <Folder className="h-3.5 w-3.5 text-primary" />
+                            )}
+                            <span>Pilih</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleOpenCacheFolder}
+                            disabled={isOpeningFolder}
+                            className="btn btn-xs h-8 px-2.5 rounded-md bg-secondary border border-base-300 text-secondary-content hover:bg-base-300 gap-1 text-xs font-semibold shrink-0"
+                            title="Buka folder di File Explorer"
+                          >
+                            <FolderOpen className="h-3.5 w-3.5 text-primary" />
+                            <span>Buka</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Database & Data Directory Slot */}
+                      <div className="p-3.5 rounded-xl bg-base-100 border border-base-300 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-base-content flex items-center gap-1.5">
+                            <HardDrive className="h-3.5 w-3.5 text-primary" />
+                            <span>Folder Database &amp; Data Aplikasi</span>
+                          </span>
+                          {customDataDir && (
+                            <button
+                              type="button"
+                              onClick={() => setCustomDataDir("")}
+                              className="text-[11px] text-accent hover:underline flex items-center gap-1"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              <span>Reset ke Default</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={customDataDir}
+                            onChange={(e) => setCustomDataDir(e.target.value)}
+                            placeholder={cacheStats?.storage_dir || "Drive Default (C:)"}
+                            className="input input-xs input-bordered h-8 flex-1 bg-base-200 rounded-md text-xs font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleBrowseDataDir}
+                            disabled={isBrowsingData}
+                            className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-base-content hover:bg-base-300 gap-1 text-xs font-semibold shrink-0"
+                            title="Pilih folder melalui dialog Windows"
+                          >
+                            {isBrowsingData ? (
+                              <span className="loading loading-spinner loading-xs" />
+                            ) : (
+                              <Folder className="h-3.5 w-3.5 text-primary" />
+                            )}
+                            <span>Pilih</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleOpenDataFolder}
+                            disabled={isOpeningDataFolder}
+                            className="btn btn-xs h-8 px-2.5 rounded-md bg-secondary border border-base-300 text-secondary-content hover:bg-base-300 gap-1 text-xs font-semibold shrink-0"
+                            title="Buka folder di File Explorer"
+                          >
+                            <FolderOpen className="h-3.5 w-3.5 text-primary" />
+                            <span>Buka</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Cache Cleanup Actions */}
+                    <div className="p-3.5 rounded-xl bg-base-100 border border-base-300 flex flex-wrap items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={handleToggleCacheList}
+                        className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-base-content gap-1.5 text-xs font-semibold hover:bg-base-300"
+                      >
+                        <ListMusic className="h-3.5 w-3.5 text-primary" />
+                        <span>{showCacheList ? "Tutup Daftar" : "Lihat Lagu Cache"}</span>
+                      </button>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleTrimCache}
+                          disabled={isTrimmingCache || !cacheStats || cacheStats.total_files === 0}
+                          className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-primary gap-1 text-xs font-semibold hover:bg-base-300"
+                        >
+                          {isTrimmingCache ? (
+                            <span className="loading loading-spinner loading-xs" />
+                          ) : (
+                            <Scissors className="h-3 w-3" />
+                          )}
+                          <span>Pangkas</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleClearCache(7)}
+                          disabled={isClearingCache || !cacheStats || cacheStats.total_files === 0}
+                          className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-warning hover:bg-warning/15 text-xs font-semibold"
+                        >
+                          <span>&gt; 7 Hari</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleClearCache()}
+                          disabled={isClearingCache || !cacheStats || cacheStats.total_files === 0}
+                          className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-error gap-1 hover:bg-error/15 text-xs font-semibold"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>Hapus Semua</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expandable Cached Tracks Inspector */}
+                    {showCacheList && (
+                      <div className="p-3.5 rounded-xl bg-base-100 border border-base-300 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-bold text-base-content">
+                          <span>Daftar Berkas Cache ({cachedTracks.length} lagu):</span>
+                          {isLoadingCachedTracks && (
+                            <span className="loading loading-spinner loading-xs text-primary" />
+                          )}
+                        </div>
+                        {cachedTracks.length === 0 ? (
+                          <p className="text-xs text-base-content/60 py-3 text-center">
+                            Belum ada file audio di cache lokal.
+                          </p>
+                        ) : (
+                          <div className="max-h-48 overflow-y-auto divide-y divide-base-300 rounded-md border border-base-300 bg-base-200 text-xs">
+                            {cachedTracks.map((t, idx) => (
+                              <div
+                                key={t.video_id || idx}
+                                className="flex items-center justify-between gap-2 px-3 py-2"
+                              >
+                                <div className="min-w-0 flex-1 truncate">
+                                  <p className="font-semibold text-xs text-base-content truncate">
+                                    {t.title}
+                                  </p>
+                                  <p className="text-[11px] text-base-content/60 truncate">
+                                    {t.artist || t.artists?.join(", ") || "Artis"}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0 text-xs font-mono tabular-nums">
+                                  {t.play_count > 0 && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-warning/15 text-warning font-bold">
+                                      <Flame className="h-3 w-3 fill-current" />
+                                      <span>{t.play_count}x</span>
+                                    </span>
+                                  )}
+                                  {t.is_cached && (
+                                    <span className="px-1.5 py-0.2 rounded bg-success/15 text-success font-medium">
+                                      {t.file_size_mb} MB
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
                       </div>
                     )}
                   </div>
                 )}
-              </div>
 
-              {/* Audio Transcode Bitrate Quality Selector */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg bg-base-100 border border-base-300 gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-base-content">
-                      Kualitas Bitrate Transcoding Audio
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-primary/15 border border-primary/40 text-primary font-mono text-xs font-bold">
-                      {audioQuality.toUpperCase()}bps
-                    </span>
+                {/* TAB 4: SISTEM & INFO */}
+                {activeTab === "system" && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div>
+                      <h4 className="text-xs font-bold text-base-content uppercase tracking-wider mb-1">
+                        Informasi Konsol &amp; Pembaruan
+                      </h4>
+                      <p className="text-xs text-base-content/60">
+                        Status versi perangkat lunak dan tautan dokumentasi.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-base-100 border border-base-300 space-y-3">
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div className="p-2.5 rounded-lg bg-base-200 border border-base-300">
+                          <span className="text-[11px] text-base-content/60 block">
+                            Versi Aplikasi
+                          </span>
+                          <span className="font-mono font-bold text-sm text-primary">
+                            v{APP_VERSION}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-base-200 border border-base-300">
+                          <span className="text-[11px] text-base-content/60 block">
+                            Port Server Internal
+                          </span>
+                          <span className="font-mono font-bold text-sm text-base-content">
+                            {serverPort}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-base-300 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-semibold text-base-content block">
+                            Pembaruan Perangkat Lunak
+                          </span>
+                          <span className="text-[11px] text-base-content/60 block">
+                            Periksa rilis installer versi terbaru di GitHub.
+                          </span>
+                        </div>
+                        {onOpenUpdateModal && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onOpenUpdateModal();
+                            }}
+                            className="btn btn-sm h-8 px-3 rounded-lg bg-base-200 border border-base-300 text-xs font-semibold text-base-content hover:bg-base-300 gap-1.5 shrink-0"
+                          >
+                            <Download className="h-3.5 w-3.5 text-accent" />
+                            <span>Cek Pembaruan</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-base-100 border border-base-300 flex items-center justify-between text-xs text-base-content/70">
+                      <div>
+                        <span className="font-semibold text-base-content block">
+                          Radio Caster Bridge
+                        </span>
+                        <span>YouTube Music Studio Streamer &amp; RadioBOSS Controller</span>
+                      </div>
+                      <a
+                        href="https://hi.oktaa.my.id"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-ghost btn-xs h-7 px-2 text-xs font-semibold text-accent gap-1 hover:underline"
+                      >
+                        <span>hi.oktaa.my.id</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
                   </div>
-                  <p className="text-xs text-base-content/70 leading-relaxed">
-                    Bitrate konversi FFmpeg untuk relay stream &amp; file MP3 cache lokal yang dikirim ke RadioBOSS.
-                  </p>
-                </div>
-
-                <select
-                  value={audioQuality}
-                  onChange={(e) =>
-                    setAudioQuality(
-                      e.target.value as "128k" | "192k" | "256k" | "320k"
-                    )
-                  }
-                  className="select select-bordered select-sm h-9 w-full sm:w-56 bg-base-200 rounded-md text-xs font-mono font-semibold shrink-0"
-                >
-                  <option value="320k">320 kbps (Studio Master)</option>
-                  <option value="256k">256 kbps (Kualitas Tinggi)</option>
-                  <option value="192k">192 kbps (Standar Broadcast)</option>
-                  <option value="128k">128 kbps (Hemat Bandwidth)</option>
-                </select>
-              </div>
-
-              {/* Loudness Normalization Toggle */}
-              <div className="flex items-center justify-between p-3.5 rounded-lg bg-base-100 border border-base-300 gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-base-content">
-                      Normalisasi Kenyaringan Siaran (EBU R128)
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-primary/15 border border-primary/40 text-primary font-mono text-xs font-bold">
-                      -14 LUFS
-                    </span>
-                  </div>
-                  <p className="text-xs text-base-content/70 leading-relaxed">
-                    Menyeragamkan level kenyaringan semua lagu YouTube Music ke standar siaran radio agar volume antar lagu tetap stabil.
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={enableLoudnorm}
-                  onChange={(e) => setEnableLoudnorm(e.target.checked)}
-                  className="toggle toggle-primary toggle-sm shrink-0"
-                />
+                )}
               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="modal-action border-t border-base-300 pt-3 flex items-center justify-between">
-              <div>
-                {onOpenUpdateModal && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onOpenUpdateModal();
-                    }}
-                    className="btn btn-ghost btn-sm h-9 px-3 rounded-lg bg-base-100 border border-base-300 text-xs font-semibold text-base-content/80 gap-1.5 hover:text-base-content"
-                  >
-                    <Download className="h-3.5 w-3.5 text-accent" />
-                    <span>Cek Pembaruan</span>
-                  </button>
+            {/* Bottom Footer Actions */}
+            <div className="px-5 py-3 border-t border-base-300 bg-base-200/90 flex items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn btn-ghost btn-sm h-9 px-4 rounded-lg text-xs font-semibold text-base-content/80 hover:text-base-content"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="btn btn-primary btn-sm h-9 px-5 rounded-lg gap-1.5 text-xs font-bold text-primary-content shadow-sm"
+              >
+                {isSaving ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-3.5 w-3.5" />
+                    <span>Simpan Pengaturan</span>
+                  </>
                 )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="btn btn-ghost btn-sm h-9 px-4 rounded-lg text-xs font-semibold"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="btn btn-primary btn-sm h-9 px-4 rounded-lg gap-1.5 text-xs font-bold text-primary-content"
-                >
-                  {isSaving ? (
-                    <>
-                      <span className="loading loading-spinner loading-xs" />
-                      <span>Menyimpan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-3.5 w-3.5" />
-                      <span>Simpan Pengaturan</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              </button>
             </div>
           </form>
         )}
       </div>
+
       <form method="dialog" className="modal-backdrop">
         <button onClick={onClose}>close</button>
       </form>
