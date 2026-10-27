@@ -51,6 +51,27 @@ def find_frontend_out_dir() -> Optional[str]:
     return None
 
 
+import asyncio
+import gc
+
+async def _periodic_memory_cleanup():
+    """Background task running every 60s to collect garbage and trim working set memory."""
+    while True:
+        try:
+            await asyncio.sleep(60)
+            gc.collect()
+            if sys.platform == "win32":
+                try:
+                    import ctypes
+                    ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
+                except Exception:
+                    pass
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.debug(f"Periodic memory cleanup warning: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle event handler for application startup and shutdown."""
@@ -62,7 +83,15 @@ async def lifespan(app: FastAPI):
         logger.info(f"Serving standalone static frontend from: {out_dir}")
     else:
         logger.info("Static frontend/out not found. Running in headless API mode.")
+
+    cleanup_task = asyncio.create_task(_periodic_memory_cleanup())
     yield
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        pass
+    gc.collect()
     logger.info("Shutting down Radio Caster Request Bridge.")
 
 

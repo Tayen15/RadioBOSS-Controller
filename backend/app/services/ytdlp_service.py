@@ -184,6 +184,22 @@ class YTDLPService:
             "genre": genre_str,
             "thumbnail_url": thumbnail,
         }
+        self._prune_caches()
+
+    def _prune_caches(self):
+        """Keep in-memory caches bounded to prevent long-term memory leaks."""
+        now = time.time()
+        expired = [k for k, v in self._url_cache.items() if now > v[2]]
+        for k in expired:
+            self._url_cache.pop(k, None)
+
+        if len(self._url_cache) > 40:
+            for k in list(self._url_cache.keys())[:-40]:
+                self._url_cache.pop(k, None)
+
+        if len(self._meta_cache) > 50:
+            for k in list(self._meta_cache.keys())[:-50]:
+                self._meta_cache.pop(k, None)
 
     def get_track_metadata(self, video_id: str) -> dict:
         """Get cached metadata or extract fallback."""

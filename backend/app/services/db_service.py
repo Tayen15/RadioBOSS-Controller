@@ -103,9 +103,12 @@ class DatabaseService:
         """Create tables and indexes if they do not exist."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            # Enable WAL mode for high concurrent throughput
+            # Enable WAL mode and optimize memory page cache
             cursor.execute("PRAGMA journal_mode=WAL;")
             cursor.execute("PRAGMA foreign_keys=ON;")
+            cursor.execute("PRAGMA synchronous=NORMAL;")
+            cursor.execute("PRAGMA cache_size=-2000;")
+            cursor.execute("PRAGMA wal_autocheckpoint=500;")
 
             # 1. Settings Table (key-value store for app configuration)
             cursor.execute("""

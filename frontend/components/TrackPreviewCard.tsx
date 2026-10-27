@@ -69,6 +69,9 @@ export function TrackPreviewCard({
     setEditedTitle(track.title);
     setEditedArtist(track.artists.filter(Boolean).join(", "));
     setIsEditOpen(false);
+    setShowPreviewAudio(false);
+    setAudioState("idle");
+    setAudioError(null);
     setMetadataSaveMsg(null);
   }
 

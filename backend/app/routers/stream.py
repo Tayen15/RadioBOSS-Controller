@@ -127,10 +127,14 @@ def _generate_mp3_stream(video_id: str):
             logger.debug(f"Streaming interrupted for {clean_id}: {e}")
         finally:
             try:
+                if process.stdout and not process.stdout.closed:
+                    process.stdout.close()
                 process.kill()
-                process.wait()
+                process.wait(timeout=1.5)
             except Exception:
                 pass
+            import gc
+            gc.collect()
             logger.info(f"FFmpeg stream closed for {clean_id}")
 
     return StreamingResponse(

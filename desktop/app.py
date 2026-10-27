@@ -23,6 +23,31 @@ if sys.stderr is None or not hasattr(sys.stderr, "buffer"):
 if sys.stdin is None:
     sys.stdin = DummyStream()
 
+# Optimize Edge WebView2 Chromium RAM & resource footprint
+if sys.platform == "win32" and "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" not in os.environ:
+    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
+        "--disable-features=Translate,OptimizationHints,MediaRouter,CalculateNativeWinOcclusion "
+        "--disable-background-networking "
+        "--disable-component-update "
+        "--disable-sync "
+        "--disable-breakpad "
+        "--renderer-process-limit=1 "
+        "--disk-cache-size=33554432 "
+        "--media-cache-size=33554432 "
+        "--js-flags=--max-old-space-size=128"
+    )
+
+def trim_process_memory():
+    """Trim memory working set of current process on Windows and collect Python garbage."""
+    import gc
+    gc.collect()
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
+        except Exception:
+            pass
+
 def _get_desktop_storage_dir() -> str:
     """Resolve storage directory supporting Portable Mode and cross-platform (Windows & Linux)."""
     try:
@@ -288,6 +313,7 @@ def main():
                     pass
 
         logger.info("Application closed. Exiting.")
+        trim_process_memory()
         sys.exit(0)
     except Exception as e:
         logger.exception(f"Unhandled exception during desktop execution: {e}")

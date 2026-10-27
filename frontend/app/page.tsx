@@ -152,46 +152,70 @@ export default function DashboardPage() {
     [dismissToast]
   );
 
-  // Check connectivity and fetch now playing
+  // Check connectivity and fetch now playing with reference stability (prevents cascading re-renders)
   const isSyncingRef = React.useRef(false);
   const syncStatus = useCallback(async (silent = false) => {
     if (isSyncingRef.current) return;
     isSyncingRef.current = true;
     if (!silent) setIsStatusLoading(true);
     try {
-      const isHealthy = await checkBackendHealth();
-      setBackendOnline(isHealthy);
-
-      if (isHealthy) {
-        const rbStatus = await fetchRadioBossStatus();
-        setRadioBossStatus(rbStatus);
-      } else {
-        setRadioBossStatus({
-          connected: false,
-          error: "Backend server offline",
-        });
-      }
+      const rbStatus = await fetchRadioBossStatus();
+      const isOnline = rbStatus.error !== "Tidak dapat menghubungi backend";
+      setBackendOnline(isOnline);
+      setRadioBossStatus((prev) => {
+        if (
+          prev &&
+          prev.connected === rbStatus.connected &&
+          prev.error === rbStatus.error &&
+          prev.now_playing?.title === rbStatus.now_playing?.title &&
+          prev.now_playing?.status === rbStatus.now_playing?.status &&
+          prev.now_playing?.duration === rbStatus.now_playing?.duration &&
+          prev.now_playing?.position === rbStatus.now_playing?.position &&
+          prev.now_playing?.listeners === rbStatus.now_playing?.listeners
+        ) {
+          return prev;
+        }
+        return rbStatus;
+      });
     } catch {
       setBackendOnline(false);
-      setRadioBossStatus({ connected: false, error: "Gagal menghubungkan" });
+      setRadioBossStatus((prev) => {
+        if (prev && !prev.connected && prev.error === "Backend server offline") {
+          return prev;
+        }
+        return { connected: false, error: "Backend server offline" };
+      });
     } finally {
       isSyncingRef.current = false;
       if (!silent) setIsStatusLoading(false);
     }
   }, []);
 
-  // Fetch upcoming RadioBOSS playlist
-  const syncPlaylist = useCallback(async () => {
-    setIsPlaylistLoading(true);
+  // Fetch upcoming RadioBOSS playlist with silent background updates
+  const syncPlaylist = useCallback(async (isManual: boolean = false) => {
+    if (isManual) setIsPlaylistLoading(true);
     try {
       const res = await fetchRadioBossPlaylist(10);
       if (res.success && res.tracks) {
-        setPlaylistTracks(res.tracks);
+        setPlaylistTracks((prev) => {
+          if (
+            prev.length === res.tracks.length &&
+            prev.every(
+              (t, i) =>
+                t.title === res.tracks[i]?.title &&
+                t.artist === res.tracks[i]?.artist &&
+                t.is_playing === res.tracks[i]?.is_playing
+            )
+          ) {
+            return prev;
+          }
+          return res.tracks;
+        });
       }
     } catch {
       // Ignore background errors
     } finally {
-      setIsPlaylistLoading(false);
+      if (isManual) setIsPlaylistLoading(false);
     }
   }, []);
 
@@ -203,7 +227,7 @@ export default function DashboardPage() {
       addToast("success", res.message);
       setTimeout(() => {
         syncStatus();
-        syncPlaylist();
+        syncPlaylist(true);
       }, 400);
     } catch (err) {
       addToast(
@@ -217,39 +241,57 @@ export default function DashboardPage() {
     }
   };
 
-  // Initial fetch and auto-refresh loop (Realtime: 1 second)
+  // Initial fetch and adaptive auto-refresh loop (1s active, 5s when window minimized/hidden)
   useEffect(() => {
     let isCancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let tickCount = 0;
 
-    const timer = setTimeout(() => {
-      if (!isCancelled) {
-        syncStatus();
-        syncPlaylist();
+    const runSync = () => {
+      if (isCancelled) return;
+      syncStatus(true);
+      tickCount++;
+      if (tickCount % 3 === 0) {
+        syncPlaylist(false);
       }
-    }, 0);
 
-    if (!autoRefresh) {
-      return () => {
-        isCancelled = true;
-        clearTimeout(timer);
-      };
+      const isHidden =
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden";
+      const nextDelay = isHidden ? 5000 : 1000;
+
+      if (autoRefresh && !isCancelled) {
+        timerId = setTimeout(runSync, nextDelay);
+      }
+    };
+
+    // Immediate initial sync
+    syncStatus(false);
+    syncPlaylist(false);
+
+    if (autoRefresh) {
+      timerId = setTimeout(runSync, 1000);
     }
 
-    let tickCount = 0;
-    const interval = setInterval(() => {
-      if (!isCancelled) {
+    const handleVisibilityChange = () => {
+      if (
+        document.visibilityState === "visible" &&
+        autoRefresh &&
+        !isCancelled
+      ) {
+        if (timerId) clearTimeout(timerId);
         syncStatus(true);
-        tickCount++;
-        if (tickCount % 3 === 0) {
-          syncPlaylist();
-        }
+        syncPlaylist(false);
+        timerId = setTimeout(runSync, 1000);
       }
-    }, 1000);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       isCancelled = true;
-      clearTimeout(timer);
-      clearInterval(interval);
+      if (timerId) clearTimeout(timerId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [autoRefresh, syncStatus, syncPlaylist]);
 
@@ -403,7 +445,7 @@ export default function DashboardPage() {
 
       setTimeout(() => {
         syncStatus();
-        syncPlaylist();
+        syncPlaylist(true);
       }, 1000);
     } catch (err) {
       const errorMsg =
@@ -604,7 +646,7 @@ export default function DashboardPage() {
                   isQueueing={isQueueing}
                   onQueueComplete={() => {
                     syncStatus();
-                    syncPlaylist();
+                    syncPlaylist(true);
                   }}
                 />
               )}
@@ -713,7 +755,7 @@ export default function DashboardPage() {
                 <PlaylistQueueWidget
                   tracks={playlistTracks}
                   isLoading={isPlaylistLoading}
-                  onRefresh={syncPlaylist}
+                  onRefresh={() => syncPlaylist(true)}
                   connected={radioBossStatus?.connected ?? false}
                 />
               ) : (
