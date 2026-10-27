@@ -1,4 +1,5 @@
 """Settings API Router: In-app configuration management."""
+import asyncio
 import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -8,6 +9,7 @@ from app.services.radioboss_service import radioboss_service
 from typing import List, Dict, Any, Optional
 from app.services.cache_service import cache_service
 from app.services.history_service import history_service
+from app.services.folder_picker import pick_folder, open_directory_in_explorer
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["Settings & Management"])
@@ -53,6 +55,52 @@ async def save_app_settings(config: AppConfig):
     except Exception as e:
         logger.error(f"Error saving settings: {e}")
         raise HTTPException(status_code=500, detail=f"Gagal menyimpan pengaturan: {str(e)}")
+
+
+class BrowseFolderRequest(BaseModel):
+    initial_dir: Optional[str] = None
+    title: Optional[str] = "Pilih Folder Penyimpanan"
+
+
+class BrowseFolderResponse(BaseModel):
+    success: bool
+    path: Optional[str] = None
+    cancelled: bool = False
+
+
+class OpenFolderRequest(BaseModel):
+    path: Optional[str] = None
+
+
+@router.post("/settings/browse-folder", response_model=BrowseFolderResponse)
+async def browse_folder_dialog(request: Optional[BrowseFolderRequest] = None):
+    """
+    Open native Windows / OS folder selection dialog to pick directory.
+    Returns the chosen absolute folder path.
+    """
+    init_dir = request.initial_dir if request else None
+    title = request.title if request and request.title else "Pilih Folder Penyimpanan"
+    try:
+        chosen_path = await asyncio.to_thread(pick_folder, init_dir, title)
+        if chosen_path:
+            return BrowseFolderResponse(success=True, path=chosen_path, cancelled=False)
+        return BrowseFolderResponse(success=False, path=None, cancelled=True)
+    except Exception as e:
+        logger.error(f"Error opening folder picker dialog: {e}")
+        raise HTTPException(status_code=500, detail=f"Gagal membuka dialog pilih folder: {e}")
+
+
+@router.post("/settings/open-folder")
+async def open_system_folder(request: Optional[OpenFolderRequest] = None):
+    """Open any directory or storage path in Windows File Explorer."""
+    target_path = request.path if request and request.path else None
+    if not target_path:
+        stats = cache_service.get_cache_stats()
+        target_path = stats.get("storage_dir") or cache_service.cache_dir
+    success = open_directory_in_explorer(target_path)
+    if not success:
+        raise HTTPException(status_code=500, detail=f"Gagal membuka folder '{target_path}' di File Explorer.")
+    return {"success": True, "message": f"Folder '{target_path}' dibuka di File Explorer.", "path": target_path}
 
 
 @router.get("/cache/stats")

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse, Response, FileResponse
 from app.services.ytdlp_service import ytdlp_service
 from app.services.cache_service import cache_service, _find_ffmpeg_binary
+from app.services.settings_service import settings_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["Stream Relay"])
@@ -81,6 +82,12 @@ def _generate_mp3_stream(video_id: str):
     if user_agent:
         ffmpeg_cmd.extend(["-user_agent", user_agent])
 
+    cfg = settings_service.get_config()
+    bitrate = getattr(cfg, "audio_quality", "320k") or "320k"
+    if not str(bitrate).endswith("k"):
+        bitrate = f"{bitrate}k"
+    bitrate_num = str(bitrate).rstrip("k")
+
     ffmpeg_cmd.extend([
         "-i", stream_url,
         "-vn",
@@ -93,7 +100,7 @@ def _generate_mp3_stream(video_id: str):
         "-id3v2_version", "3",
         "-write_id3v1", "1",
         "-c:a", "libmp3lame",
-        "-b:a", "320k",
+        "-b:a", str(bitrate),
         "-f", "mp3",
         "pipe:1",
     ])

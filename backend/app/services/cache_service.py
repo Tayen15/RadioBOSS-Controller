@@ -394,9 +394,15 @@ class CacheService:
         except Exception as e:
             logger.warning(f"Could not apply loudnorm filter: {e}")
 
+        # Bitrate from settings (128k, 192k, 256k, 320k)
+        cfg = settings_service.get_config()
+        bitrate = getattr(cfg, "audio_quality", "320k") or "320k"
+        if not str(bitrate).endswith("k"):
+            bitrate = f"{bitrate}k"
+
         cmd.extend([
             "-c:a", "libmp3lame",
-            "-b:a", "320k",
+            "-b:a", str(bitrate),
             "-id3v2_version", "3",
             "-write_id3v1", "1",
             "-metadata", f"title={title}",

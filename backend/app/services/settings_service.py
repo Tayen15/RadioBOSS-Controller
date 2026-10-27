@@ -40,6 +40,10 @@ class AppConfig(BaseModel):
         default=True,
         description="Automatically evict least-played songs when cache size limit is reached"
     )
+    audio_quality: str = Field(
+        default="320k",
+        description="Audio transcode bitrate: '128k', '192k', '256k', or '320k'"
+    )
 
 
 

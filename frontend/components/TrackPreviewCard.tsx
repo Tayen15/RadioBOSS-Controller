@@ -21,6 +21,7 @@ import {
   Edit3,
   Wand2,
   RotateCcw,
+  Check,
 } from "lucide-react";
 import { TrackItem, CachedTrackItem } from "@/lib/types";
 import { getStreamRelayUrl } from "@/lib/api";
@@ -34,6 +35,7 @@ interface TrackPreviewCardProps {
     useRelay: boolean,
     customMetadata?: { title: string; artist: string }
   ) => Promise<void>;
+  onUpdateMetadata?: (trackId: string, title: string, artist: string) => void;
   isQueueing: boolean;
   activePos: number | null;
 }
@@ -41,6 +43,7 @@ interface TrackPreviewCardProps {
 export function TrackPreviewCard({
   track,
   onQueue,
+  onUpdateMetadata,
   isQueueing,
   activePos,
 }: TrackPreviewCardProps) {
@@ -58,6 +61,7 @@ export function TrackPreviewCard({
   );
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [prevTrackId, setPrevTrackId] = useState(track.video_id);
+  const [metadataSaveMsg, setMetadataSaveMsg] = useState<string | null>(null);
 
   // Sync state during render when selected track changes
   if (track.video_id !== prevTrackId) {
@@ -65,19 +69,42 @@ export function TrackPreviewCard({
     setEditedTitle(track.title);
     setEditedArtist(track.artists.filter(Boolean).join(", "));
     setIsEditOpen(false);
+    setMetadataSaveMsg(null);
   }
 
   const isMetadataCustomized =
     editedTitle.trim() !== track.title.trim() ||
     editedArtist.trim() !== track.artists.filter(Boolean).join(", ").trim();
 
+  const handleApplyMetadata = () => {
+    const cleanT = editedTitle.trim() || track.title;
+    const cleanA = editedArtist.trim();
+    if (onUpdateMetadata) {
+      onUpdateMetadata(track.video_id, cleanT, cleanA);
+    }
+    setMetadataSaveMsg("Metadata diterapkan!");
+    setTimeout(() => setMetadataSaveMsg(null), 2000);
+  };
+
   const handleCleanTitle = () => {
-    setEditedTitle((prev) => cleanBroadcastTitle(prev));
+    const cleaned = cleanBroadcastTitle(editedTitle);
+    setEditedTitle(cleaned);
+    if (onUpdateMetadata) {
+      onUpdateMetadata(track.video_id, cleaned, editedArtist.trim());
+    }
+    setMetadataSaveMsg("Judul dibersihkan & diterapkan!");
+    setTimeout(() => setMetadataSaveMsg(null), 2000);
   };
 
   const handleResetMetadata = () => {
     setEditedTitle(track.title);
-    setEditedArtist(track.artists.filter(Boolean).join(", "));
+    const origArtist = track.artists.filter(Boolean).join(", ");
+    setEditedArtist(origArtist);
+    if (onUpdateMetadata) {
+      onUpdateMetadata(track.video_id, track.title, origArtist);
+    }
+    setMetadataSaveMsg("Metadata dikembalikan ke asli.");
+    setTimeout(() => setMetadataSaveMsg(null), 2000);
   };
 
   const relayUrl = getStreamRelayUrl(track.video_id);
@@ -222,9 +249,26 @@ export function TrackPreviewCard({
                     />
                   </div>
                 </div>
-                <p className="text-xs text-base-content/70 leading-normal">
-                  Metadata ini disematkan ke tag ID3 file MP3 cache dan dikirimkan sebagai judul siaran ke RadioBOSS.
-                </p>
+
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-base-content/70 leading-normal flex-1 mr-2">
+                    Metadata ini disematkan ke tag ID3 file MP3 cache dan dikirimkan sebagai judul siaran ke RadioBOSS.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleApplyMetadata}
+                    className="btn btn-xs h-7 px-2.5 rounded-md btn-primary text-primary-content gap-1 text-xs font-semibold shrink-0"
+                  >
+                    <Check className="h-3 w-3" />
+                    <span>Terapkan</span>
+                  </button>
+                </div>
+
+                {metadataSaveMsg && (
+                  <p className="text-xs font-semibold text-success animate-fade-in">
+                    ✓ {metadataSaveMsg}
+                  </p>
+                )}
               </div>
             )}
 
@@ -376,7 +420,7 @@ export function TrackPreviewCard({
               <Radio className="h-4 w-4 text-base-content/70 shrink-0 mt-0.5" />
               <div className="min-w-0 flex-1">
                 <span className="block text-xs font-semibold text-base-content leading-tight">
-                  Transcode MP3 320kbps &amp; Tag ID3 Lengkap
+                  Transcode MP3 Studio &amp; Tag ID3 Lengkap
                 </span>
                 <p className="text-xs text-base-content/70 leading-normal mt-0.5">
                   Sematkan Artis, Judul, Album, dan Cover Art langsung ke RadioBOSS.
@@ -446,7 +490,11 @@ export function TrackPreviewCard({
 
       {/* Announcer Lyrics & Cue Sheet Modal */}
       <LyricsModal
-        track={track}
+        track={{
+          ...track,
+          title: editedTitle.trim() || track.title,
+          artists: editedArtist.trim() ? [editedArtist.trim()] : track.artists,
+        }}
         isOpen={isLyricsOpen}
         onClose={() => setIsLyricsOpen(false)}
       />

@@ -24,6 +24,7 @@ import {
   DJTopChartResponse,
   DJSmartRecommendationsResponse,
   CacheStats,
+  BrowseFolderResponse,
   UpdateCheckResult,
   UpdateDownloadStatus,
 } from "./types";
@@ -217,6 +218,40 @@ export async function openCacheFolder(): Promise<void> {
   if (!res.ok) {
     throw new Error("Gagal membuka folder cache di Windows Explorer.");
   }
+}
+
+export async function openSpecificFolder(
+  path?: string
+): Promise<{ success: boolean; message: string; path?: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/settings/open-folder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: path || null }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal membuka folder di File Explorer.");
+  }
+  return await res.json();
+}
+
+export async function browseFolder(
+  initialDir?: string,
+  title?: string
+): Promise<BrowseFolderResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/settings/browse-folder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      initial_dir: initialDir || null,
+      title: title || "Pilih Folder Penyimpanan",
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal membuka dialog pilih folder.");
+  }
+  return await res.json();
 }
 
 export async function clearAudioCache(

@@ -13,6 +13,7 @@ import {
   Tag,
   ChevronDown,
   Check,
+  Folder,
   FolderOpen,
   HardDrive,
   Trash2,
@@ -28,6 +29,8 @@ import {
   saveAppSettings,
   fetchCacheStats,
   openCacheFolder,
+  openSpecificFolder,
+  browseFolder,
   clearAudioCache,
   fetchCachedTracks,
   trimAudioCache,
@@ -90,6 +93,9 @@ export function SettingsModal({
   const [isFormatDropdownOpen, setIsFormatDropdownOpen] = useState(false);
 
   const [serverPort, setServerPort] = useState(8000);
+  const [audioQuality, setAudioQuality] = useState<
+    "128k" | "192k" | "256k" | "320k"
+  >("320k");
   const [enableLoudnorm, setEnableLoudnorm] = useState(true);
   const [customCacheDir, setCustomCacheDir] = useState<string>("");
   const [customDataDir, setCustomDataDir] = useState<string>("");
@@ -100,6 +106,9 @@ export function SettingsModal({
   const [isSaving, setIsSaving] = useState(false);
   const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
   const [isOpeningFolder, setIsOpeningFolder] = useState(false);
+  const [isOpeningDataFolder, setIsOpeningDataFolder] = useState(false);
+  const [isBrowsingCache, setIsBrowsingCache] = useState(false);
+  const [isBrowsingData, setIsBrowsingData] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [isTrimmingCache, setIsTrimmingCache] = useState(false);
   const [feedback, setFeedback] = useState<{
@@ -165,6 +174,9 @@ export function SettingsModal({
         setTitleFormatMode(cfg.title_format_mode || "radioboss_native");
         setCustomFormat(cfg.custom_title_format || "{artist} - {title}");
         setServerPort(cfg.server_port || 8000);
+        setAudioQuality(
+          (cfg.audio_quality as "128k" | "192k" | "256k" | "320k") || "320k"
+        );
         setEnableLoudnorm(cfg.enable_loudnorm !== undefined ? cfg.enable_loudnorm : true);
         setCustomCacheDir(cfg.custom_cache_dir || "");
         setCustomDataDir(cfg.custom_data_dir || "");
@@ -194,10 +206,73 @@ export function SettingsModal({
     };
   }, [isOpen]);
 
+  const handleBrowseCacheDir = async () => {
+    setIsBrowsingCache(true);
+    try {
+      const res = await browseFolder(
+        customCacheDir || cacheStats?.cache_dir,
+        "Pilih Folder Cache Audio MP3"
+      );
+      if (res.success && res.path) {
+        setCustomCacheDir(res.path);
+      }
+    } catch (err) {
+      setFeedback({
+        type: "error",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Gagal membuka dialog pilih folder cache.",
+      });
+    } finally {
+      setIsBrowsingCache(false);
+    }
+  };
+
+  const handleBrowseDataDir = async () => {
+    setIsBrowsingData(true);
+    try {
+      const res = await browseFolder(
+        customDataDir || cacheStats?.storage_dir,
+        "Pilih Folder Database & Data Aplikasi"
+      );
+      if (res.success && res.path) {
+        setCustomDataDir(res.path);
+      }
+    } catch (err) {
+      setFeedback({
+        type: "error",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Gagal membuka dialog pilih folder data.",
+      });
+    } finally {
+      setIsBrowsingData(false);
+    }
+  };
+
+  const handleOpenDataFolder = async () => {
+    setIsOpeningDataFolder(true);
+    try {
+      await openSpecificFolder(customDataDir || cacheStats?.storage_dir);
+    } catch (err) {
+      setFeedback({
+        type: "error",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Gagal membuka folder data di Explorer.",
+      });
+    } finally {
+      setIsOpeningDataFolder(false);
+    }
+  };
+
   const handleOpenFolder = async () => {
     setIsOpeningFolder(true);
     try {
-      await openCacheFolder();
+      await openSpecificFolder(customCacheDir || cacheStats?.cache_dir);
     } catch (err) {
       setFeedback({
         type: "error",
@@ -273,6 +348,7 @@ export function SettingsModal({
       title_format_mode: titleFormatMode,
       custom_title_format: customFormat.trim(),
       server_port: Number(serverPort) || 8000,
+      audio_quality: audioQuality,
       enable_loudnorm: enableLoudnorm,
       custom_cache_dir: customCacheDir.trim(),
       custom_data_dir: customDataDir.trim(),
@@ -686,22 +762,54 @@ export function SettingsModal({
                     )}
                   </div>
 
-                  <input
-                    type="text"
-                    value={customDataDir}
-                    onChange={(e) => setCustomDataDir(e.target.value)}
-                    placeholder={
-                      cacheStats?.storage_dir ||
-                      "D:\\RadioBOSS-Data (kosongkan untuk default)"
-                    }
-                    className="input input-bordered input-sm h-9 w-full bg-base-200 rounded-md text-xs font-mono text-base-content placeholder:text-base-content/60"
-                  />
+                  <div className="flex items-stretch gap-2">
+                    <input
+                      type="text"
+                      value={customDataDir}
+                      onChange={(e) => setCustomDataDir(e.target.value)}
+                      placeholder={
+                        cacheStats?.storage_dir ||
+                        "D:\\RadioBOSS-Data (kosongkan untuk default)"
+                      }
+                      className="input input-bordered input-sm h-9 flex-1 min-w-0 bg-base-200 rounded-md text-xs font-mono text-base-content placeholder:text-base-content/60"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleBrowseDataDir}
+                      disabled={isBrowsingData}
+                      className="btn btn-sm h-9 px-3 rounded-md bg-base-200 border border-base-300 text-base-content hover:bg-base-300 gap-1.5 shrink-0 text-xs font-semibold"
+                      title="Pilih folder database melalui dialog Windows"
+                    >
+                      {isBrowsingData ? (
+                        <span className="loading loading-spinner loading-xs" />
+                      ) : (
+                        <Folder className="h-3.5 w-3.5 text-primary" />
+                      )}
+                      <span>Pilih Folder</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenDataFolder}
+                      disabled={isOpeningDataFolder}
+                      className="btn btn-sm h-9 px-3 rounded-md bg-secondary border border-base-300 text-secondary-content hover:bg-base-300 gap-1.5 shrink-0 text-xs font-semibold"
+                      title="Buka folder database aktif di File Explorer"
+                    >
+                      <FolderOpen className="h-3.5 w-3.5 text-primary" />
+                      <span>Buka Folder</span>
+                    </button>
+                  </div>
 
-                  <p className="text-xs text-base-content/70 leading-normal">
-                    Database aktif:{" "}
-                    <code className="font-mono text-accent break-all">
-                      {cacheStats?.db_path || "Memuat..."}
-                    </code>
+                  <p className="text-xs text-base-content/70 leading-normal flex items-center gap-1.5 flex-wrap">
+                    <span>Database aktif:</span>
+                    <button
+                      type="button"
+                      onClick={handleOpenDataFolder}
+                      className="font-mono text-accent hover:underline break-all inline-flex items-center gap-1 text-left cursor-pointer"
+                      title="Klik untuk membuka folder database di File Explorer"
+                    >
+                      <span>{cacheStats?.db_path || "Memuat..."}</span>
+                      <FolderOpen className="h-3 w-3 inline shrink-0" />
+                    </button>
                   </p>
                 </div>
 
@@ -739,6 +847,20 @@ export function SettingsModal({
                     />
                     <button
                       type="button"
+                      onClick={handleBrowseCacheDir}
+                      disabled={isBrowsingCache}
+                      className="btn btn-sm h-9 px-3 rounded-md bg-base-200 border border-base-300 text-base-content hover:bg-base-300 gap-1.5 shrink-0 text-xs font-semibold"
+                      title="Pilih folder cache audio melalui dialog Windows"
+                    >
+                      {isBrowsingCache ? (
+                        <span className="loading loading-spinner loading-xs" />
+                      ) : (
+                        <Folder className="h-3.5 w-3.5 text-primary" />
+                      )}
+                      <span>Pilih Folder</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={handleOpenFolder}
                       disabled={isOpeningFolder}
                       className="btn btn-sm h-9 px-3 rounded-md bg-secondary border border-base-300 text-secondary-content hover:bg-base-300 gap-1.5 shrink-0 text-xs font-semibold"
@@ -749,11 +871,17 @@ export function SettingsModal({
                     </button>
                   </div>
 
-                  <p className="text-xs text-base-content/70 leading-normal">
-                    Folder aktif:{" "}
-                    <code className="font-mono text-accent break-all">
-                      {cacheStats?.cache_dir || "Memuat..."}
-                    </code>
+                  <p className="text-xs text-base-content/70 leading-normal flex items-center gap-1.5 flex-wrap">
+                    <span>Folder aktif:</span>
+                    <button
+                      type="button"
+                      onClick={handleOpenFolder}
+                      className="font-mono text-accent hover:underline break-all inline-flex items-center gap-1 text-left cursor-pointer"
+                      title="Klik untuk membuka folder cache di File Explorer"
+                    >
+                      <span>{cacheStats?.cache_dir || "Memuat..."}</span>
+                      <FolderOpen className="h-3 w-3 inline shrink-0" />
+                    </button>
                   </p>
                 </div>
 
@@ -874,6 +1002,38 @@ export function SettingsModal({
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Audio Transcode Bitrate Quality Selector */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg bg-base-100 border border-base-300 gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-base-content">
+                      Kualitas Bitrate Transcoding Audio
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-primary/15 border border-primary/40 text-primary font-mono text-xs font-bold">
+                      {audioQuality.toUpperCase()}bps
+                    </span>
+                  </div>
+                  <p className="text-xs text-base-content/70 leading-relaxed">
+                    Bitrate konversi FFmpeg untuk relay stream &amp; file MP3 cache lokal yang dikirim ke RadioBOSS.
+                  </p>
+                </div>
+
+                <select
+                  value={audioQuality}
+                  onChange={(e) =>
+                    setAudioQuality(
+                      e.target.value as "128k" | "192k" | "256k" | "320k"
+                    )
+                  }
+                  className="select select-bordered select-sm h-9 w-full sm:w-56 bg-base-200 rounded-md text-xs font-mono font-semibold shrink-0"
+                >
+                  <option value="320k">320 kbps (Studio Master)</option>
+                  <option value="256k">256 kbps (Kualitas Tinggi)</option>
+                  <option value="192k">192 kbps (Standar Broadcast)</option>
+                  <option value="128k">128 kbps (Hemat Bandwidth)</option>
+                </select>
               </div>
 
               {/* Loudness Normalization Toggle */}

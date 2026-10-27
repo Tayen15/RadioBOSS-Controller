@@ -386,7 +386,7 @@ export default function DashboardPage() {
         id: `${Date.now()}-${targetTrack.video_id}`,
         video_id: targetTrack.video_id,
         title: formattedTitle,
-        artists: targetTrack.artists,
+        artists: customMeta?.artist ? [customMeta.artist] : targetTrack.artists,
         thumbnail_url: targetTrack.thumbnail_url,
         pos: pos,
         timestamp: timeStr,
@@ -417,9 +417,27 @@ export default function DashboardPage() {
     }
   };
 
-  const handleQueueTrack = async (pos: number, useRelay: boolean) => {
+  const handleQueueTrack = async (
+    pos: number,
+    useRelay: boolean,
+    customMetadata?: { title: string; artist: string }
+  ) => {
     if (selectedTrack) {
-      await queueTrackWithGuard(selectedTrack, pos, useRelay);
+      await queueTrackWithGuard(selectedTrack, pos, useRelay, customMetadata);
+    }
+  };
+
+  const handleUpdateSelectedMetadata = (
+    trackId: string,
+    title: string,
+    artist: string
+  ) => {
+    if (selectedTrack && selectedTrack.video_id === trackId) {
+      setSelectedTrack({
+        ...selectedTrack,
+        title,
+        artists: artist ? [artist] : selectedTrack.artists,
+      });
     }
   };
 
@@ -600,6 +618,7 @@ export default function DashboardPage() {
               <TrackPreviewCard
                 track={selectedTrack}
                 onQueue={handleQueueTrack}
+                onUpdateMetadata={handleUpdateSelectedMetadata}
                 isQueueing={isQueueing}
                 activePos={activeQueuePos}
               />

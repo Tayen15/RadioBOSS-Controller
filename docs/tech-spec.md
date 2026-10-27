@@ -10,13 +10,15 @@ Configuration is stored in `%APPDATA%/RadioBOSSCaster/config.json` with dynamic 
 - `server_port`: `8000`
 
 ## Backend API Specification
-- `GET /api/health` -> `{ "status": "online", "service": "...", "version": "0.7.1" }`
+- `GET /api/health` -> `{ "status": "online", "service": "...", "version": "0.7.2" }`
 - `GET /api/settings` -> Returns current active configuration
 - `POST /api/settings` -> Updates configuration in `%APPDATA%` and validates RadioBOSS connection
+- `POST /api/settings/browse-folder` -> Opens native Windows/OS folder picker dialog and returns chosen path
+- `POST /api/settings/open-folder` -> Opens folder or active database/storage directory in File Explorer
 - `POST /api/search` -> `{ "query": string, "limit": int }` -> Returns array of official songs: `{ video_id, title, artists, album, duration, thumbnail_url }`
 - `POST /api/resolve` -> `{ "url": string }` -> Returns resolved metadata & direct stream URL
 - `POST /api/queue` -> `{ "video_id": string, "title": string, "pos": int, "stream_url"?: string }` -> Injects stream into RadioBOSS via `inserttrack`
-- `GET /api/stream/{video_id}.mp3` -> Real-time transcode to 320k CBR MP3 with embedded ID3v2 metadata
+- `GET /api/stream/{video_id}.mp3` -> Real-time transcode to configured CBR MP3 (128k, 192k, 256k, 320k) with embedded ID3v2 metadata
 - `GET /api/radioboss/status` -> Queries RadioBOSS `playbackinfo` and returns connectivity + currently playing track
 
 ## Packaging & Build
