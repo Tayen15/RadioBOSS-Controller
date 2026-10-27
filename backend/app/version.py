@@ -1,4 +1,4 @@
 """Radio Caster Request Bridge Version Definition (SemVer)."""
-__version__ = "0.7.2"
+__version__ = "0.8.0"
 VERSION = __version__
 
