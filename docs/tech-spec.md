@@ -10,7 +10,7 @@ Configuration is stored in `%APPDATA%/RadioBOSSCaster/config.json` with dynamic 
 - `server_port`: `8000`
 
 ## Backend API Specification
-- `GET /api/health` -> `{ "status": "online", "service": "...", "version": "0.8.0" }`
+- `GET /api/health` -> `{ "status": "online", "service": "...", "version": "0.8.1" }`
 - `GET /api/settings` -> Returns current active configuration
 - `POST /api/settings` -> Updates configuration in `%APPDATA%` and validates RadioBOSS connection
 - `POST /api/settings/browse-folder` -> Opens native Windows/OS folder picker dialog and returns chosen path
