@@ -152,8 +152,9 @@ export default function DashboardPage() {
     [dismissToast]
   );
 
-  // Check connectivity and fetch now playing with reference stability (prevents cascading re-renders)
+  // Check connectivity and fetch now playing with debounced failure handling (prevents flickering disconnects on slower devices/LAN)
   const isSyncingRef = React.useRef(false);
+  const consecutiveFailuresRef = React.useRef(0);
   const syncStatus = useCallback(async (silent = false) => {
     if (isSyncingRef.current) return;
     isSyncingRef.current = true;
@@ -161,41 +162,55 @@ export default function DashboardPage() {
     try {
       const rbStatus = await fetchRadioBossStatus();
       const isOnline = rbStatus.error !== "Tidak dapat menghubungi backend";
-      setBackendOnline(isOnline);
-      setRadioBossStatus((prev) => {
-        if (
-          prev &&
-          prev.connected === rbStatus.connected &&
-          prev.error === rbStatus.error &&
-          prev.now_playing?.title === rbStatus.now_playing?.title &&
-          prev.now_playing?.status === rbStatus.now_playing?.status &&
-          prev.now_playing?.duration === rbStatus.now_playing?.duration &&
-          prev.now_playing?.position === rbStatus.now_playing?.position &&
-          prev.now_playing?.listeners === rbStatus.now_playing?.listeners
-        ) {
-          return prev;
+
+      if (rbStatus.connected && isOnline) {
+        consecutiveFailuresRef.current = 0;
+        setBackendOnline(true);
+        setRadioBossStatus((prev) => {
+          if (
+            prev &&
+            prev.connected === rbStatus.connected &&
+            prev.error === rbStatus.error &&
+            prev.now_playing?.title === rbStatus.now_playing?.title &&
+            prev.now_playing?.status === rbStatus.now_playing?.status &&
+            prev.now_playing?.duration === rbStatus.now_playing?.duration &&
+            prev.now_playing?.position === rbStatus.now_playing?.position &&
+            prev.now_playing?.listeners === rbStatus.now_playing?.listeners
+          ) {
+            return prev;
+          }
+          return rbStatus;
+        });
+      } else {
+        // Debounce: require 2 consecutive failures before declaring RadioBOSS disconnected
+        consecutiveFailuresRef.current += 1;
+        if (consecutiveFailuresRef.current >= 2) {
+          setBackendOnline(isOnline);
+          setRadioBossStatus(rbStatus);
         }
-        return rbStatus;
-      });
+      }
     } catch {
-      setBackendOnline(false);
-      setRadioBossStatus((prev) => {
-        if (prev && !prev.connected && prev.error === "Backend server offline") {
-          return prev;
-        }
-        return { connected: false, error: "Backend server offline" };
-      });
+      consecutiveFailuresRef.current += 1;
+      if (consecutiveFailuresRef.current >= 2) {
+        setBackendOnline(false);
+        setRadioBossStatus((prev) => {
+          if (prev && !prev.connected && prev.error === "Backend server offline") {
+            return prev;
+          }
+          return { connected: false, error: "Backend server offline" };
+        });
+      }
     } finally {
       isSyncingRef.current = false;
       if (!silent) setIsStatusLoading(false);
     }
   }, []);
 
-  // Fetch upcoming RadioBOSS playlist with silent background updates
+  // Fetch upcoming RadioBOSS playlist with silent background updates (limit up to 50 tracks)
   const syncPlaylist = useCallback(async (isManual: boolean = false) => {
     if (isManual) setIsPlaylistLoading(true);
     try {
-      const res = await fetchRadioBossPlaylist(10);
+      const res = await fetchRadioBossPlaylist(50);
       if (res.success && res.tracks) {
         setPlaylistTracks((prev) => {
           if (
@@ -349,7 +364,8 @@ export default function DashboardPage() {
     targetTrack: TrackItem,
     pos: number,
     useRelay: boolean = true,
-    customMeta?: { title: string; artist: string }
+    customMeta?: { title: string; artist: string },
+    skipRepeatConfirm: boolean = false
   ) => {
     const primaryArtist = (
       customMeta?.artist ||
@@ -358,7 +374,7 @@ export default function DashboardPage() {
     )
       .toLowerCase()
       .trim();
-    if (primaryArtist) {
+    if (primaryArtist && !skipRepeatConfirm) {
       const recentArtistPlayed = history
         .slice(0, 3)
         .some(
@@ -385,6 +401,8 @@ export default function DashboardPage() {
 
     setIsQueueing(true);
     setActiveQueuePos(pos);
+    // Switch active tab to RadioBOSS playlist so user sees the newly queued track
+    setQueueTab("playlist");
 
     const posLabel = pos === 1 ? "Putar Berikutnya" : "Antrean Bawah";
 
@@ -443,10 +461,13 @@ export default function DashboardPage() {
         res.message || `Lagu berhasil dikirim ke RadioBOSS (${posLabel})!`
       );
 
+      // Immediately sync status and playlist, then sync again after 1.2s to capture RadioBOSS update
+      syncStatus();
+      syncPlaylist(true);
       setTimeout(() => {
         syncStatus();
         syncPlaylist(true);
-      }, 1000);
+      }, 1200);
     } catch (err) {
       const errorMsg =
         err instanceof Error
@@ -631,17 +652,17 @@ export default function DashboardPage() {
                       : null
                   }
                   onSelectTrack={(track) => setSelectedTrack(track)}
-                  onQueueTrack={(track, pos) =>
-                    queueTrackWithGuard(track, pos, true)
-                  }
+                  onQueueTrack={async (track, pos) => {
+                    await queueTrackWithGuard(track, pos, true, undefined, true);
+                  }}
                   isQueueing={isQueueing}
                 />
               ) : (
                 <PlaylistSetsWidget
                   onSelectTrack={(track) => setSelectedTrack(track)}
-                  onQueueTrack={(track, pos) =>
-                    queueTrackWithGuard(track, pos, true)
-                  }
+                  onQueueTrack={async (track, pos) => {
+                    await queueTrackWithGuard(track, pos, true, undefined, true);
+                  }}
                   onAddToast={addToast}
                   isQueueing={isQueueing}
                   onQueueComplete={() => {

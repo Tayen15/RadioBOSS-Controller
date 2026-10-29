@@ -60,7 +60,7 @@ async def stop_all_carts():
 
 
 @router.get("/radioboss/playlist", response_model=PlaylistResponse)
-async def get_radioboss_playlist(limit: int = 10):
+async def get_radioboss_playlist(limit: int = 50):
     """Get upcoming tracks in RadioBOSS playlist."""
     success, tracks, error = await radioboss_service.get_playlist(limit=limit)
     if not success:
@@ -135,25 +135,30 @@ async def queue_track(request: QueueRequest):
     except Exception as e:
         logger.warning(f"Studio master cache generation failed: {e}")
 
-    if cached_file and os.path.isfile(cached_file):
+    is_local_rb = radioboss_service.is_local_instance()
+
+    # Determine target filename or network stream URL
+    if is_local_rb and cached_file and os.path.isfile(cached_file):
+        # Local RadioBOSS can directly open local filesystem cached MP3
         target_filename = cached_file
         logger.info(f"Queuing local studio master MP3 with ID3 & artwork to RadioBOSS: {target_filename}")
-    elif request.use_relay:
-        # Verify stream is actually resolvable before sending relay URL to RadioBOSS
-        # Prevents queuing a broken 'Network Stream' item that fails with BASS Error code 2
-        stream_url, _ = await asyncio.to_thread(ytdlp_service.get_live_stream_details, clean_id)
-        if not stream_url:
-            raise HTTPException(
-                status_code=502,
-                detail=(
-                    f"Gagal mengekstrak audio untuk '{artist} - {song_title}' dari YouTube "
-                    f"(stream diblokir atau tidak tersedia). Coba pilih versi lagu lain dari hasil pencarian."
-                ),
-            )
-        cfg = settings_service.get_config()
-        active_port = cfg.server_port or settings.SERVER_PORT
-        target_filename = f"http://{settings.SERVER_HOST}:{active_port}/api/stream/{clean_id}.mp3"
-        logger.info(f"Queuing verified stream relay URL to RadioBOSS: {target_filename}")
+    elif request.use_relay or not is_local_rb:
+        # Remote RadioBOSS or local using relay:
+        # If not cached on disk, verify stream can be extracted before queuing
+        if not (cached_file and os.path.isfile(cached_file)):
+            stream_url, _ = await asyncio.to_thread(ytdlp_service.get_live_stream_details, clean_id)
+            if not stream_url:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        f"Gagal mengekstrak audio untuk '{artist} - {song_title}' dari YouTube "
+                        f"(stream diblokir atau tidak tersedia). Coba pilih versi lagu lain dari hasil pencarian."
+                    ),
+                )
+        target_filename = radioboss_service.get_reachable_stream_url(clean_id)
+        logger.info(
+            f"Queuing reachable stream relay URL to RadioBOSS ({'remote' if not is_local_rb else 'relay'}): {target_filename}"
+        )
     elif request.direct_stream_url:
         target_filename = request.direct_stream_url
     else:

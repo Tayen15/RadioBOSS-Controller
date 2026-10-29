@@ -185,7 +185,7 @@ export async function sendPlaybackControl(
 }
 
 export async function fetchRadioBossPlaylist(
-  limit: number = 10
+  limit: number = 50
 ): Promise<PlaylistResponse> {
   const res = await fetch(
     `${API_BASE_URL}/api/radioboss/playlist?limit=${limit}`,

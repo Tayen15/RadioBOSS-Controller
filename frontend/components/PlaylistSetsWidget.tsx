@@ -38,7 +38,7 @@ import {
 
 interface PlaylistSetsWidgetProps {
   onSelectTrack: (track: TrackItem) => void;
-  onQueueTrack?: (track: TrackItem, pos: number) => void;
+  onQueueTrack?: (track: TrackItem, pos: number) => Promise<void> | void;
   onAddToast: (type: "success" | "error", message: string) => void;
   onQueueComplete?: () => void;
   isQueueing?: boolean;
@@ -423,7 +423,7 @@ export function PlaylistSetsWidget({
 
   const handleQueueSingle = async (trackObj: TrackItem, pos: number) => {
     if (onQueueTrack) {
-      onQueueTrack(trackObj, pos);
+      await onQueueTrack(trackObj, pos);
     } else {
       try {
         await queueToRadioBoss(

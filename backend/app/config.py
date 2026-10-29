@@ -6,7 +6,7 @@ from app.services.settings_service import settings_service
 class DynamicSettings:
     """Settings interface that reads dynamically from settings_service."""
 
-    SERVER_HOST: str = "127.0.0.1"
+    SERVER_HOST: str = "0.0.0.0"
     CORS_ORIGINS: str = "*"
 
     @property

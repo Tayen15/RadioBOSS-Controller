@@ -47,15 +47,72 @@ def _format_milliseconds(ms_str: Optional[str]) -> str:
 
 
 class RadioBOSSService:
-    """Client for RadioBOSS Web Remote Control API."""
+    """Client for RadioBOSS Web Remote Control API with persistent connection pooling."""
 
     def __init__(self):
         self.settings = get_settings()
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or initialize persistent async HTTP client with connection pooling."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=httpx.Timeout(connect=5.0, read=10.0, write=5.0, pool=15.0),
+                limits=httpx.Limits(max_keepalive_connections=5, max_connections=15, keepalive_expiry=30.0),
+                follow_redirects=True,
+            )
+        return self._client
+
+    async def close(self):
+        """Close persistent HTTP client session."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
+
+    def is_local_instance(self) -> bool:
+        """Check if configured RadioBOSS is running on localhost or 127.0.0.1."""
+        host = self.settings.RADIOBOSS_HOST.lower().strip()
+        clean = host.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
+        return clean in ("127.0.0.1", "localhost", "::1", "0.0.0.0", "")
+
+    def get_reachable_stream_url(self, clean_id: str) -> str:
+        """
+        Construct a stream URL that RadioBOSS can reach.
+        If RadioBOSS is local: http://127.0.0.1:{port}/api/stream/{clean_id}.mp3
+        If RadioBOSS is remote: http://{lan_ip}:{port}/api/stream/{clean_id}.mp3
+        """
+        from app.services.settings_service import settings_service
+        cfg = settings_service.get_config()
+        port = cfg.server_port or 8000
+        if self.is_local_instance():
+            return f"http://127.0.0.1:{port}/api/stream/{clean_id}.mp3"
+
+        lan_ip = self._get_outbound_ip()
+        return f"http://{lan_ip}:{port}/api/stream/{clean_id}.mp3"
+
+    def _get_outbound_ip(self) -> str:
+        """Find local LAN IP used to reach the remote RadioBOSS host."""
+        import socket
+        host = self.settings.RADIOBOSS_HOST.lower().strip()
+        clean_host = host.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.settimeout(0.5)
+            s.connect((clean_host, self.settings.RADIOBOSS_PORT or 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            try:
+                import socket
+                return socket.gethostbyname(socket.gethostname())
+            except Exception:
+                return "127.0.0.1"
 
     async def check_status(self) -> RadioBOSSStatusResponse:
         """
         Check RadioBOSS connectivity and fetch currently playing track.
-        Calls action=playbackinfo.
+        Calls action=playbackinfo with resilient connection pooling.
         """
         base_url = self.settings.radioboss_base_url
         params = {
@@ -65,8 +122,8 @@ class RadioBOSSService:
             params["pass"] = self.settings.RADIOBOSS_PASSWORD
 
         try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                response = await client.get(base_url, params=params)
+            client = self._get_client()
+            response = await client.get(base_url, params=params, timeout=6.0)
 
             if response.status_code == 401 or response.status_code == 403:
                 return RadioBOSSStatusResponse(
@@ -252,8 +309,8 @@ class RadioBOSSService:
             params["pass"] = self.settings.RADIOBOSS_PASSWORD
 
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(base_url, params=params)
+            client = self._get_client()
+            response = await client.get(base_url, params=params, timeout=10.0)
 
             if response.status_code == 401 or response.status_code == 403:
                 return False, "Autentikasi gagal: Password RadioBOSS salah."
@@ -291,6 +348,8 @@ class RadioBOSSService:
             return False, "Permintaan ke RadioBOSS mengalami timeout."
         except Exception as e:
             logger.error(f"Error inserting track into RadioBOSS: {e}")
+            return False, f"Terjadi kesalahan koneksi saat menyisipkan lagu: {e}"
+
     async def send_playback_command(self, action: str) -> Tuple[bool, str]:
         """
         Send playback transport control command to RadioBOSS.
@@ -309,8 +368,8 @@ class RadioBOSSService:
             params["pass"] = self.settings.RADIOBOSS_PASSWORD
 
         try:
-            async with httpx.AsyncClient(timeout=4.0) as client:
-                response = await client.get(base_url, params=params)
+            client = self._get_client()
+            response = await client.get(base_url, params=params, timeout=6.0)
 
             if response.status_code in (401, 403):
                 return False, "Autentikasi RadioBOSS gagal. Periksa password Web Remote."
@@ -345,8 +404,8 @@ class RadioBOSSService:
             params["pass"] = self.settings.RADIOBOSS_PASSWORD
 
         try:
-            async with httpx.AsyncClient(timeout=4.0) as client:
-                response = await client.get(base_url, params=params)
+            client = self._get_client()
+            response = await client.get(base_url, params=params, timeout=6.0)
 
             if response.status_code in (401, 403):
                 return False, "Autentikasi gagal: Password RadioBOSS salah."
@@ -370,8 +429,8 @@ class RadioBOSSService:
             params["pass"] = self.settings.RADIOBOSS_PASSWORD
 
         try:
-            async with httpx.AsyncClient(timeout=4.0) as client:
-                response = await client.get(base_url, params=params)
+            client = self._get_client()
+            response = await client.get(base_url, params=params, timeout=6.0)
 
             if response.status_code in (401, 403):
                 return False, "Autentikasi gagal: Password RadioBOSS salah."
@@ -402,8 +461,8 @@ class RadioBOSSService:
             params["pass"] = self.settings.RADIOBOSS_PASSWORD
 
         try:
-            async with httpx.AsyncClient(timeout=4.0) as client:
-                response = await client.get(base_url, params=params)
+            client = self._get_client()
+            response = await client.get(base_url, params=params, timeout=6.0)
 
             if response.status_code in (401, 403):
                 return False, "Autentikasi gagal: Password RadioBOSS salah."
@@ -417,7 +476,7 @@ class RadioBOSSService:
             logger.error(f"Error setting cast title: {e}")
             return False, f"Gagal mengubah judul siaran: {e}"
 
-    async def get_playlist(self, limit: int = 10) -> Tuple[bool, List[PlaylistItem], str]:
+    async def get_playlist(self, limit: int = 50) -> Tuple[bool, List[PlaylistItem], str]:
         """
         Fetch and parse playlist from RadioBOSS via ?action=getplaylist2.
         Returns upcoming scheduled tracks.
@@ -430,8 +489,8 @@ class RadioBOSSService:
             params["pass"] = self.settings.RADIOBOSS_PASSWORD
 
         try:
-            async with httpx.AsyncClient(timeout=4.0) as client:
-                response = await client.get(base_url, params=params)
+            client = self._get_client()
+            response = await client.get(base_url, params=params, timeout=6.0)
 
             if response.status_code in (401, 403):
                 return False, [], "Autentikasi gagal: Password RadioBOSS salah."

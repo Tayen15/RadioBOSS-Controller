@@ -197,14 +197,14 @@ def run_fastapi(port: int):
 
         config = uvicorn.Config(
             app=app,
-            host="127.0.0.1",
+            host="0.0.0.0",
             port=port,
             loop="asyncio",
             log_level="info",
             access_log=False,
         )
         server = uvicorn.Server(config)
-        logger.info(f"Uvicorn serving on 127.0.0.1:{port}")
+        logger.info(f"Uvicorn serving on 0.0.0.0:{port}")
         loop.run_until_complete(server.serve())
     except Exception as e:
         logger.exception(f"FastAPI server crashed: {e}")

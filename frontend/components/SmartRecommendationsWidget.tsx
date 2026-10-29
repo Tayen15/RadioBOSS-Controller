@@ -41,7 +41,7 @@ interface SmartRecommendationsWidgetProps {
   seedTrack: TrackItem | null;
   currentArtist?: string | null;
   onSelectTrack: (track: TrackItem) => void;
-  onQueueTrack: (track: TrackItem, pos: number) => void;
+  onQueueTrack: (track: TrackItem, pos: number) => Promise<void> | void;
   isQueueing: boolean;
 }
 
@@ -332,11 +332,34 @@ export function SmartRecommendationsWidget({
     if (toQueue.length === 0) return;
 
     setIsAutoFilling(true);
-    for (const track of toQueue) {
-      onQueueTrack(track, -1);
-      await new Promise((r) => setTimeout(r, 800));
+    try {
+      for (let i = 0; i < toQueue.length; i++) {
+        const item = toQueue[i];
+        const targetTrack: TrackItem = {
+          video_id: item.video_id,
+          title: item.title,
+          artists: Array.isArray(item.artists)
+            ? item.artists
+            : ("artist" in item && item.artist)
+            ? [item.artist]
+            : ["YouTube Music"],
+          album: item.album || "",
+          thumbnail_url: item.thumbnail_url || null,
+          url: item.url || `https://music.youtube.com/watch?v=${item.video_id}`,
+          duration_formatted: item.duration_formatted || "00:00",
+          year: item.year,
+          genre: item.genre,
+        };
+        await onQueueTrack(targetTrack, -1);
+        if (i < toQueue.length - 1) {
+          await new Promise((r) => setTimeout(r, 600));
+        }
+      }
+    } catch (err) {
+      console.error("Error during auto-fill queue:", err);
+    } finally {
+      setIsAutoFilling(false);
     }
-    setIsAutoFilling(false);
   };
 
   const handleSaveTrackToSet = async (setId: string, track: TrackItem) => {
