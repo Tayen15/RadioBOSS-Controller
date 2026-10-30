@@ -29,3 +29,7 @@ Configuration is stored in `%APPDATA%/RadioBOSSCaster/config.json` with dynamic 
 ## Data Types & Schemas
 - Strict Pydantic v2 schemas in backend (`app/schemas/track.py`, `app/services/settings_service.py`)
 - Strict TypeScript interfaces in frontend
+
+## Release & Versioning Policy
+- Version tags must remain in the `v0.9.x` series (e.g. `v0.9.2`, `v0.9.3`, etc.) until the system is completely finalized and the user explicitly requests `v1.0.0`. Do NOT jump to `v1.0.0` automatically.
+
