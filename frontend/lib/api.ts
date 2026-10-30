@@ -112,7 +112,8 @@ export async function queueToRadioBoss(
     thumbnail_url?: string | null;
     year?: string | null;
     genre?: string | null;
-  }
+  },
+  targetTab?: string | null
 ): Promise<QueueResponse> {
   const res = await fetch(`${API_BASE_URL}/api/queue`, {
     method: "POST",
@@ -128,6 +129,7 @@ export async function queueToRadioBoss(
       thumbnail_url: metadata?.thumbnail_url,
       year: metadata?.year,
       genre: metadata?.genre,
+      target_tab: targetTab,
     }),
   });
 
@@ -185,17 +187,33 @@ export async function sendPlaybackControl(
 }
 
 export async function fetchRadioBossPlaylist(
-  limit: number = 50
+  limit: number = 50,
+  tab?: string
 ): Promise<PlaylistResponse> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/radioboss/playlist?limit=${limit}`,
-    {
-      method: "GET",
-      cache: "no-store",
-    }
-  );
+  const url = tab
+    ? `${API_BASE_URL}/api/radioboss/playlist?limit=${limit}&tab=${encodeURIComponent(tab)}`
+    : `${API_BASE_URL}/api/radioboss/playlist?limit=${limit}`;
+  const res = await fetch(url, {
+    method: "GET",
+    cache: "no-store",
+  });
   if (!res.ok) {
     throw new Error("Gagal mengambil antrean playlist RadioBOSS.");
+  }
+  return await res.json();
+}
+
+export async function switchRadioBossTab(
+  tabName: string
+): Promise<{ success: boolean; message: string; active_tab: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/radioboss/tab`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tab_name: tabName }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Gagal beralih ke tab '${tabName}'.`);
   }
   return await res.json();
 }

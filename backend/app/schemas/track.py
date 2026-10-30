@@ -56,6 +56,7 @@ class QueueRequest(BaseModel):
     pos: int = Field(default=-1, description="-1 for bottom of playlist, 1 for next track")
     use_relay: bool = Field(default=True, description="Whether to use anti-expiry stream relay")
     direct_stream_url: Optional[str] = Field(default=None, description="Optional direct URL override")
+    target_tab: Optional[str] = Field(default=None, description="Target RadioBOSS playlist tab (e.g. 'Playlist 1', 'Playlist 2')")
 
 
 class QueueResponse(BaseModel):
@@ -162,5 +163,17 @@ class LyricsResponse(BaseModel):
     lyrics: str
     source: str
     talking_points: TalkingPoints
+
+
+class SwitchTabRequest(BaseModel):
+    """Request to switch active playlist tab in RadioBOSS."""
+    tab_name: str = Field(..., description="Target RadioBOSS playlist tab name (e.g. 'Playlist 1', 'Playlist 2')")
+
+
+class SwitchTabResponse(BaseModel):
+    """Response of playlist tab switch command."""
+    success: bool
+    message: str
+    active_tab: str
 
 

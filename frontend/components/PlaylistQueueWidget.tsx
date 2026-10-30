@@ -9,6 +9,10 @@ interface PlaylistQueueWidgetProps {
   isLoading: boolean;
   onRefresh: () => void;
   connected: boolean;
+  activeTab?: string;
+  availableTabs?: string[];
+  onSelectTab?: (tab: string) => void;
+  onAddTab?: (tab: string) => void;
 }
 
 export function PlaylistQueueWidget({
@@ -16,6 +20,10 @@ export function PlaylistQueueWidget({
   isLoading,
   onRefresh,
   connected,
+  activeTab = "Playlist 1",
+  availableTabs = ["Playlist 1", "Playlist 2"],
+  onSelectTab,
+  onAddTab,
 }: PlaylistQueueWidgetProps) {
   return (
     <section
@@ -45,6 +53,57 @@ export function PlaylistQueueWidget({
           <RefreshCw
             className={`h-3.5 w-3.5 ${isLoading ? "animate-spin text-primary" : ""}`}
           />
+        </button>
+      </div>
+
+      {/* RadioBOSS Playlist Tabs Bar (Identical to RadioBOSS GUI: Playlist 1, Playlist 2, +) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+        <span className="text-[11px] font-bold text-base-content/60 uppercase tracking-wider shrink-0 mr-0.5">
+          Tab:
+        </span>
+        <button
+          type="button"
+          onClick={() => onSelectTab?.("")}
+          className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shrink-0 ${
+            !activeTab
+              ? "bg-primary text-primary-content border-primary font-bold shadow-sm"
+              : "bg-base-100 border-base-300 text-base-content/70 hover:text-base-content hover:bg-base-300"
+          }`}
+          title="Gunakan tab yang sedang aktif di RadioBOSS"
+        >
+          Auto / Aktif
+        </button>
+
+        {availableTabs.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => onSelectTab?.(tab)}
+            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all border shrink-0 ${
+              activeTab === tab
+                ? "bg-primary text-primary-content border-primary font-bold shadow-sm"
+                : "bg-base-100 border-base-300 text-base-content/70 hover:text-base-content hover:bg-base-300"
+            }`}
+            title={`Beralih ke tab '${tab}' di RadioBOSS`}
+          >
+            {tab}
+          </button>
+        ))}
+
+        <button
+          type="button"
+          onClick={() => {
+            const newTab = window.prompt(
+              "Masukkan nama tab playlist RadioBOSS baru (misal: 'Requests', 'Playlist 3'):"
+            );
+            if (newTab && newTab.trim()) {
+              onAddTab?.(newTab.trim());
+            }
+          }}
+          className="btn btn-ghost btn-xs h-7 w-7 p-0 rounded-md bg-base-100 border border-base-300 text-base-content/70 hover:text-base-content shrink-0"
+          title="Tambah tab playlist RadioBOSS baru"
+        >
+          +
         </button>
       </div>
 

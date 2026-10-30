@@ -490,6 +490,42 @@ class RadioBOSSService:
             logger.error(f"Error setting cast title: {e}")
             return False, f"Gagal mengubah judul siaran: {e}"
 
+    async def switch_playlist_tab(self, tab_name: str) -> Tuple[bool, str]:
+        """
+        Switch active playlist tab in RadioBOSS via cmd=playlist <tab_name>.
+        Allows broadcaster to choose which playlist tab receives upcoming tracks.
+        """
+        clean_tab = tab_name.strip()
+        if not clean_tab:
+            return True, "Tab aktif saat ini digunakan"
+
+        base_url = self.settings.radioboss_base_url
+        params = {
+            "cmd": f"playlist {clean_tab}",
+        }
+        if self.settings.RADIOBOSS_PASSWORD:
+            params["pass"] = self.settings.RADIOBOSS_PASSWORD
+
+        try:
+            client = self._get_client()
+            response = await client.get(base_url, params=params, timeout=5.0)
+
+            if response.status_code in (401, 403):
+                return False, "Autentikasi gagal: Password RadioBOSS salah."
+            if response.status_code != 200:
+                return False, f"RadioBOSS HTTP error {response.status_code}"
+
+            resp_text = response.text.strip()
+            if resp_text.lower().startswith("error"):
+                return False, f"RadioBOSS Error: {resp_text}"
+
+            return True, f"Tab RadioBOSS dialihkan ke '{clean_tab}'"
+        except httpx.ConnectError:
+            return False, f"Tidak dapat terhubung ke RadioBOSS di {base_url}."
+        except Exception as e:
+            logger.error(f"Error switching playlist tab to {clean_tab}: {e}")
+            return False, f"Gagal beralih tab playlist: {e}"
+
     async def get_playlist(self, limit: int = 50) -> Tuple[bool, List[PlaylistItem], str]:
         """
         Fetch and parse playlist from RadioBOSS via ?action=getplaylist2&cnt=0.

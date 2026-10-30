@@ -42,6 +42,8 @@ import {
   clearQueueHistory,
   setLiveCastTitle,
   checkForUpdates,
+  switchRadioBossTab,
+  getAppSettings,
 } from "@/lib/api";
 
 export default function DashboardPage() {
@@ -94,7 +96,19 @@ export default function DashboardPage() {
   );
   const [queueTab, setQueueTab] = useState<"playlist" | "history">("playlist");
 
-  // Fetch permanent history from backend file storage on mount
+  // RadioBOSS Playlist Tabs states
+  const activePlaylistTabRef = React.useRef<string>("Playlist 1");
+  const [activePlaylistTab, setActivePlaylistTab] = useState<string>("Playlist 1");
+  const [availablePlaylistTabs, setAvailablePlaylistTabs] = useState<string[]>([
+    "Playlist 1",
+    "Playlist 2",
+  ]);
+
+  useEffect(() => {
+    activePlaylistTabRef.current = activePlaylistTab;
+  }, [activePlaylistTab]);
+
+  // Fetch permanent history & settings from backend on mount
   useEffect(() => {
     fetchQueueHistory()
       .then((serverHistory) => {
@@ -110,6 +124,21 @@ export default function DashboardPage() {
               JSON.stringify(serverHistory)
             );
           } catch {}
+        }
+      })
+      .catch(() => {});
+
+    getAppSettings()
+      .then((cfg) => {
+        if (cfg.target_playlist_tab !== undefined) {
+          setActivePlaylistTab(cfg.target_playlist_tab);
+        }
+        if (
+          cfg.available_playlist_tabs &&
+          Array.isArray(cfg.available_playlist_tabs) &&
+          cfg.available_playlist_tabs.length > 0
+        ) {
+          setAvailablePlaylistTabs(cfg.available_playlist_tabs);
         }
       })
       .catch(() => {});
@@ -207,32 +236,69 @@ export default function DashboardPage() {
   }, []);
 
   // Fetch upcoming RadioBOSS playlist with silent background updates (limit up to 50 tracks)
-  const syncPlaylist = useCallback(async (isManual: boolean = false) => {
-    if (isManual) setIsPlaylistLoading(true);
-    try {
-      const res = await fetchRadioBossPlaylist(50);
-      if (res.success && res.tracks) {
-        setPlaylistTracks((prev) => {
-          if (
-            prev.length === res.tracks.length &&
-            prev.every(
-              (t, i) =>
-                t.title === res.tracks[i]?.title &&
-                t.artist === res.tracks[i]?.artist &&
-                t.is_playing === res.tracks[i]?.is_playing
-            )
-          ) {
-            return prev;
-          }
-          return res.tracks;
-        });
+  const syncPlaylist = useCallback(
+    async (isManual: boolean = false, overrideTab?: string) => {
+      if (isManual) setIsPlaylistLoading(true);
+      try {
+        const targetTab =
+          overrideTab !== undefined
+            ? overrideTab
+            : activePlaylistTabRef.current;
+        const res = await fetchRadioBossPlaylist(50, targetTab || undefined);
+        if (res.success && res.tracks) {
+          setPlaylistTracks((prev) => {
+            if (
+              prev.length === res.tracks.length &&
+              prev.every(
+                (t, i) =>
+                  t.title === res.tracks[i]?.title &&
+                  t.artist === res.tracks[i]?.artist &&
+                  t.is_playing === res.tracks[i]?.is_playing
+              )
+            ) {
+              return prev;
+            }
+            return res.tracks;
+          });
+        }
+      } catch {
+        // Ignore background errors
+      } finally {
+        if (isManual) setIsPlaylistLoading(false);
       }
-    } catch {
-      // Ignore background errors
-    } finally {
-      if (isManual) setIsPlaylistLoading(false);
+    },
+    []
+  );
+
+  // Switch RadioBOSS playlist tab
+  const handleSelectPlaylistTab = async (tab: string) => {
+    setActivePlaylistTab(tab);
+    try {
+      if (tab) {
+        await switchRadioBossTab(tab);
+        addToast("success", `Target antrean RadioBOSS beralih ke: "${tab}"`);
+      } else {
+        addToast("success", "Target antrean RadioBOSS menggunakan tab aktif");
+      }
+      syncPlaylist(true, tab);
+    } catch (err) {
+      addToast(
+        "error",
+        err instanceof Error ? err.message : "Gagal beralih tab playlist."
+      );
     }
-  }, []);
+  };
+
+  // Add new tab name
+  const handleAddPlaylistTab = (newTab: string) => {
+    if (!availablePlaylistTabs.includes(newTab)) {
+      const updated = [...availablePlaylistTabs, newTab];
+      setAvailablePlaylistTabs(updated);
+      handleSelectPlaylistTab(newTab);
+    } else {
+      handleSelectPlaylistTab(newTab);
+    }
+  };
 
   // Handle Playback Transport Commands (Play, Pause, Next, Stop)
   const handlePlaybackControl = async (action: PlaybackAction) => {
@@ -432,7 +498,8 @@ export default function DashboardPage() {
           thumbnail_url: targetTrack.thumbnail_url,
           year: targetTrack.year,
           genre: targetTrack.genre,
-        }
+        },
+        activePlaylistTab || undefined
       );
 
       // Record to history
@@ -456,9 +523,10 @@ export default function DashboardPage() {
       const updatedHistory = [newHistoryItem, ...history.slice(0, 9)];
       saveHistory(updatedHistory);
 
+      const tabBadge = activePlaylistTab ? ` [${activePlaylistTab}]` : "";
       addToast(
         "success",
-        res.message || `Lagu berhasil dikirim ke RadioBOSS (${posLabel})!`
+        res.message || `Lagu berhasil dikirim ke RadioBOSS${tabBadge} (${posLabel})!`
       );
 
       // Immediately sync status and playlist, then sync again after 1.2s to capture RadioBOSS update
@@ -684,6 +752,9 @@ export default function DashboardPage() {
                 onUpdateMetadata={handleUpdateSelectedMetadata}
                 isQueueing={isQueueing}
                 activePos={activeQueuePos}
+                targetPlaylistTab={activePlaylistTab}
+                availablePlaylistTabs={availablePlaylistTabs}
+                onSelectPlaylistTab={handleSelectPlaylistTab}
               />
             ) : (
               <div className="rounded-xl bg-base-200 border border-base-300 p-5 space-y-3">
@@ -779,6 +850,10 @@ export default function DashboardPage() {
                   isLoading={isPlaylistLoading}
                   onRefresh={() => syncPlaylist(true)}
                   connected={radioBossStatus?.connected ?? false}
+                  activeTab={activePlaylistTab}
+                  availableTabs={availablePlaylistTabs}
+                  onSelectTab={handleSelectPlaylistTab}
+                  onAddTab={handleAddPlaylistTab}
                 />
               ) : (
                 <QueueHistory

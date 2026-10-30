@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,14 @@ class AppConfig(BaseModel):
     audio_quality: str = Field(
         default="320k",
         description="Audio transcode bitrate: '128k', '192k', '256k', or '320k'"
+    )
+    target_playlist_tab: str = Field(
+        default="",
+        description="Target RadioBOSS playlist tab name (empty for active tab)"
+    )
+    available_playlist_tabs: List[str] = Field(
+        default_factory=lambda: ["Playlist 1", "Playlist 2"],
+        description="List of playlist tab names available in RadioBOSS"
     )
 
 

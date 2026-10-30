@@ -133,6 +133,11 @@ export function SettingsModal({
   const [customDataDir, setCustomDataDir] = useState<string>("");
   const [maxCacheSizeMb, setMaxCacheSizeMb] = useState<number>(2048);
   const [autoCleanupCache, setAutoCleanupCache] = useState<boolean>(true);
+  const [targetPlaylistTab, setTargetPlaylistTab] = useState<string>("");
+  const [availablePlaylistTabs, setAvailablePlaylistTabs] = useState<string[]>([
+    "Playlist 1",
+    "Playlist 2",
+  ]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -230,6 +235,14 @@ export function SettingsModal({
         setAutoCleanupCache(
           cfg.auto_cleanup_cache !== undefined ? cfg.auto_cleanup_cache : true
         );
+        setTargetPlaylistTab(cfg.target_playlist_tab || "");
+        if (
+          cfg.available_playlist_tabs &&
+          Array.isArray(cfg.available_playlist_tabs) &&
+          cfg.available_playlist_tabs.length > 0
+        ) {
+          setAvailablePlaylistTabs(cfg.available_playlist_tabs);
+        }
       })
       .catch((err) => {
         if (!isMounted) return;
@@ -424,6 +437,8 @@ export function SettingsModal({
       custom_data_dir: customDataDir.trim(),
       max_cache_size_mb: Number(maxCacheSizeMb) ?? 2048,
       auto_cleanup_cache: autoCleanupCache,
+      target_playlist_tab: targetPlaylistTab.trim(),
+      available_playlist_tabs: availablePlaylistTabs,
     };
 
     try {
@@ -659,6 +674,63 @@ export function SettingsModal({
                           )}
                           <span>Tes Koneksi</span>
                         </button>
+                      </div>
+                    </div>
+
+                    {/* Target Playlist Tab Configuration */}
+                    <div className="p-4 rounded-xl bg-base-100 border border-base-300 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <h5 className="text-xs font-bold text-base-content">
+                            Target Tab Playlist RadioBOSS
+                          </h5>
+                          <p className="text-xs text-base-content/60">
+                            Tentukan tab playlist RadioBOSS default untuk menerima antrean lagu (seperti Playlist 1, Playlist 2).
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newTab = window.prompt("Nama tab playlist RadioBOSS baru (misal: 'Requests', 'Playlist 3'):");
+                            if (newTab && newTab.trim() && !availablePlaylistTabs.includes(newTab.trim())) {
+                              setAvailablePlaylistTabs([...availablePlaylistTabs, newTab.trim()]);
+                              setTargetPlaylistTab(newTab.trim());
+                            }
+                          }}
+                          className="btn btn-xs h-7 px-2.5 rounded-md bg-base-200 border border-base-300 text-xs font-semibold text-base-content/80 hover:text-base-content"
+                        >
+                          + Tambah Tab
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTargetPlaylistTab("")}
+                          className={`p-2.5 rounded-lg border text-left transition-all text-xs ${
+                            targetPlaylistTab === ""
+                              ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                              : "border-base-300 bg-base-200 text-base-content/80 hover:bg-base-300"
+                          }`}
+                        >
+                          <div className="font-semibold">Auto / Aktif</div>
+                          <div className="text-[11px] opacity-70">Ikuti tab aktif RadioBOSS</div>
+                        </button>
+                        {availablePlaylistTabs.map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setTargetPlaylistTab(t)}
+                            className={`p-2.5 rounded-lg border text-left transition-all text-xs ${
+                              targetPlaylistTab === t
+                                ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                                : "border-base-300 bg-base-200 text-base-content/80 hover:bg-base-300"
+                            }`}
+                          >
+                            <div className="font-semibold truncate">{t}</div>
+                            <div className="text-[11px] opacity-70">cmd=playlist {t}</div>
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>

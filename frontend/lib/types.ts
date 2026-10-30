@@ -85,6 +85,8 @@ export interface AppConfig {
   custom_data_dir?: string;
   max_cache_size_mb?: number;
   auto_cleanup_cache?: boolean;
+  target_playlist_tab?: string;
+  available_playlist_tabs?: string[];
 }
 
 export interface BrowseFolderResponse {

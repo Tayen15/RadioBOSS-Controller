@@ -38,6 +38,9 @@ interface TrackPreviewCardProps {
   onUpdateMetadata?: (trackId: string, title: string, artist: string) => void;
   isQueueing: boolean;
   activePos: number | null;
+  targetPlaylistTab?: string;
+  availablePlaylistTabs?: string[];
+  onSelectPlaylistTab?: (tab: string) => void;
 }
 
 export function TrackPreviewCard({
@@ -46,6 +49,9 @@ export function TrackPreviewCard({
   onUpdateMetadata,
   isQueueing,
   activePos,
+  targetPlaylistTab = "Playlist 1",
+  availablePlaylistTabs = ["Playlist 1", "Playlist 2"],
+  onSelectPlaylistTab,
 }: TrackPreviewCardProps) {
   const [useRelay, setUseRelay] = useState<boolean>(true);
   const [showPreviewAudio, setShowPreviewAudio] = useState<boolean>(false);
@@ -438,6 +444,44 @@ export function TrackPreviewCard({
             />
           </label>
         </div>
+
+        {/* Target RadioBOSS Playlist Tab Selector */}
+        {availablePlaylistTabs && availablePlaylistTabs.length > 0 && (
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-base-100 border border-base-300 text-xs gap-2">
+            <span className="text-base-content/70 font-semibold truncate">
+              Target Tab RadioBOSS:
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => onSelectPlaylistTab?.("")}
+                className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all ${
+                  !targetPlaylistTab
+                    ? "bg-primary text-primary-content border-primary font-bold shadow-xs"
+                    : "bg-base-200 border-base-300 text-base-content/70 hover:text-base-content"
+                }`}
+                title="Gunakan tab yang aktif di RadioBOSS"
+              >
+                Auto
+              </button>
+              {availablePlaylistTabs.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => onSelectPlaylistTab?.(t)}
+                  className={`px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-all ${
+                    targetPlaylistTab === t
+                      ? "bg-primary text-primary-content border-primary font-bold shadow-xs"
+                      : "bg-base-200 border-base-300 text-base-content/70 hover:text-base-content"
+                  }`}
+                  title={`Kirim lagu ke tab '${t}'`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Primary & Secondary Broadcast Dispatch Buttons */}
         <div className="grid grid-cols-1 gap-2 pt-1">

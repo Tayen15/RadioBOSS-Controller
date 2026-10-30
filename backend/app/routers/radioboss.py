@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import time
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from app.config import get_settings
 from app.schemas.track import (
@@ -15,6 +16,8 @@ from app.schemas.track import (
     CartResponse,
     CastTitleRequest,
     CastTitleResponse,
+    SwitchTabRequest,
+    SwitchTabResponse,
 )
 from app.services.radioboss_service import radioboss_service
 from app.services.ytdlp_service import ytdlp_service
@@ -60,12 +63,26 @@ async def stop_all_carts():
 
 
 @router.get("/radioboss/playlist", response_model=PlaylistResponse)
-async def get_radioboss_playlist(limit: int = 50):
-    """Get upcoming tracks in RadioBOSS playlist."""
+async def get_radioboss_playlist(limit: int = 50, tab: Optional[str] = None):
+    """Get upcoming tracks in RadioBOSS playlist (optionally from a specific tab)."""
+    if tab and tab.strip():
+        try:
+            await radioboss_service.switch_playlist_tab(tab.strip())
+        except Exception as e:
+            logger.warning(f"Could not switch tab to {tab}: {e}")
     success, tracks, error = await radioboss_service.get_playlist(limit=limit)
     if not success:
         return PlaylistResponse(success=False, count=0, tracks=[], error=error)
     return PlaylistResponse(success=True, count=len(tracks), tracks=tracks)
+
+
+@router.post("/radioboss/tab", response_model=SwitchTabResponse)
+async def switch_radioboss_tab(request: SwitchTabRequest):
+    """Switch active playlist tab in RadioBOSS (cmd=playlist <tab_name>)."""
+    success, message = await radioboss_service.switch_playlist_tab(request.tab_name)
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    return SwitchTabResponse(success=True, message=message, active_tab=request.tab_name)
 
 
 @router.post("/radioboss/casttitle", response_model=CastTitleResponse)
@@ -193,6 +210,14 @@ async def queue_track(request: QueueRequest):
             target_pos = 1
     else:
         target_pos = request.pos
+
+    # If specific target playlist tab requested or configured, switch to that tab in RadioBOSS first
+    target_tab = request.target_tab or settings_service.get_config().target_playlist_tab
+    if target_tab and target_tab.strip():
+        try:
+            await radioboss_service.switch_playlist_tab(target_tab.strip())
+        except Exception as e:
+            logger.warning(f"Could not switch to target playlist tab '{target_tab}': {e}")
 
     success, message = await radioboss_service.insert_track(
         filename=target_filename,
