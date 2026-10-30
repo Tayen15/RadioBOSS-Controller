@@ -27,6 +27,8 @@ import {
   BrowseFolderResponse,
   UpdateCheckResult,
   UpdateDownloadStatus,
+  TabsResponse,
+  SwitchTabResponse,
 } from "./types";
 
 const API_BASE_URL =
@@ -205,7 +207,7 @@ export async function fetchRadioBossPlaylist(
 
 export async function switchRadioBossTab(
   tabName: string
-): Promise<{ success: boolean; message: string; active_tab: string }> {
+): Promise<SwitchTabResponse> {
   const res = await fetch(`${API_BASE_URL}/api/radioboss/tab`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -214,6 +216,18 @@ export async function switchRadioBossTab(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || `Gagal beralih ke tab '${tabName}'.`);
+  }
+  return await res.json();
+}
+
+export async function fetchRadioBossTabs(): Promise<TabsResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/radioboss/tabs`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Gagal memuat daftar tab RadioBOSS.");
   }
   return await res.json();
 }

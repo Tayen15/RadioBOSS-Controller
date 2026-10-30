@@ -177,3 +177,13 @@ class SwitchTabResponse(BaseModel):
     active_tab: str
 
 
+class TabsResponse(BaseModel):
+    """Response containing discovered and active RadioBOSS playlist tabs."""
+    success: bool = True
+    active_tab: str = "Playlist 1"
+    active_index: int = 0
+    available_tabs: List[str] = Field(default_factory=list)
+    is_synced: bool = False
+
+
+

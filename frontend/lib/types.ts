@@ -120,6 +120,20 @@ export interface PlaybackControlResponse {
   action: PlaybackAction;
 }
 
+export interface SwitchTabResponse {
+  success: boolean;
+  message: string;
+  active_tab: string;
+}
+
+export interface TabsResponse {
+  success: boolean;
+  active_tab: string;
+  active_index: number;
+  available_tabs: string[];
+  is_synced: boolean;
+}
+
 export interface PlaylistItem {
   index: number;
   artist: string;

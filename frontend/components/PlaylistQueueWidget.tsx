@@ -11,8 +11,10 @@ interface PlaylistQueueWidgetProps {
   connected: boolean;
   activeTab?: string;
   availableTabs?: string[];
+  isTabsSynced?: boolean;
   onSelectTab?: (tab: string) => void;
   onAddTab?: (tab: string) => void;
+  onRefreshTabs?: () => void;
 }
 
 export function PlaylistQueueWidget({
@@ -22,8 +24,10 @@ export function PlaylistQueueWidget({
   connected,
   activeTab = "Playlist 1",
   availableTabs = ["Playlist 1", "Playlist 2"],
+  isTabsSynced = false,
   onSelectTab,
   onAddTab,
+  onRefreshTabs,
 }: PlaylistQueueWidgetProps) {
   return (
     <section
@@ -58,9 +62,20 @@ export function PlaylistQueueWidget({
 
       {/* RadioBOSS Playlist Tabs Bar (Identical to RadioBOSS GUI: Playlist 1, Playlist 2, +) */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-        <span className="text-[11px] font-bold text-base-content/60 uppercase tracking-wider shrink-0 mr-0.5">
-          Tab:
-        </span>
+        <div className="flex items-center gap-1 shrink-0 mr-1">
+          <span className="text-[11px] font-bold text-base-content/60 uppercase tracking-wider">
+            Tab:
+          </span>
+          {isTabsSynced && (
+            <span
+              className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-info/15 text-info border border-info/30"
+              title="Tersinkronisasi otomatis dengan profil RadioBOSS"
+            >
+              Sync
+            </span>
+          )}
+        </div>
+
         <button
           type="button"
           onClick={() => onSelectTab?.("")}
@@ -94,7 +109,7 @@ export function PlaylistQueueWidget({
           type="button"
           onClick={() => {
             const newTab = window.prompt(
-              "Masukkan nama tab playlist RadioBOSS baru (misal: 'Requests', 'Playlist 3'):"
+              "Masukkan nama tab playlist RadioBOSS baru (misal: 'Song Request', 'Playlist 3'):"
             );
             if (newTab && newTab.trim()) {
               onAddTab?.(newTab.trim());
@@ -105,6 +120,17 @@ export function PlaylistQueueWidget({
         >
           +
         </button>
+
+        {onRefreshTabs && (
+          <button
+            type="button"
+            onClick={onRefreshTabs}
+            className="btn btn-ghost btn-xs h-7 px-1.5 rounded-md bg-base-100 border border-base-300 text-base-content/70 hover:text-base-content shrink-0"
+            title="Sinkronkan ulang tab langsung dari profil RadioBOSS"
+          >
+            <RefreshCw className="h-3 w-3" />
+          </button>
+        )}
       </div>
 
       {/* Dead-Air Guard Warning Banner (no endless pulse per R-19) */}

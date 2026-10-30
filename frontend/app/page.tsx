@@ -43,6 +43,7 @@ import {
   setLiveCastTitle,
   checkForUpdates,
   switchRadioBossTab,
+  fetchRadioBossTabs,
   getAppSettings,
 } from "@/lib/api";
 
@@ -103,10 +104,38 @@ export default function DashboardPage() {
     "Playlist 1",
     "Playlist 2",
   ]);
+  const [isTabsSynced, setIsTabsSynced] = useState<boolean>(false);
 
   useEffect(() => {
     activePlaylistTabRef.current = activePlaylistTab;
   }, [activePlaylistTab]);
+
+  // Sync tabs from RadioBOSS profile / API
+  const syncTabs = useCallback(async (notify: boolean = false) => {
+    try {
+      const res = await fetchRadioBossTabs();
+      if (res.success && res.available_tabs && res.available_tabs.length > 0) {
+        setAvailablePlaylistTabs(res.available_tabs);
+        if (
+          !activePlaylistTabRef.current ||
+          !res.available_tabs.includes(activePlaylistTabRef.current)
+        ) {
+          setActivePlaylistTab(res.active_tab || res.available_tabs[0]);
+        }
+        setIsTabsSynced(res.is_synced);
+        if (notify) {
+          addToast(
+            "success",
+            res.is_synced
+              ? `Tersinkron ${res.available_tabs.length} tab langsung dari RadioBOSS.`
+              : "Daftar tab playlist diperbarui."
+          );
+        }
+      }
+    } catch {
+      // Ignore background tab sync errors
+    }
+  }, []);
 
   // Fetch permanent history & settings from backend on mount
   useEffect(() => {
@@ -149,7 +178,10 @@ export default function DashboardPage() {
         setUpdateResult(res);
       })
       .catch(() => {});
-  }, []);
+
+    // Auto-discover RadioBOSS playlist tabs on mount
+    syncTabs(false);
+  }, [syncTabs]);
 
   // Save history to localStorage and state
   const saveHistory = (items: HistoryItem[]) => {
@@ -852,8 +884,10 @@ export default function DashboardPage() {
                   connected={radioBossStatus?.connected ?? false}
                   activeTab={activePlaylistTab}
                   availableTabs={availablePlaylistTabs}
+                  isTabsSynced={isTabsSynced}
                   onSelectTab={handleSelectPlaylistTab}
                   onAddTab={handleAddPlaylistTab}
+                  onRefreshTabs={() => syncTabs(true)}
                 />
               ) : (
                 <QueueHistory

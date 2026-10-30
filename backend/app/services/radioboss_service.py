@@ -1,6 +1,9 @@
 """RadioBOSS Remote Control Service: Interacts with RadioBOSS HTTP API."""
+import asyncio
+import glob
 import logging
 import os
+import re
 import urllib.parse
 from typing import Tuple, Optional, List
 import httpx
@@ -515,9 +518,12 @@ class RadioBOSSService:
             if response.status_code != 200:
                 return False, f"RadioBOSS HTTP error {response.status_code}"
 
-            resp_text = response.text.strip()
+            resp_text = response.text.strip().lstrip("\ufeff")
             if resp_text.lower().startswith("error"):
                 return False, f"RadioBOSS Error: {resp_text}"
+
+            # Yield briefly to ensure RadioBOSS engine switches playlist in memory
+            await asyncio.sleep(0.08)
 
             return True, f"Tab RadioBOSS dialihkan ke '{clean_tab}'"
         except httpx.ConnectError:
@@ -525,6 +531,101 @@ class RadioBOSSService:
         except Exception as e:
             logger.error(f"Error switching playlist tab to {clean_tab}: {e}")
             return False, f"Gagal beralih tab playlist: {e}"
+
+    async def get_tabs_info(self) -> Tuple[List[str], str, int, bool]:
+        """
+        Discover playlist tabs directly from RadioBOSS active profile and live API.
+        Returns: (available_tabs, active_tab, active_index, is_synced)
+        """
+        discovered_tabs: List[str] = []
+        active_idx = 0
+        is_synced = False
+
+        # Attempt auto-detection from local RadioBOSS application data
+        try:
+            appdata = os.environ.get("APPDATA", "")
+            djsoft_dir = os.path.join(appdata, "djsoft.net")
+            if os.path.isdir(djsoft_dir):
+                profile_dirs = glob.glob(os.path.join(djsoft_dir, "RadioBOSS_*", "Profile"))
+                for pdir in profile_dirs:
+                    last_profile_file = os.path.join(pdir, "lastprofile.ini")
+                    prf_path = None
+                    if os.path.isfile(last_profile_file):
+                        try:
+                            with open(last_profile_file, "r", encoding="utf-8", errors="ignore") as f:
+                                for line in f:
+                                    if line.startswith("LastProfileName="):
+                                        name = line.split("=", 1)[1].strip()
+                                        cand = os.path.join(pdir, name)
+                                        if os.path.isfile(cand):
+                                            prf_path = cand
+                                            break
+                        except Exception:
+                            pass
+                    if not prf_path:
+                        prfs = glob.glob(os.path.join(pdir, "*.prf"))
+                        if prfs:
+                            prfs.sort(key=os.path.getmtime, reverse=True)
+                            prf_path = prfs[0]
+
+                    if prf_path and os.path.isfile(prf_path):
+                        try:
+                            with open(prf_path, "r", encoding="utf-8", errors="ignore") as f:
+                                content = f.read()
+                            match = re.search(
+                                r"PlaylistTabs\s*=\s*<(.*?)\n\s*LastPlaylistTabIndex\s*=\s*(\d+)",
+                                content,
+                                re.DOTALL,
+                            )
+                            if match:
+                                block = match.group(1)
+                                active_idx = int(match.group(2))
+                                captions = re.findall(r"Caption\s*=\s*'([^']+)'", block)
+                                for c in captions:
+                                    if c and c not in discovered_tabs:
+                                        discovered_tabs.append(c)
+                                is_synced = True
+                        except Exception as e:
+                            logger.debug(f"Error parsing RadioBOSS profile PRF: {e}")
+        except Exception as e:
+            logger.debug(f"Error auto-discovering RadioBOSS tabs from disk: {e}")
+
+        # Check live RadioBOSS API getplaylist2 attribute FILE to detect currently focused tab index
+        try:
+            base_url = self.settings.radioboss_base_url
+            params = {"action": "getplaylist2", "cnt": "0"}
+            if self.settings.RADIOBOSS_PASSWORD:
+                params["pass"] = self.settings.RADIOBOSS_PASSWORD
+            client = self._get_client()
+            r = await client.get(base_url, params=params, timeout=3.0)
+            if r.status_code == 200:
+                xml_text = r.text.strip().lstrip("\ufeff")
+                if xml_text.startswith("<"):
+                    root = ET.fromstring(xml_text)
+                    file_attr = root.attrib.get("FILE", "")
+                    m = re.search(r"_(\d+)\.m3u$", file_attr, re.IGNORECASE)
+                    if m:
+                        active_idx = int(m.group(1))
+        except Exception as e:
+            logger.debug(f"Error querying active playlist file index from API: {e}")
+
+        # Fallback to configured tabs if nothing discovered from local profile
+        from app.services.settings_service import settings_service
+        saved_tabs = settings_service.get_config().available_playlist_tabs or []
+        for stab in saved_tabs:
+            if stab and stab not in discovered_tabs:
+                discovered_tabs.append(stab)
+
+        if not discovered_tabs:
+            discovered_tabs = ["Playlist 1"]
+
+        active_tab = (
+            discovered_tabs[active_idx]
+            if (0 <= active_idx < len(discovered_tabs))
+            else discovered_tabs[0]
+        )
+
+        return discovered_tabs, active_tab, active_idx, is_synced
 
     async def get_playlist(self, limit: int = 50) -> Tuple[bool, List[PlaylistItem], str]:
         """
@@ -554,7 +655,7 @@ class RadioBOSSService:
                 if response.status_code != 200:
                     continue
 
-                xml_text = response.text.strip()
+                xml_text = response.text.strip().lstrip("\ufeff")
                 if not xml_text or not xml_text.startswith("<"):
                     continue
 

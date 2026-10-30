@@ -18,6 +18,7 @@ from app.schemas.track import (
     CastTitleResponse,
     SwitchTabRequest,
     SwitchTabResponse,
+    TabsResponse,
 )
 from app.services.radioboss_service import radioboss_service
 from app.services.ytdlp_service import ytdlp_service
@@ -68,6 +69,7 @@ async def get_radioboss_playlist(limit: int = 50, tab: Optional[str] = None):
     if tab and tab.strip():
         try:
             await radioboss_service.switch_playlist_tab(tab.strip())
+            await asyncio.sleep(0.06)
         except Exception as e:
             logger.warning(f"Could not switch tab to {tab}: {e}")
     success, tracks, error = await radioboss_service.get_playlist(limit=limit)
@@ -83,6 +85,19 @@ async def switch_radioboss_tab(request: SwitchTabRequest):
     if not success:
         raise HTTPException(status_code=400, detail=message)
     return SwitchTabResponse(success=True, message=message, active_tab=request.tab_name)
+
+
+@router.get("/radioboss/tabs", response_model=TabsResponse)
+async def get_radioboss_tabs():
+    """Discover available and active playlist tabs in RadioBOSS."""
+    tabs, active_tab, active_idx, is_synced = await radioboss_service.get_tabs_info()
+    return TabsResponse(
+        success=True,
+        active_tab=active_tab,
+        active_index=active_idx,
+        available_tabs=tabs,
+        is_synced=is_synced,
+    )
 
 
 @router.post("/radioboss/casttitle", response_model=CastTitleResponse)
@@ -216,6 +231,7 @@ async def queue_track(request: QueueRequest):
     if target_tab and target_tab.strip():
         try:
             await radioboss_service.switch_playlist_tab(target_tab.strip())
+            await asyncio.sleep(0.08)
         except Exception as e:
             logger.warning(f"Could not switch to target playlist tab '{target_tab}': {e}")
 
