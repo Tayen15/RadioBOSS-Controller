@@ -141,7 +141,7 @@ class RadioBOSSService:
                 )
 
             # Parse XML
-            xml_text = response.text
+            xml_text = response.text.lstrip("\ufeff").strip()
             return self._parse_playback_info(xml_text)
 
         except httpx.ConnectError:
@@ -303,67 +303,71 @@ class RadioBOSSService:
         base_url = self.settings.radioboss_base_url
         client = self._get_client()
 
+        # If pos == -2 (Play Next), prepare fallbacks in case RadioBOSS playlist is empty or rejects -2
+        positions_to_try = [-2, 1, -1] if pos == -2 else [pos]
+
         last_error = ""
-        for param_key in ("action", "cmd"):
-            params = {
-                param_key: "inserttrack",
-                "filename": filename,
-                "pos": str(pos),
-            }
-            if title:
-                params["streamingtitle"] = title
-            if self.settings.RADIOBOSS_PASSWORD:
-                params["pass"] = self.settings.RADIOBOSS_PASSWORD
+        for attempt_pos in positions_to_try:
+            for param_key in ("action", "cmd"):
+                params = {
+                    param_key: "inserttrack",
+                    "filename": filename,
+                    "pos": str(attempt_pos),
+                }
+                if title:
+                    params["streamingtitle"] = title
+                if self.settings.RADIOBOSS_PASSWORD:
+                    params["pass"] = self.settings.RADIOBOSS_PASSWORD
 
-            try:
-                response = await client.get(base_url, params=params, timeout=10.0)
-
-                if response.status_code in (401, 403):
-                    return False, "Autentikasi gagal: Password RadioBOSS salah."
-
-                if response.status_code != 200:
-                    last_error = f"RadioBOSS HTTP error {response.status_code}"
-                    continue
-
-                resp_text = response.text.strip()
-                resp_lower = resp_text.lower()
-
-                # If RadioBOSS reports explicit error
-                if resp_lower.startswith("error") or "error" in resp_lower:
-                    last_error = resp_text
-                    continue
-
-                if "ok" in resp_lower:
-                    return True, "Berhasil ditambahkan ke RadioBOSS"
-
-                # Check XML structure if returned
                 try:
-                    root = ET.fromstring(resp_text)
-                    status_elem = root.find("status")
-                    result_elem = root.find("Result")
-                    status_val = (status_elem.text if status_elem is not None else "") or ""
-                    result_val = (result_elem.text if result_elem is not None else "") or ""
+                    response = await client.get(base_url, params=params, timeout=10.0)
 
-                    if "ok" in status_val.lower() or "ok" in result_val.lower():
+                    if response.status_code in (401, 403):
+                        return False, "Autentikasi gagal: Password RadioBOSS salah."
+
+                    if response.status_code != 200:
+                        last_error = f"RadioBOSS HTTP error {response.status_code}"
+                        continue
+
+                    resp_text = response.text.strip().lstrip("\ufeff")
+                    resp_lower = resp_text.lower()
+
+                    # If RadioBOSS reports explicit error
+                    if resp_lower.startswith("error") or "error" in resp_lower:
+                        last_error = resp_text
+                        continue
+
+                    if "ok" in resp_lower:
                         return True, "Berhasil ditambahkan ke RadioBOSS"
 
-                    err_elem = root.find("error")
-                    if err_elem is not None and err_elem.text:
-                        last_error = err_elem.text
-                        continue
-                except Exception:
-                    pass
+                    # Check XML structure if returned
+                    try:
+                        root = ET.fromstring(resp_text)
+                        status_elem = root.find("status")
+                        result_elem = root.find("Result")
+                        status_val = (status_elem.text if status_elem is not None else "") or ""
+                        result_val = (result_elem.text if result_elem is not None else "") or ""
 
-                # If 200 OK and no error detected
-                return True, "Lagu berhasil dikirim ke antrean RadioBOSS"
+                        if "ok" in status_val.lower() or "ok" in result_val.lower():
+                            return True, "Berhasil ditambahkan ke RadioBOSS"
 
-            except httpx.ConnectError:
-                return False, f"Gagal terhubung ke RadioBOSS di {base_url}. Pastikan RadioBOSS aktif."
-            except httpx.TimeoutException:
-                return False, "Permintaan ke RadioBOSS mengalami timeout."
-            except Exception as e:
-                logger.error(f"Error inserting track into RadioBOSS ({param_key}): {e}")
-                last_error = str(e)
+                        err_elem = root.find("error")
+                        if err_elem is not None and err_elem.text:
+                            last_error = err_elem.text
+                            continue
+                    except Exception:
+                        pass
+
+                    # If 200 OK and no error detected
+                    return True, "Lagu berhasil dikirim ke antrean RadioBOSS"
+
+                except httpx.ConnectError:
+                    return False, f"Gagal terhubung ke RadioBOSS di {base_url}. Pastikan RadioBOSS aktif."
+                except httpx.TimeoutException:
+                    return False, "Permintaan ke RadioBOSS mengalami timeout."
+                except Exception as e:
+                    logger.error(f"Error inserting track into RadioBOSS ({param_key}, pos={attempt_pos}): {e}")
+                    last_error = str(e)
 
         return False, f"RadioBOSS menolak antrean: {last_error or 'Tidak ada respon'}"
 
@@ -585,8 +589,11 @@ class RadioBOSSService:
                                     if c and c not in discovered_tabs:
                                         discovered_tabs.append(c)
                                 is_synced = True
+                                break
                         except Exception as e:
                             logger.debug(f"Error parsing RadioBOSS profile PRF: {e}")
+                    if is_synced:
+                        break
         except Exception as e:
             logger.debug(f"Error auto-discovering RadioBOSS tabs from disk: {e}")
 
@@ -609,12 +616,13 @@ class RadioBOSSService:
         except Exception as e:
             logger.debug(f"Error querying active playlist file index from API: {e}")
 
-        # Fallback to configured tabs if nothing discovered from local profile
-        from app.services.settings_service import settings_service
-        saved_tabs = settings_service.get_config().available_playlist_tabs or []
-        for stab in saved_tabs:
-            if stab and stab not in discovered_tabs:
-                discovered_tabs.append(stab)
+        # Fallback to configured tabs ONLY if nothing discovered from local RadioBOSS profile
+        if not is_synced and not discovered_tabs:
+            from app.services.settings_service import settings_service
+            saved_tabs = settings_service.get_config().available_playlist_tabs or []
+            for stab in saved_tabs:
+                if stab and stab not in discovered_tabs:
+                    discovered_tabs.append(stab)
 
         if not discovered_tabs:
             discovered_tabs = ["Playlist 1"]

@@ -49,7 +49,7 @@ class AppConfig(BaseModel):
         description="Target RadioBOSS playlist tab name (empty for active tab)"
     )
     available_playlist_tabs: List[str] = Field(
-        default_factory=lambda: ["Playlist 1", "Playlist 2"],
+        default_factory=list,
         description="List of playlist tab names available in RadioBOSS"
     )
 

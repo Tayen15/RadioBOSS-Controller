@@ -98,12 +98,9 @@ export default function DashboardPage() {
   const [queueTab, setQueueTab] = useState<"playlist" | "history">("playlist");
 
   // RadioBOSS Playlist Tabs states
-  const activePlaylistTabRef = React.useRef<string>("Playlist 1");
-  const [activePlaylistTab, setActivePlaylistTab] = useState<string>("Playlist 1");
-  const [availablePlaylistTabs, setAvailablePlaylistTabs] = useState<string[]>([
-    "Playlist 1",
-    "Playlist 2",
-  ]);
+  const activePlaylistTabRef = React.useRef<string>("");
+  const [activePlaylistTab, setActivePlaylistTab] = useState<string>("");
+  const [availablePlaylistTabs, setAvailablePlaylistTabs] = useState<string[]>([]);
   const [isTabsSynced, setIsTabsSynced] = useState<boolean>(false);
 
   useEffect(() => {
@@ -117,10 +114,10 @@ export default function DashboardPage() {
       if (res.success && res.available_tabs && res.available_tabs.length > 0) {
         setAvailablePlaylistTabs(res.available_tabs);
         if (
-          !activePlaylistTabRef.current ||
+          activePlaylistTabRef.current &&
           !res.available_tabs.includes(activePlaylistTabRef.current)
         ) {
-          setActivePlaylistTab(res.active_tab || res.available_tabs[0]);
+          setActivePlaylistTab("");
         }
         setIsTabsSynced(res.is_synced);
         if (notify) {
@@ -318,17 +315,6 @@ export default function DashboardPage() {
         "error",
         err instanceof Error ? err.message : "Gagal beralih tab playlist."
       );
-    }
-  };
-
-  // Add new tab name
-  const handleAddPlaylistTab = (newTab: string) => {
-    if (!availablePlaylistTabs.includes(newTab)) {
-      const updated = [...availablePlaylistTabs, newTab];
-      setAvailablePlaylistTabs(updated);
-      handleSelectPlaylistTab(newTab);
-    } else {
-      handleSelectPlaylistTab(newTab);
     }
   };
 
@@ -886,7 +872,6 @@ export default function DashboardPage() {
                   availableTabs={availablePlaylistTabs}
                   isTabsSynced={isTabsSynced}
                   onSelectTab={handleSelectPlaylistTab}
-                  onAddTab={handleAddPlaylistTab}
                   onRefreshTabs={() => syncTabs(true)}
                 />
               ) : (

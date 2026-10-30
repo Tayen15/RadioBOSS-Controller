@@ -38,6 +38,7 @@ import {
   getAppSettings,
   saveAppSettings,
   fetchCacheStats,
+  fetchRadioBossTabs,
   openSpecificFolder,
   browseFolder,
   clearAudioCache,
@@ -134,10 +135,7 @@ export function SettingsModal({
   const [maxCacheSizeMb, setMaxCacheSizeMb] = useState<number>(2048);
   const [autoCleanupCache, setAutoCleanupCache] = useState<boolean>(true);
   const [targetPlaylistTab, setTargetPlaylistTab] = useState<string>("");
-  const [availablePlaylistTabs, setAvailablePlaylistTabs] = useState<string[]>([
-    "Playlist 1",
-    "Playlist 2",
-  ]);
+  const [availablePlaylistTabs, setAvailablePlaylistTabs] = useState<string[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -243,6 +241,15 @@ export function SettingsModal({
         ) {
           setAvailablePlaylistTabs(cfg.available_playlist_tabs);
         }
+
+        fetchRadioBossTabs()
+          .then((tabData) => {
+            if (!isMounted) return;
+            if (tabData.available_tabs && tabData.available_tabs.length > 0) {
+              setAvailablePlaylistTabs(tabData.available_tabs);
+            }
+          })
+          .catch(() => {});
       })
       .catch((err) => {
         if (!isMounted) return;
@@ -685,21 +692,23 @@ export function SettingsModal({
                             Target Tab Playlist RadioBOSS
                           </h5>
                           <p className="text-xs text-base-content/60">
-                            Tentukan tab playlist RadioBOSS default untuk menerima antrean lagu (seperti Playlist 1, Playlist 2).
+                            Tentukan tab playlist RadioBOSS default untuk menerima antrean lagu (disinkronkan dari profil RadioBOSS).
                           </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            const newTab = window.prompt("Nama tab playlist RadioBOSS baru (misal: 'Requests', 'Playlist 3'):");
-                            if (newTab && newTab.trim() && !availablePlaylistTabs.includes(newTab.trim())) {
-                              setAvailablePlaylistTabs([...availablePlaylistTabs, newTab.trim()]);
-                              setTargetPlaylistTab(newTab.trim());
-                            }
+                          onClick={async () => {
+                            try {
+                              const tabData = await fetchRadioBossTabs();
+                              if (tabData.available_tabs && tabData.available_tabs.length > 0) {
+                                setAvailablePlaylistTabs(tabData.available_tabs);
+                              }
+                            } catch {}
                           }}
                           className="btn btn-xs h-7 px-2.5 rounded-md bg-base-200 border border-base-300 text-xs font-semibold text-base-content/80 hover:text-base-content"
+                          title="Sinkronkan tab langsung dari RadioBOSS"
                         >
-                          + Tambah Tab
+                          <RefreshCw className="h-3 w-3 mr-1" /> Sinkronkan Tab
                         </button>
                       </div>
 

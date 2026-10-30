@@ -209,28 +209,31 @@ async def queue_track(request: QueueRequest):
 
     # Determine target_pos based on RadioBOSS playback state:
     # If user requests "Play Next" (pos=1 or -2):
-    #   - If RadioBOSS is actively playing: use pos=-2 (insert after playing track).
+    #   - If RadioBOSS is actively playing/paused: use pos=-2 (insert after playing track).
     #   - If RadioBOSS is stopped / idle: use pos=1 (insert at top of playlist so it plays first).
     # If user requests "Bottom / Append" (pos=-1): use pos=-1.
     if request.pos in (1, -2):
         try:
             rb_status = await radioboss_service.check_status()
-            is_playing = bool(
-                rb_status.connected
-                and rb_status.now_playing
-                and rb_status.now_playing.status == "playing"
+            current_status = (
+                (rb_status.now_playing.status or "").strip().lower()
+                if (rb_status.connected and rb_status.now_playing)
+                else ""
             )
+            is_playing = current_status in ("play", "playing", "pause", "paused")
             target_pos = -2 if is_playing else 1
         except Exception:
-            target_pos = 1
+            target_pos = -2
     else:
         target_pos = request.pos
 
     # If specific target playlist tab requested or configured, switch to that tab in RadioBOSS first
-    target_tab = request.target_tab or settings_service.get_config().target_playlist_tab
-    if target_tab and target_tab.strip():
+    req_tab = (request.target_tab or "").strip()
+    config_tab = (settings_service.get_config().target_playlist_tab or "").strip()
+    target_tab = req_tab if req_tab else config_tab
+    if target_tab and target_tab.lower() not in ("auto", "aktif", "auto / aktif"):
         try:
-            await radioboss_service.switch_playlist_tab(target_tab.strip())
+            await radioboss_service.switch_playlist_tab(target_tab)
             await asyncio.sleep(0.08)
         except Exception as e:
             logger.warning(f"Could not switch to target playlist tab '{target_tab}': {e}")

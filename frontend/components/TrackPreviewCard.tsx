@@ -49,8 +49,8 @@ export function TrackPreviewCard({
   onUpdateMetadata,
   isQueueing,
   activePos,
-  targetPlaylistTab = "Playlist 1",
-  availablePlaylistTabs = ["Playlist 1", "Playlist 2"],
+  targetPlaylistTab = "",
+  availablePlaylistTabs = [],
   onSelectPlaylistTab,
 }: TrackPreviewCardProps) {
   const [useRelay, setUseRelay] = useState<boolean>(true);

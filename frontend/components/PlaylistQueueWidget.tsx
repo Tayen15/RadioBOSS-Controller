@@ -13,7 +13,6 @@ interface PlaylistQueueWidgetProps {
   availableTabs?: string[];
   isTabsSynced?: boolean;
   onSelectTab?: (tab: string) => void;
-  onAddTab?: (tab: string) => void;
   onRefreshTabs?: () => void;
 }
 
@@ -22,11 +21,10 @@ export function PlaylistQueueWidget({
   isLoading,
   onRefresh,
   connected,
-  activeTab = "Playlist 1",
-  availableTabs = ["Playlist 1", "Playlist 2"],
+  activeTab = "",
+  availableTabs = [],
   isTabsSynced = false,
   onSelectTab,
-  onAddTab,
   onRefreshTabs,
 }: PlaylistQueueWidgetProps) {
   return (
@@ -104,22 +102,6 @@ export function PlaylistQueueWidget({
             {tab}
           </button>
         ))}
-
-        <button
-          type="button"
-          onClick={() => {
-            const newTab = window.prompt(
-              "Masukkan nama tab playlist RadioBOSS baru (misal: 'Song Request', 'Playlist 3'):"
-            );
-            if (newTab && newTab.trim()) {
-              onAddTab?.(newTab.trim());
-            }
-          }}
-          className="btn btn-ghost btn-xs h-7 w-7 p-0 rounded-md bg-base-100 border border-base-300 text-base-content/70 hover:text-base-content shrink-0"
-          title="Tambah tab playlist RadioBOSS baru"
-        >
-          +
-        </button>
 
         {onRefreshTabs && (
           <button
