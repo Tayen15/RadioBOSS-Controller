@@ -294,61 +294,75 @@ class RadioBOSSService:
     ) -> Tuple[bool, str]:
         """
         Insert an audio stream into RadioBOSS playlist.
-        action=inserttrack&filename={URL}&pos={POS}&streamingtitle={TITLE}
-        pos: -1 for end of playlist, -2 for next track
+        Tries action=inserttrack and falls back to cmd=inserttrack.
+        pos: -1 for end of playlist, -2 for next track (when playing), 1 for top of playlist (when stopped)
         """
         base_url = self.settings.radioboss_base_url
-        params = {
-            "action": "inserttrack",
-            "filename": filename,
-            "pos": str(pos),
-        }
-        if title:
-            params["streamingtitle"] = title
-        if self.settings.RADIOBOSS_PASSWORD:
-            params["pass"] = self.settings.RADIOBOSS_PASSWORD
+        client = self._get_client()
 
-        try:
-            client = self._get_client()
-            response = await client.get(base_url, params=params, timeout=10.0)
+        last_error = ""
+        for param_key in ("action", "cmd"):
+            params = {
+                param_key: "inserttrack",
+                "filename": filename,
+                "pos": str(pos),
+            }
+            if title:
+                params["streamingtitle"] = title
+            if self.settings.RADIOBOSS_PASSWORD:
+                params["pass"] = self.settings.RADIOBOSS_PASSWORD
 
-            if response.status_code == 401 or response.status_code == 403:
-                return False, "Autentikasi gagal: Password RadioBOSS salah."
-
-            if response.status_code != 200:
-                return False, f"RadioBOSS mengembalikan status HTTP {response.status_code}"
-
-            xml_text = response.text
-            # Parse response
             try:
-                root = ET.fromstring(xml_text)
-                status_elem = root.find("status")
-                result_elem = root.find("Result")
+                response = await client.get(base_url, params=params, timeout=10.0)
 
-                status_val = status_elem.text if status_elem is not None else None
-                result_val = result_elem.text if result_elem is not None else None
+                if response.status_code in (401, 403):
+                    return False, "Autentikasi gagal: Password RadioBOSS salah."
 
-                if (status_val and status_val.lower() == "ok") or (result_val and result_val.lower() == "ok"):
+                if response.status_code != 200:
+                    last_error = f"RadioBOSS HTTP error {response.status_code}"
+                    continue
+
+                resp_text = response.text.strip()
+                resp_lower = resp_text.lower()
+
+                # If RadioBOSS reports explicit error
+                if resp_lower.startswith("error") or "error" in resp_lower:
+                    last_error = resp_text
+                    continue
+
+                if "ok" in resp_lower:
                     return True, "Berhasil ditambahkan ke RadioBOSS"
 
-                if status_val and status_val.lower() == "error":
+                # Check XML structure if returned
+                try:
+                    root = ET.fromstring(resp_text)
+                    status_elem = root.find("status")
+                    result_elem = root.find("Result")
+                    status_val = (status_elem.text if status_elem is not None else "") or ""
+                    result_val = (result_elem.text if result_elem is not None else "") or ""
+
+                    if "ok" in status_val.lower() or "ok" in result_val.lower():
+                        return True, "Berhasil ditambahkan ke RadioBOSS"
+
                     err_elem = root.find("error")
-                    err_msg = err_elem.text if err_elem is not None else "Gagal menyisipkan lagu."
-                    return False, f"RadioBOSS Error: {err_msg}"
-            except Exception:
-                # If RadioBOSS returns plain text or unparseable XML but status is 200
-                if "ok" in xml_text.lower():
-                    return True, "Berhasil ditambahkan ke RadioBOSS"
+                    if err_elem is not None and err_elem.text:
+                        last_error = err_elem.text
+                        continue
+                except Exception:
+                    pass
 
-            return True, "Lagu berhasil dikirim ke antrean RadioBOSS"
+                # If 200 OK and no error detected
+                return True, "Lagu berhasil dikirim ke antrean RadioBOSS"
 
-        except httpx.ConnectError:
-            return False, f"Gagal terhubung ke RadioBOSS di {base_url}. Pastikan RadioBOSS aktif."
-        except httpx.TimeoutException:
-            return False, "Permintaan ke RadioBOSS mengalami timeout."
-        except Exception as e:
-            logger.error(f"Error inserting track into RadioBOSS: {e}")
-            return False, f"Terjadi kesalahan koneksi saat menyisipkan lagu: {e}"
+            except httpx.ConnectError:
+                return False, f"Gagal terhubung ke RadioBOSS di {base_url}. Pastikan RadioBOSS aktif."
+            except httpx.TimeoutException:
+                return False, "Permintaan ke RadioBOSS mengalami timeout."
+            except Exception as e:
+                logger.error(f"Error inserting track into RadioBOSS ({param_key}): {e}")
+                last_error = str(e)
+
+        return False, f"RadioBOSS menolak antrean: {last_error or 'Tidak ada respon'}"
 
     async def send_playback_command(self, action: str) -> Tuple[bool, str]:
         """
@@ -478,89 +492,103 @@ class RadioBOSSService:
 
     async def get_playlist(self, limit: int = 50) -> Tuple[bool, List[PlaylistItem], str]:
         """
-        Fetch and parse playlist from RadioBOSS via ?action=getplaylist2.
+        Fetch and parse playlist from RadioBOSS via ?action=getplaylist2&cnt=0.
+        Falls back to ?action=getplaylist if getplaylist2 returns empty.
         Returns upcoming scheduled tracks.
         """
         base_url = self.settings.radioboss_base_url
-        params = {
-            "action": "getplaylist2",
-        }
-        if self.settings.RADIOBOSS_PASSWORD:
-            params["pass"] = self.settings.RADIOBOSS_PASSWORD
+        client = self._get_client()
 
-        try:
-            client = self._get_client()
-            response = await client.get(base_url, params=params, timeout=6.0)
+        # Step 1: Query getplaylist2 with cnt=0 (cnt=0 instructs RadioBOSS to return all tracks even if playback is stopped)
+        for action_name in ("getplaylist2", "getplaylist"):
+            params = {
+                "action": action_name,
+            }
+            if action_name == "getplaylist2":
+                params["cnt"] = "0"
+            if self.settings.RADIOBOSS_PASSWORD:
+                params["pass"] = self.settings.RADIOBOSS_PASSWORD
 
-            if response.status_code in (401, 403):
-                return False, [], "Autentikasi gagal: Password RadioBOSS salah."
+            try:
+                response = await client.get(base_url, params=params, timeout=6.0)
 
-            if response.status_code != 200:
-                return False, [], f"RadioBOSS HTTP error {response.status_code}"
+                if response.status_code in (401, 403):
+                    return False, [], "Autentikasi gagal: Password RadioBOSS salah."
 
-            xml_text = response.text
-            root = ET.fromstring(xml_text)
-
-            tracks: List[PlaylistItem] = []
-            for track_elem in root.findall(".//TRACK"):
-                item_type = track_elem.attrib.get("ITEMTYPE", "").upper()
-                # Exclude tracks already played
-                if item_type == "TRACK_PLAYED":
+                if response.status_code != 200:
                     continue
 
-                artist = track_elem.attrib.get("ARTIST", "").strip()
-                title = track_elem.attrib.get("TITLE", "").strip()
-                cast_title = track_elem.attrib.get("CASTTITLE", "").strip()
-                filename = track_elem.attrib.get("FILENAME", "").strip()
-                duration = track_elem.attrib.get("DURATION", "00:00").strip()
-                start_time = track_elem.attrib.get("STARTTIME", "").strip()
+                xml_text = response.text.strip()
+                if not xml_text or not xml_text.startswith("<"):
+                    continue
 
-                try:
-                    idx = int(track_elem.attrib.get("INDEX", "0"))
-                except ValueError:
-                    idx = len(tracks) + 1
+                root = ET.fromstring(xml_text)
 
-                # Resolve display title
-                if artist and title:
-                    display_title = f"{artist} - {title}"
-                elif cast_title and not cast_title.startswith("http://") and not cast_title.startswith("https://"):
-                    display_title = cast_title
-                else:
-                    if filename:
-                        base = os.path.splitext(os.path.basename(filename))[0]
-                        if not base.startswith("http") and base:
-                            display_title = base
-                        else:
-                            display_title = title or "Audio Stream"
+                tracks: List[PlaylistItem] = []
+                # Find all track tags case-insensitively (<TRACK>, <Track>, <track>)
+                track_elems = [e for e in root.iter() if e.tag.upper() == "TRACK"]
+
+                for track_elem in track_elems:
+                    item_type = track_elem.attrib.get("ITEMTYPE", "").upper()
+                    # Exclude tracks already played
+                    if item_type == "TRACK_PLAYED":
+                        continue
+
+                    artist = track_elem.attrib.get("ARTIST", "").strip()
+                    title = track_elem.attrib.get("TITLE", "").strip()
+                    cast_title = track_elem.attrib.get("CASTTITLE", "").strip()
+                    filename = track_elem.attrib.get("FILENAME", "").strip()
+                    duration = track_elem.attrib.get("DURATION", "00:00").strip()
+                    start_time = track_elem.attrib.get("STARTTIME", "").strip()
+
+                    try:
+                        idx = int(track_elem.attrib.get("INDEX", "0"))
+                    except ValueError:
+                        idx = len(tracks) + 1
+
+                    # Resolve display title
+                    if artist and title:
+                        display_title = f"{artist} - {title}"
+                    elif cast_title and not cast_title.startswith("http://") and not cast_title.startswith("https://"):
+                        display_title = cast_title
                     else:
-                        display_title = title or "Lagu RadioBOSS"
+                        if filename:
+                            base = os.path.splitext(os.path.basename(filename))[0]
+                            if not base.startswith("http") and base:
+                                display_title = base
+                            else:
+                                display_title = title or "Audio Stream"
+                        else:
+                            display_title = title or "Lagu RadioBOSS"
 
-                # Check if this item is currently playing
-                is_playing = (item_type == "TRACK_PLAYING")
+                    # Check if this item is currently playing
+                    is_playing = (item_type == "TRACK_PLAYING")
 
-                tracks.append(
-                    PlaylistItem(
-                        index=idx,
-                        artist=artist,
-                        title=title,
-                        display_title=display_title,
-                        duration=duration if duration != "––:––" else "00:00",
-                        start_time=start_time,
-                        filename=filename,
-                        is_playing=is_playing,
+                    tracks.append(
+                        PlaylistItem(
+                            index=idx,
+                            artist=artist,
+                            title=title,
+                            display_title=display_title,
+                            duration=duration if duration != "––:––" else "00:00",
+                            start_time=start_time,
+                            filename=filename,
+                            is_playing=is_playing,
+                        )
                     )
-                )
 
-                if len(tracks) >= limit:
-                    break
+                    if len(tracks) >= limit:
+                        break
 
-            return True, tracks, "OK"
+                if tracks:
+                    return True, tracks, "OK"
 
-        except httpx.ConnectError:
-            return False, [], f"Tidak dapat terhubung ke RadioBOSS di {base_url}."
-        except Exception as e:
-            logger.error(f"Error fetching playlist from RadioBOSS: {e}")
-            return False, [], f"Gagal membaca antrean playlist: {e}"
+            except httpx.ConnectError:
+                return False, [], f"Tidak dapat terhubung ke RadioBOSS di {base_url}."
+            except Exception as e:
+                logger.debug(f"Error fetching playlist using {action_name}: {e}")
+
+        return True, [], "Antrean kosong"
 
 
 # Singleton instance

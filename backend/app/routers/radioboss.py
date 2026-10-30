@@ -175,8 +175,24 @@ async def queue_track(request: QueueRequest):
     streaming_title = settings_service.format_title(artist=artist, title=song_title)
     display_title = f"{artist} - {song_title}" if artist else song_title
 
-    # In RadioBOSS API, pos=-2 inserts immediately after currently playing track
-    target_pos = -2 if request.pos in (1, -2) else request.pos
+    # Determine target_pos based on RadioBOSS playback state:
+    # If user requests "Play Next" (pos=1 or -2):
+    #   - If RadioBOSS is actively playing: use pos=-2 (insert after playing track).
+    #   - If RadioBOSS is stopped / idle: use pos=1 (insert at top of playlist so it plays first).
+    # If user requests "Bottom / Append" (pos=-1): use pos=-1.
+    if request.pos in (1, -2):
+        try:
+            rb_status = await radioboss_service.check_status()
+            is_playing = bool(
+                rb_status.connected
+                and rb_status.now_playing
+                and rb_status.now_playing.status == "playing"
+            )
+            target_pos = -2 if is_playing else 1
+        except Exception:
+            target_pos = 1
+    else:
+        target_pos = request.pos
 
     success, message = await radioboss_service.insert_track(
         filename=target_filename,

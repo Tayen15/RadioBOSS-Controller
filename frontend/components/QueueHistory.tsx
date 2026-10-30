@@ -41,12 +41,19 @@ export function QueueHistory({
       <div className="flex items-center justify-between border-b border-base-300 pb-2.5">
         <div className="flex items-center gap-2">
           <History className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-bold text-base-content">
-            Log Pengiriman Lagu
-          </h3>
-          <span className="px-2 py-0.5 rounded bg-base-100 border border-base-300 font-mono text-xs font-semibold text-base-content/80">
-            {history.length}
-          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-base-content">
+                Log Pengiriman Lagu
+              </h3>
+              <span className="px-2 py-0.5 rounded bg-base-100 border border-base-300 font-mono text-xs font-semibold text-base-content/80">
+                {history.length} terkirim
+              </span>
+            </div>
+            <p className="text-[11px] text-base-content/60">
+              Daftar lagu yang sukses dikirim ke antrean RadioBOSS
+            </p>
+          </div>
         </div>
 
         <button

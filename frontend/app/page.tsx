@@ -757,9 +757,10 @@ export default function DashboardPage() {
                       ? "bg-primary text-primary-content"
                       : "text-base-content/70 hover:text-base-content"
                   }`}
+                  title="Daftar lagu yang telah dikirim ke antrean RadioBOSS pada sesi ini"
                 >
                   <History className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">Riwayat Request</span>
+                  <span className="truncate">Log Pengiriman</span>
                   <span
                     className={`px-1.5 py-0.2 rounded text-xs font-mono tabular-nums ${
                       queueTab === "history"
