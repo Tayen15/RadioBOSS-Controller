@@ -60,6 +60,7 @@ cache_test/
 *.jpg
 *.png
 *.webp
+!assets/**/*
 !frontend/public/**/*
 !docs/**/*
 

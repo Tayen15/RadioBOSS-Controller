@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="btn" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="800" height="420" rx="16" fill="url(#bg)" stroke="#334155" stroke-width="1.5"/>
+
+  <!-- Window Header -->
+  <rect x="0" y="0" width="800" height="45" rx="16" fill="#1e293b"/>
+  <rect x="0" y="30" width="800" height="15" fill="#1e293b"/>
+  <circle cx="24" cy="22" r="6" fill="#ef4444"/>
+  <circle cx="42" cy="22" r="6" fill="#f59e0b"/>
+  <circle cx="60" cy="22" r="6" fill="#10b981"/>
+  <text x="400" y="27" fill="#94a3b8" font-family="Segoe UI, -apple-system, sans-serif" font-size="13" font-weight="600" text-anchor="middle">RadioBOSS • Settings &gt; Network (Web Remote Control)</text>
+
+  <!-- Left Sidebar (Menu) -->
+  <rect x="24" y="65" width="200" height="330" rx="10" fill="#090d16" stroke="#1e293b" stroke-width="1"/>
+  <text x="40" y="95" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="11" font-weight="bold">PREFERENCES</text>
+  <rect x="32" y="110" width="184" height="32" rx="6" fill="#1e293b"/>
+  <text x="45" y="131" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="13">General</text>
+  <rect x="32" y="148" width="184" height="32" rx="6" fill="#1e293b"/>
+  <text x="45" y="169" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="13">Playback</text>
+  <rect x="32" y="186" width="184" height="36" rx="6" fill="url(#accent)"/>
+  <text x="45" y="209" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="13" font-weight="bold">🌐 Network / Remote</text>
+  <rect x="32" y="228" width="184" height="32" rx="6" fill="#1e293b"/>
+  <text x="45" y="249" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="13">Broadcast</text>
+
+  <!-- Right Panel (Settings Form) -->
+  <rect x="245" y="65" width="530" height="330" rx="10" fill="#090d16" stroke="#1e293b" stroke-width="1"/>
+
+  <!-- Step 1 -->
+  <g transform="translate(270, 95)">
+    <circle cx="14" cy="14" r="14" fill="#06b6d4" fill-opacity="0.2" stroke="#06b6d4" stroke-width="2"/>
+    <text x="14" y="19" fill="#06b6d4" font-family="Segoe UI, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">1</text>
+    <rect x="45" y="2" width="24" height="24" rx="5" fill="#10b981" stroke="#059669" stroke-width="1.5"/>
+    <path d="M51 14 L55 18 L63 10" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="82" y="19" fill="#f8fafc" font-family="Segoe UI, sans-serif" font-size="15" font-weight="bold">Enable Web remote control</text>
+    <text x="82" y="38" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="12">Wajib dicentang agar Radio Caster Bridge dapat terhubung</text>
+  </g>
+
+  <!-- Step 2 -->
+  <g transform="translate(270, 165)">
+    <circle cx="14" cy="14" r="14" fill="#06b6d4" fill-opacity="0.2" stroke="#06b6d4" stroke-width="2"/>
+    <text x="14" y="19" fill="#06b6d4" font-family="Segoe UI, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">2</text>
+    <text x="48" y="10" fill="#f8fafc" font-family="Segoe UI, sans-serif" font-size="14" font-weight="600">Port Server:</text>
+    <rect x="48" y="18" width="140" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="62" y="42" fill="#38bdf8" font-family="Consolas, monospace" font-size="16" font-weight="bold">9000</text>
+    <text x="205" y="41" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="12">(Default: 9000)</text>
+  </g>
+
+  <!-- Step 3 -->
+  <g transform="translate(270, 245)">
+    <circle cx="14" cy="14" r="14" fill="#06b6d4" fill-opacity="0.2" stroke="#06b6d4" stroke-width="2"/>
+    <text x="14" y="19" fill="#06b6d4" font-family="Segoe UI, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">3</text>
+    <text x="48" y="10" fill="#f8fafc" font-family="Segoe UI, sans-serif" font-size="14" font-weight="600">Password (Opsional):</text>
+    <rect x="48" y="18" width="240" height="36" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+    <text x="62" y="42" fill="#cbd5e1" font-family="Consolas, monospace" font-size="16">••••••••••••</text>
+    <text x="48" y="70" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="12">Jika diisi, masukkan password yang sama di menu Pengaturan RCB</text>
+  </g>
+
+  <!-- Bottom OK Button -->
+  <rect x="650" y="345" width="105" height="36" rx="6" fill="url(#btn)"/>
+  <text x="702" y="368" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="14" font-weight="bold" text-anchor="middle">OK / Simpan</text>
+</svg>

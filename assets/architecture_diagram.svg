@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 440" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="glow-cyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="glow-emerald" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="glow-purple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="glow-amber" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="920" height="440" rx="16" fill="url(#bg2)" stroke="#1e293b" stroke-width="1.5"/>
+
+  <!-- Title -->
+  <text x="460" y="42" fill="#f8fafc" font-family="Segoe UI, -apple-system, sans-serif" font-size="18" font-weight="bold" text-anchor="middle">Arsitektur &amp; Alur Kerja Radio Caster Bridge</text>
+  <text x="460" y="65" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="12" text-anchor="middle">Integrasi Real-Time Dashboard Siaran • Cloud Audio Streaming • RadioBOSS Remote Automation</text>
+
+  <!-- Block 1: Caster Interface -->
+  <g transform="translate(30, 100)" filter="url(#shadow)">
+    <rect width="250" height="290" rx="12" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+    <rect width="250" height="42" rx="12" fill="url(#glow-cyan)"/>
+    <rect y="25" width="250" height="17" fill="url(#glow-cyan)"/>
+    <text x="125" y="27" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="14" font-weight="bold" text-anchor="middle">🎙️ Caster Console (Client)</text>
+
+    <!-- Sub-items -->
+    <rect x="15" y="60" width="220" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="86" fill="#f1f5f9" font-family="Segoe UI, sans-serif" font-size="12" font-weight="600">🔍 Official Song Search</text>
+
+    <rect x="15" y="112" width="220" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="138" fill="#f1f5f9" font-family="Segoe UI, sans-serif" font-size="12" font-weight="600">🎧 Cue Deck &amp; Lyrics Talk Points</text>
+
+    <rect x="15" y="164" width="220" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="190" fill="#f1f5f9" font-family="Segoe UI, sans-serif" font-size="12" font-weight="600">📑 Multi-Playlist Tab Selector</text>
+
+    <rect x="15" y="216" width="220" height="52" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="238" fill="#38bdf8" font-family="Segoe UI, sans-serif" font-size="12" font-weight="bold">⚡ 1-Click Queue Buttons:</text>
+    <text x="25" y="256" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="11">Putar Berikutnya | Antrean Bawah</text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <path d="M 285 245 L 325 245" stroke="#06b6d4" stroke-width="2.5" fill="none" stroke-dasharray="6,4"/>
+  <polygon points="325,240 335,245 325,250" fill="#06b6d4"/>
+  <text x="310" y="235" fill="#06b6d4" font-family="Segoe UI, sans-serif" font-size="10" font-weight="bold" text-anchor="middle">REST / WS</text>
+
+  <!-- Block 2: Backend Relay Engine -->
+  <g transform="translate(335, 100)" filter="url(#shadow)">
+    <rect width="250" height="290" rx="12" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+    <rect width="250" height="42" rx="12" fill="url(#glow-emerald)"/>
+    <rect y="25" width="250" height="17" fill="url(#glow-emerald)"/>
+    <text x="125" y="27" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="14" font-weight="bold" text-anchor="middle">⚙️ RCB Core Engine</text>
+
+    <!-- Sub-items -->
+    <rect x="15" y="60" width="220" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="86" fill="#34d399" font-family="Segoe UI, sans-serif" font-size="12" font-weight="600">🌐 YouTube Music Song Resolver</text>
+
+    <rect x="15" y="112" width="220" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="138" fill="#34d399" font-family="Segoe UI, sans-serif" font-size="12" font-weight="600">🔊 EBU R128 Normalizer (-14 LUFS)</text>
+
+    <rect x="15" y="164" width="220" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="188" fill="#34d399" font-family="Segoe UI, sans-serif" font-size="12" font-weight="600">🖼️ High-Res ID3v2 APIC Cover Art</text>
+
+    <rect x="15" y="216" width="220" height="52" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="238" fill="#a7f3d0" font-family="Segoe UI, sans-serif" font-size="12" font-weight="bold">🛡️ Smart Stream Relay Proxy</text>
+    <text x="25" y="256" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="11">Anti-Expired Dynamic Token Handler</text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <path d="M 590 245 L 630 245" stroke="#10b981" stroke-width="2.5" fill="none" stroke-dasharray="6,4"/>
+  <polygon points="630,240 640,245 630,250" fill="#10b981"/>
+  <text x="615" y="235" fill="#10b981" font-family="Segoe UI, sans-serif" font-size="10" font-weight="bold" text-anchor="middle">HTTP :9000</text>
+
+  <!-- Block 3: RadioBOSS -->
+  <g transform="translate(640, 100)" filter="url(#shadow)">
+    <rect width="250" height="290" rx="12" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+    <rect width="250" height="42" rx="12" fill="url(#glow-purple)"/>
+    <rect y="25" width="250" height="17" fill="url(#glow-purple)"/>
+    <text x="125" y="27" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="14" font-weight="bold" text-anchor="middle">📻 RadioBOSS Playout</text>
+
+    <!-- Sub-items -->
+    <rect x="15" y="60" width="220" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="86" fill="#c084fc" font-family="Segoe UI, sans-serif" font-size="12" font-weight="600">📡 Remote Web Control (Port 9000)</text>
+
+    <rect x="15" y="112" width="220" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="138" fill="#c084fc" font-family="Segoe UI, sans-serif" font-size="12" font-weight="600">📑 Dynamic Playlist Tabs (1, 2, ...)</text>
+
+    <rect x="15" y="164" width="220" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="188" fill="#c084fc" font-family="Segoe UI, sans-serif" font-size="12" font-weight="600">🎛️ BASS Engine Audio Decoding</text>
+
+    <rect x="15" y="216" width="220" height="52" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <text x="25" y="238" fill="#e9d5ff" font-family="Segoe UI, sans-serif" font-size="12" font-weight="bold">🔴 ON AIR FM / Web Stream</text>
+    <text x="25" y="256" fill="#94a3b8" font-family="Segoe UI, sans-serif" font-size="11">Icecast / Shoutcast / Direct Line Out</text>
+  </g>
+</svg>
