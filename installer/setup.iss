@@ -2,7 +2,7 @@
 ; Creates a standard Windows installer with Welcome, Directory, Shortcut, and Finish dialogs.
 
 #define MyAppName "Radio Caster Bridge"
-#define MyAppVersion "0.8.1"
+#define MyAppVersion "0.9.0"
 #define MyAppPublisher "oktaa"
 #define MyAppURL "https://hi.oktaa.my.id"
 #define MyAppExeName "RadioBOSSCaster.exe"
