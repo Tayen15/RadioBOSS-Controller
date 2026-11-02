@@ -29,6 +29,7 @@ import {
   UpdateDownloadStatus,
   TabsResponse,
   SwitchTabResponse,
+  SystemSpecs,
 } from "./types";
 
 const API_BASE_URL =
@@ -154,6 +155,17 @@ export async function getAppSettings(): Promise<AppConfig> {
   });
   if (!res.ok) {
     throw new Error("Gagal mengambil pengaturan aplikasi.");
+  }
+  return await res.json();
+}
+
+export async function fetchSystemSpecs(): Promise<SystemSpecs> {
+  const res = await fetch(`${API_BASE_URL}/api/system/specs`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error("Gagal mengambil data spesifikasi perangkat.");
   }
   return await res.json();
 }

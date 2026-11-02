@@ -26,12 +26,15 @@ import {
   Info,
   ExternalLink,
   RotateCcw,
+  Cpu,
+  Sparkles,
 } from "lucide-react";
 import {
   AppConfig,
   TitleFormatMode,
   CacheStats,
   CachedTrackItem,
+  SystemSpecs,
   APP_VERSION,
 } from "@/lib/types";
 import {
@@ -39,6 +42,7 @@ import {
   saveAppSettings,
   fetchCacheStats,
   fetchRadioBossTabs,
+  fetchSystemSpecs,
   openSpecificFolder,
   browseFolder,
   clearAudioCache,
@@ -136,6 +140,7 @@ export function SettingsModal({
   const [autoCleanupCache, setAutoCleanupCache] = useState<boolean>(true);
   const [targetPlaylistTab, setTargetPlaylistTab] = useState<string>("");
   const [availablePlaylistTabs, setAvailablePlaylistTabs] = useState<string[]>([]);
+  const [systemSpecs, setSystemSpecs] = useState<SystemSpecs | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -248,6 +253,13 @@ export function SettingsModal({
             if (tabData.available_tabs && tabData.available_tabs.length > 0) {
               setAvailablePlaylistTabs(tabData.available_tabs);
             }
+          })
+          .catch(() => {});
+
+        fetchSystemSpecs()
+          .then((specs) => {
+            if (!isMounted) return;
+            setSystemSpecs(specs);
           })
           .catch(() => {});
       })
@@ -755,6 +767,111 @@ export function SettingsModal({
                       <p className="text-xs text-base-content/60">
                         Atur tampilan metadata judul siaran dan parameter transcode streaming.
                       </p>
+                    </div>
+
+                    {/* Hardware Performance Preset & Device Recommendation */}
+                    <div className="p-4 rounded-xl bg-base-100 border border-base-300 space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <Cpu className="h-4 w-4 text-primary shrink-0" />
+                          <span className="text-xs font-bold text-base-content">
+                            Profil Performa &amp; Rekomendasi Spesifikasi Perangkat
+                          </span>
+                        </div>
+                        {systemSpecs && (
+                          <div className="flex items-center gap-1.5 text-[11px] font-mono">
+                            <span className="px-2 py-0.5 rounded bg-base-200 border border-base-300 text-base-content/80 font-semibold">
+                              {systemSpecs.cpu_cores} Core CPU
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-base-200 border border-base-300 text-base-content/80 font-semibold">
+                              {systemSpecs.ram_gb} GB RAM
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded font-bold border ${
+                                systemSpecs.is_low_spec
+                                  ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                                  : "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                              }`}
+                            >
+                              {systemSpecs.is_low_spec ? "Spek Standar" : "Spek Tinggi"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {systemSpecs && (
+                        <div
+                          className={`p-3 rounded-lg border text-xs leading-relaxed ${
+                            systemSpecs.is_low_spec
+                              ? "bg-amber-500/10 border-amber-500/20 text-amber-200"
+                              : "bg-emerald-500/10 border-emerald-500/20 text-emerald-200"
+                          }`}
+                        >
+                          <div className="font-semibold flex items-center gap-1.5 mb-1">
+                            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                            <span>
+                              {systemSpecs.is_low_spec
+                                ? "Rekomendasi Sistem: Mode Hemat / Spek Standar (Anti-Timeout)"
+                                : "Rekomendasi Sistem: Mode Studio High Performance"}
+                            </span>
+                          </div>
+                          <p className="text-[11px] opacity-90">
+                            {systemSpecs.reason}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEnableLoudnorm(false);
+                            setAudioQuality("192k");
+                          }}
+                          className={`p-3 rounded-lg border text-left transition-all ${
+                            !enableLoudnorm && audioQuality === "192k"
+                              ? "bg-primary/10 border-primary shadow-xs"
+                              : "bg-base-200 border-base-300 hover:bg-base-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-base-content">
+                              ⚡ Mode Ringan / Spek Standar
+                            </span>
+                            {!enableLoudnorm && audioQuality === "192k" && (
+                              <Check className="h-3.5 w-3.5 text-primary" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-base-content/60 mt-1">
+                            192 kbps • Normalisasi Off • Beban CPU sangat ringan, instan tanpa timeout.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEnableLoudnorm(true);
+                            setAudioQuality("320k");
+                          }}
+                          className={`p-3 rounded-lg border text-left transition-all ${
+                            enableLoudnorm && audioQuality === "320k"
+                              ? "bg-primary/10 border-primary shadow-xs"
+                              : "bg-base-200 border-base-300 hover:bg-base-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-base-content">
+                              🚀 Mode Studio High Performance
+                            </span>
+                            {enableLoudnorm && audioQuality === "320k" && (
+                              <Check className="h-3.5 w-3.5 text-primary" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-base-content/60 mt-1">
+                            320 kbps • EBU R128 (-14 LUFS) • Kualitas studio broadcast maksimal.
+                          </p>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Title Format Cards */}

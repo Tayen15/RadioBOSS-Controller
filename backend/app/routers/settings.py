@@ -10,6 +10,7 @@ from typing import List, Dict, Any, Optional
 from app.services.cache_service import cache_service
 from app.services.history_service import history_service
 from app.services.folder_picker import pick_folder, open_directory_in_explorer
+from app.services.system_service import get_system_specs
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["Settings & Management"])
@@ -20,6 +21,12 @@ class SaveSettingsResponse(BaseModel):
     message: str
     connected: bool
     config: AppConfig
+
+
+@router.get("/system/specs")
+async def get_hardware_specs():
+    """Retrieve host hardware specifications and recommended performance presets."""
+    return get_system_specs()
 
 
 @router.get("/settings", response_model=AppConfig)

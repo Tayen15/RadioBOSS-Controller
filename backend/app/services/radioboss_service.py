@@ -163,8 +163,27 @@ class RadioBOSSService:
 
     def _parse_playback_info(self, xml_content: str) -> RadioBOSSStatusResponse:
         """Parse RadioBOSS playbackinfo XML safely."""
+        clean_content = (xml_content or "").strip().lstrip("\ufeff")
+        if not clean_content:
+            return RadioBOSSStatusResponse(
+                connected=False,
+                error="RadioBOSS merespons kosong. Periksa apakah Password RadioBOSS di Pengaturan (⚙️) sudah sesuai.",
+            )
+
+        clean_lower = clean_content.lower()
+        if (
+            "invalid password" in clean_lower
+            or "access denied" in clean_lower
+            or clean_lower.startswith("error 401")
+            or clean_lower.startswith("error 403")
+        ):
+            return RadioBOSSStatusResponse(
+                connected=False,
+                error="Password RadioBOSS salah atau akses ditolak. Periksa menu Pengaturan (⚙️).",
+            )
+
         try:
-            root = ET.fromstring(xml_content)
+            root = ET.fromstring(clean_content)
             
             # Check for error status
             status_elem = root.find("status")
@@ -284,9 +303,9 @@ class RadioBOSSService:
         except Exception as e:
             logger.error(f"Failed to parse RadioBOSS XML: {e}")
             return RadioBOSSStatusResponse(
-                connected=True,
-                now_playing=NowPlayingTrack(title="Memutar di RadioBOSS", status="active"),
-                raw_status="Parse warning",
+                connected=False,
+                error=f"Format respons RadioBOSS tidak valid (kemungkinan password salah): {e}",
+                raw_status="Parse error",
             )
 
     async def insert_track(
@@ -332,8 +351,17 @@ class RadioBOSSService:
                     resp_text = response.text.strip().lstrip("\ufeff")
                     resp_lower = resp_text.lower()
 
-                    # If RadioBOSS reports explicit error
-                    if resp_lower.startswith("error") or "error" in resp_lower:
+                    # If RadioBOSS reports empty text or explicit error
+                    if not resp_text:
+                        last_error = "RadioBOSS merespons kosong (kemungkinan password salah atau belum diisi di Pengaturan)."
+                        continue
+
+                    if (
+                        resp_lower.startswith("error")
+                        or "error" in resp_lower
+                        or "invalid password" in resp_lower
+                        or "access denied" in resp_lower
+                    ):
                         last_error = resp_text
                         continue
 

@@ -2,7 +2,7 @@
  * Type definitions for Radio Caster Request Bridge Frontend.
  */
 
-export const APP_VERSION = "0.9.2";
+export const APP_VERSION = "0.9.3";
 
 export interface TrackItem {
   video_id: string;
@@ -87,6 +87,17 @@ export interface AppConfig {
   auto_cleanup_cache?: boolean;
   target_playlist_tab?: string;
   available_playlist_tabs?: string[];
+}
+
+export interface SystemSpecs {
+  os_name: string;
+  cpu_cores: number;
+  ram_gb: number;
+  is_low_spec: boolean;
+  recommended_preset: "low_spec" | "studio_high";
+  recommended_loudnorm: boolean;
+  recommended_bitrate: "128k" | "192k" | "256k" | "320k";
+  reason: string;
 }
 
 export interface BrowseFolderResponse {
