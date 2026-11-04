@@ -80,3 +80,14 @@ def get_system_specs() -> Dict[str, Any]:
         "recommended_bitrate": recommended_bitrate,
         "reason": reason,
     }
+
+
+class SystemService:
+    """Wrapper class for system specs inspection."""
+    @staticmethod
+    def get_system_spec() -> Dict[str, Any]:
+        return get_system_specs()
+
+
+system_service = SystemService()
+
