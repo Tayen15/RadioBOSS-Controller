@@ -12,7 +12,7 @@ sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backen
 if sys_path not in sys.path:
     sys.path.insert(0, sys_path)
 
-from app.services.radioboss_service import radioboss_service, PlaylistItem
+from app.services.radioboss_service import radioboss_service
 from app.services.ytmusic_service import ytmusic_service
 from app.services.ytdlp_service import ytdlp_service
 from app.services.cache_service import cache_service
@@ -21,6 +21,40 @@ from app.services.history_service import history_service
 from app.services.db_service import db_service
 
 logger = logging.getLogger(__name__)
+
+
+def _track_to_dict(track) -> Dict[str, Any]:
+    """Convert TrackItem or raw dict into unified dict for UI consumption."""
+    if hasattr(track, "model_dump"):
+        d = track.model_dump()
+    elif isinstance(track, dict):
+        d = dict(track)
+    else:
+        d = {}
+
+    # Ensure standard keys
+    video_id = d.get("video_id") or d.get("id") or ""
+    title = d.get("title") or "Unknown Title"
+    artists = d.get("artists") or []
+    if isinstance(artists, str):
+        artists = [artists]
+    album = d.get("album") or "Single"
+    duration = d.get("duration_formatted") or d.get("duration") or "00:00"
+    thumbnail_url = d.get("thumbnail_url")
+    year = str(d.get("year") or "").strip()
+    genre = d.get("genre") or "Pop"
+
+    return {
+        "video_id": video_id,
+        "title": title,
+        "artists": artists,
+        "album": album,
+        "duration": duration,
+        "duration_formatted": duration,
+        "thumbnail_url": thumbnail_url,
+        "year": year,
+        "genre": genre,
+    }
 
 
 class SearchWorker(QThread):
@@ -40,25 +74,18 @@ class SearchWorker(QThread):
 
             # Check if query is a direct YouTube URL
             if "youtube.com" in self.query or "youtu.be" in self.query or "music.youtube.com" in self.query:
-                track = ytdlp_service.extract_track_info(self.query)
-                if track:
-                    # Convert to standard song dict format
-                    song_item = {
-                        "video_id": track.get("video_id") or track.get("id"),
-                        "title": track.get("title", "Unknown Title"),
-                        "artists": [track.get("artist")] if track.get("artist") else ["YouTube Music"],
-                        "album": track.get("album", "YouTube Single"),
-                        "duration": track.get("duration_formatted", "03:30"),
-                        "thumbnail_url": track.get("thumbnail_url"),
-                        "year": track.get("year", ""),
-                        "genre": track.get("genre", "Pop"),
-                    }
-                    self.finished.emit([song_item])
+                track_item, _ = ytdlp_service.extract_track_info(self.query)
+                if track_item:
+                    self.finished.emit([_track_to_dict(track_item)])
+                    return
+                else:
+                    self.finished.emit([])
                     return
 
             # Standard search via official YT Music catalog
             results = ytmusic_service.search_songs(self.query, limit=25)
-            self.finished.emit(results)
+            dict_results = [_track_to_dict(t) for t in results]
+            self.finished.emit(dict_results)
         except Exception as e:
             logger.error(f"SearchWorker failed: {e}")
             self.error.emit(str(e))
@@ -77,12 +104,15 @@ class RecommendationsWorker(QThread):
         try:
             if self.category_or_id.startswith("mood:"):
                 mood_name = self.category_or_id.split("mood:", 1)[1]
-                tracks = ytmusic_service.get_mood_tracks(mood_name, limit=20)
-                self.finished.emit(tracks)
+                tracks = ytmusic_service.search_songs(mood_name, limit=20)
+                dict_results = [_track_to_dict(t) for t in tracks]
+                self.finished.emit(dict_results)
             else:
                 # Video ID for Up Next recommendations
-                recs = ytmusic_service.get_up_next(self.category_or_id, limit=20)
-                self.finished.emit(recs)
+                clean_id = self.category_or_id.strip()
+                recs = ytmusic_service.get_recommendations(clean_id, limit=20)
+                dict_results = [_track_to_dict(t) for t in recs]
+                self.finished.emit(dict_results)
         except Exception as e:
             logger.error(f"RecommendationsWorker failed: {e}")
             self.error.emit(str(e))
@@ -243,11 +273,19 @@ class QueueWorker(QThread):
             except Exception as e:
                 logger.debug(f"Could not append history: {e}")
 
-            # Increment play count in SQLite database
+            # Record track play count in SQLite database
             try:
-                db_service.increment_track_play(clean_id)
+                db_service.record_track_play(
+                    video_id=clean_id,
+                    title=self.song_title,
+                    artist=self.artist,
+                    album=self.album,
+                    thumbnail_url=self.thumbnail_url,
+                    year=self.year,
+                    genre=self.genre,
+                )
             except Exception as e:
-                logger.debug(f"Could not increment SQLite play count: {e}")
+                logger.debug(f"Could not record SQLite play count: {e}")
 
             self.success.emit(action_label, display_title)
 

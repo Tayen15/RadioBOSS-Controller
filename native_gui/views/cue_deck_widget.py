@@ -1,11 +1,10 @@
 """Cue Deck Widget (Center Zone): Track inspector, audio preview, lyrics & on-air cue sheet."""
-import html
 import re
 import urllib.request
 from typing import Dict, Any, Optional
 
-from PySide6.QtCore import Qt, Signal, QUrl, QTimer, QThread
-from PySide6.QtGui import QPixmap, QImage, QClipboard, QGuiApplication
+from PySide6.QtCore import Qt, Signal, QUrl, QThread
+from PySide6.QtGui import QPixmap, QImage, QGuiApplication, QFont, QCursor
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -19,7 +18,6 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QFrame,
     QScrollArea,
-    QSizePolicy,
 )
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
@@ -80,12 +78,12 @@ class StreamResolveThread(QThread):
             if url:
                 self.resolved.emit(url)
             else:
-                self.error.emit("Gagal memuat stream audio preview.")
+                self.error.emit("Stream audio tidak dapat diekstrak.")
         except Exception as e:
             self.error.emit(str(e))
 
 
-class CueDeckWidget(QWidget):
+class CueDeckWidget(QFrame):
     """
     Cue Deck Zone:
     - Cover Art, Editable Title with Magic Clean, Artist, Album, Year, Genre chips
@@ -99,6 +97,7 @@ class CueDeckWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("CueModule")
         self.current_track: Dict[str, Any] = {}
         self.available_tabs: list = []
         self._thumb_worker: Optional[ThumbnailLoaderThread] = None
@@ -120,18 +119,18 @@ class CueDeckWidget(QWidget):
 
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setContentsMargins(14, 14, 14, 14)
         main_layout.setSpacing(10)
 
         # Header zone banner
         hdr_box = QHBoxLayout()
-        hdr_lbl = QLabel("CUE DECK & PEMUTAR INSPEKTOR")
-        hdr_lbl.setStyleSheet("font-size: 11px; font-weight: 700; color: #71717A; letter-spacing: 0.5px;")
+        hdr_lbl = QLabel("CUE DECK & AUDISI")
+        hdr_lbl.setObjectName("SectionHeader")
         hdr_box.addWidget(hdr_lbl)
         hdr_box.addStretch()
 
         self.lbl_headphone_state = QLabel("HEADPHONE MONITOR: READY")
-        self.lbl_headphone_state.setStyleSheet("font-family: 'JetBrains Mono'; font-size: 10px; color: #10B981;")
+        self.lbl_headphone_state.setObjectName("BadgeEmerald")
         hdr_box.addWidget(self.lbl_headphone_state)
         main_layout.addLayout(hdr_box)
 
@@ -148,13 +147,7 @@ class CueDeckWidget(QWidget):
 
         # === 1. TRACK HERO CARD ===
         hero_frame = QFrame()
-        hero_frame.setStyleSheet("""
-            QFrame {
-                background-color: #121216;
-                border: 1px solid #1C1C22;
-                border-radius: 8px;
-            }
-        """)
+        hero_frame.setObjectName("InnerPanel")
         h_layout = QHBoxLayout(hero_frame)
         h_layout.setContentsMargins(12, 12, 12, 12)
         h_layout.setSpacing(12)
@@ -162,13 +155,10 @@ class CueDeckWidget(QWidget):
         # Thumbnail
         self.lbl_thumb = QLabel()
         self.lbl_thumb.setFixedSize(110, 110)
-        self.lbl_thumb.setStyleSheet("""
-            background-color: #18181D;
-            border: 1px solid #272730;
-            border-radius: 6px;
-        """)
+        self.lbl_thumb.setObjectName("InnerPanel")
         self.lbl_thumb.setAlignment(Qt.AlignCenter)
         self.lbl_thumb.setText("NO ART")
+        self.lbl_thumb.setStyleSheet("color: #71717A; font-family: 'JetBrains Mono'; font-size: 11px;")
         h_layout.addWidget(self.lbl_thumb)
 
         # Meta Fields
@@ -180,59 +170,18 @@ class CueDeckWidget(QWidget):
         t_row.setSpacing(6)
         self.txt_title = QLineEdit()
         self.txt_title.setPlaceholderText("Pilih lagu dari pencarian...")
-        self.txt_title.setStyleSheet("""
-            QLineEdit {
-                background-color: #18181D;
-                border: 1px solid #272730;
-                border-radius: 4px;
-                padding: 6px 10px;
-                font-size: 13px;
-                font-weight: 700;
-                color: #FAFAFA;
-            }
-            QLineEdit:focus {
-                border-color: #F59E0B;
-            }
-        """)
         t_row.addWidget(self.txt_title, 1)
 
         self.btn_clean = QPushButton("Magic Clean")
-        self.btn_clean.setToolTip("Bersihkan teks video YouTube (Official Video, HD, 4K, dsb)")
-        self.btn_clean.setStyleSheet("""
-            QPushButton {
-                background-color: #1C1C22;
-                border: 1px solid #272730;
-                border-radius: 4px;
-                padding: 6px 10px;
-                font-size: 11px;
-                font-weight: 600;
-                color: #A1A1AA;
-            }
-            QPushButton:hover {
-                background-color: #272730;
-                color: #FAFAFA;
-            }
-        """)
+        self.btn_clean.setObjectName("BtnSecondary")
+        self.btn_clean.setToolTip("Bersihkan teks YouTube (Official Video, HD, 4K, dsb)")
         self.btn_clean.clicked.connect(self._magic_clean_title)
         t_row.addWidget(self.btn_clean)
         meta_box.addLayout(t_row)
 
         # Artist row
         self.txt_artist = QLineEdit()
-        self.txt_artist.setPlaceholderText("Nama Artis / Penyanyi")
-        self.txt_artist.setStyleSheet("""
-            QLineEdit {
-                background-color: #18181D;
-                border: 1px solid #272730;
-                border-radius: 4px;
-                padding: 5px 8px;
-                font-size: 12px;
-                color: #A1A1AA;
-            }
-            QLineEdit:focus {
-                border-color: #F59E0B;
-            }
-        """)
+        self.txt_artist.setPlaceholderText("Nama Artis / Musisi")
         meta_box.addWidget(self.txt_artist)
 
         # Metadata Chips Row (Album, Year, Duration, Genre)
@@ -240,15 +189,16 @@ class CueDeckWidget(QWidget):
         chips_row.setSpacing(6)
 
         self.lbl_chip_album = QLabel("Album: -")
-        self.lbl_chip_album.setStyleSheet("background-color: #18181D; border: 1px solid #272730; border-radius: 3px; padding: 2px 6px; font-size: 10px; color: #71717A;")
+        self.lbl_chip_album.setObjectName("SubtleText")
         chips_row.addWidget(self.lbl_chip_album)
 
         self.lbl_chip_year = QLabel("Tahun: -")
-        self.lbl_chip_year.setStyleSheet("background-color: #18181D; border: 1px solid #272730; border-radius: 3px; padding: 2px 6px; font-size: 10px; color: #71717A;")
+        self.lbl_chip_year.setObjectName("SubtleText")
         chips_row.addWidget(self.lbl_chip_year)
 
         self.lbl_chip_duration = QLabel("Durasi: 00:00")
-        self.lbl_chip_duration.setStyleSheet("background-color: #18181D; border: 1px solid #272730; border-radius: 3px; padding: 2px 6px; font-size: 10px; font-family: 'JetBrains Mono'; color: #F59E0B;")
+        self.lbl_chip_duration.setObjectName("MonoClock")
+        self.lbl_chip_duration.setStyleSheet("color: #F59E0B; font-weight: 700;")
         chips_row.addWidget(self.lbl_chip_duration)
 
         chips_row.addStretch()
@@ -259,13 +209,7 @@ class CueDeckWidget(QWidget):
 
         # === 2. AUDIO PREVIEW PLAYER (Headphone Cue) ===
         player_frame = QFrame()
-        player_frame.setStyleSheet("""
-            QFrame {
-                background-color: #121216;
-                border: 1px solid #1C1C22;
-                border-radius: 8px;
-            }
-        """)
+        player_frame.setObjectName("InnerPanel")
         p_layout = QVBoxLayout(player_frame)
         p_layout.setContentsMargins(12, 10, 12, 10)
         p_layout.setSpacing(8)
@@ -274,28 +218,14 @@ class CueDeckWidget(QWidget):
         ctl_row = QHBoxLayout()
         ctl_row.setSpacing(8)
 
-        self.btn_preview_play = QPushButton("▶ Audisi CUE")
+        self.btn_preview_play = QPushButton("Audisi CUE")
+        self.btn_preview_play.setObjectName("BtnTransport")
         self.btn_preview_play.setFixedWidth(110)
-        self.btn_preview_play.setStyleSheet("""
-            QPushButton {
-                background-color: #1C1C22;
-                border: 1px solid #272730;
-                border-radius: 4px;
-                padding: 6px 12px;
-                font-size: 11px;
-                font-weight: 700;
-                color: #FAFAFA;
-            }
-            QPushButton:hover {
-                background-color: #272730;
-                border-color: #3F3F46;
-            }
-        """)
         self.btn_preview_play.clicked.connect(self._toggle_preview)
         ctl_row.addWidget(self.btn_preview_play)
 
         self.lbl_preview_time = QLabel("00:00 / 00:00")
-        self.lbl_preview_time.setStyleSheet("font-family: 'JetBrains Mono'; font-size: 11px; color: #71717A;")
+        self.lbl_preview_time.setObjectName("MonoClock")
         ctl_row.addWidget(self.lbl_preview_time)
 
         # Seek slider
@@ -307,7 +237,7 @@ class CueDeckWidget(QWidget):
 
         # Volume slider
         lbl_vol = QLabel("Vol:")
-        lbl_vol.setStyleSheet("font-size: 10px; color: #71717A;")
+        lbl_vol.setObjectName("SubtleText")
         ctl_row.addWidget(lbl_vol)
 
         self.slider_vol = QSlider(Qt.Horizontal)
@@ -322,13 +252,7 @@ class CueDeckWidget(QWidget):
 
         # === 3. TARGET PLAYLIST & DISPATCH ACTIONS ===
         action_frame = QFrame()
-        action_frame.setStyleSheet("""
-            QFrame {
-                background-color: #121216;
-                border: 1px solid #1C1C22;
-                border-radius: 8px;
-            }
-        """)
+        action_frame.setObjectName("InnerPanel")
         a_layout = QVBoxLayout(action_frame)
         a_layout.setContentsMargins(12, 12, 12, 12)
         a_layout.setSpacing(10)
@@ -337,21 +261,10 @@ class CueDeckWidget(QWidget):
         tab_row = QHBoxLayout()
         tab_row.setSpacing(8)
         lbl_tab = QLabel("Target Playlist Tab:")
-        lbl_tab.setStyleSheet("font-size: 11px; font-weight: 600; color: #A1A1AA;")
+        lbl_tab.setObjectName("SubtleText")
         tab_row.addWidget(lbl_tab)
 
         self.cmb_tabs = QComboBox()
-        self.cmb_tabs.setStyleSheet("""
-            QComboBox {
-                background-color: #18181D;
-                border: 1px solid #272730;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 11px;
-                color: #FAFAFA;
-                min-width: 140px;
-            }
-        """)
         self.cmb_tabs.addItem("Auto / Tab Aktif")
         tab_row.addWidget(self.cmb_tabs, 1)
         a_layout.addLayout(tab_row)
@@ -361,17 +274,19 @@ class CueDeckWidget(QWidget):
         btn_box.setSpacing(10)
 
         # Putar Berikutnya (Priority insert pos=-2)
-        self.btn_queue_next = QPushButton("⚡ Putar Berikutnya")
+        self.btn_queue_next = QPushButton("Putar Berikutnya")
         self.btn_queue_next.setFixedHeight(40)
-        self.btn_queue_next.setObjectName("BtnQueueNext")
+        self.btn_queue_next.setObjectName("BtnPrimary")
+        self.btn_queue_next.setCursor(QCursor(Qt.PointingHandCursor))
         self.btn_queue_next.setToolTip("Sisipkan lagu tepat setelah lagu yang sedang mengudara (pos = -2)")
         self.btn_queue_next.clicked.connect(lambda: self._dispatch_queue(pos=-2))
         btn_box.addWidget(self.btn_queue_next, 1)
 
         # Antrean Bawah (Append pos=-1)
-        self.btn_queue_bottom = QPushButton("📥 Antrean Bawah")
+        self.btn_queue_bottom = QPushButton("Antrean Bawah")
         self.btn_queue_bottom.setFixedHeight(40)
-        self.btn_queue_bottom.setObjectName("BtnQueueBottom")
+        self.btn_queue_bottom.setObjectName("BtnSecondary")
+        self.btn_queue_bottom.setCursor(QCursor(Qt.PointingHandCursor))
         self.btn_queue_bottom.setToolTip("Masukkan lagu di urutan paling akhir playlist RadioBOSS (pos = -1)")
         self.btn_queue_bottom.clicked.connect(lambda: self._dispatch_queue(pos=-1))
         btn_box.addWidget(self.btn_queue_bottom, 1)
@@ -388,41 +303,21 @@ class CueDeckWidget(QWidget):
 
         c_layout.addWidget(action_frame)
 
-        # === 4. ANNOUNCER CUE SHEET & LYRICS (On-Air Copilot) ===
+        # === 4. ANNOUNCER CUE SHEET & LYRICS ===
         cue_frame = QFrame()
-        cue_frame.setStyleSheet("""
-            QFrame {
-                background-color: #121216;
-                border: 1px solid #1C1C22;
-                border-radius: 8px;
-            }
-        """)
+        cue_frame.setObjectName("InnerPanel")
         cu_layout = QVBoxLayout(cue_frame)
         cu_layout.setContentsMargins(12, 10, 12, 10)
         cu_layout.setSpacing(8)
 
         cue_top = QHBoxLayout()
         lbl_cue = QLabel("ON-AIR TALKING POINTS & LIRIK")
-        lbl_cue.setStyleSheet("font-size: 11px; font-weight: 700; color: #71717A; letter-spacing: 0.5px;")
+        lbl_cue.setObjectName("SectionHeader")
         cue_top.addWidget(lbl_cue)
         cue_top.addStretch()
 
-        self.btn_copy_script = QPushButton("Salin Naskah Siar")
-        self.btn_copy_script.setStyleSheet("""
-            QPushButton {
-                background-color: #1C1C22;
-                border: 1px solid #272730;
-                border-radius: 3px;
-                padding: 4px 8px;
-                font-size: 10px;
-                font-weight: 600;
-                color: #A1A1AA;
-            }
-            QPushButton:hover {
-                background-color: #272730;
-                color: #FAFAFA;
-            }
-        """)
+        self.btn_copy_script = QPushButton("Salin Naskah")
+        self.btn_copy_script.setObjectName("BtnSecondary")
         self.btn_copy_script.clicked.connect(self._copy_talking_script)
         cue_top.addWidget(self.btn_copy_script)
         cu_layout.addLayout(cue_top)
@@ -431,42 +326,21 @@ class CueDeckWidget(QWidget):
         self.txt_script = QTextEdit()
         self.txt_script.setReadOnly(True)
         self.txt_script.setFixedHeight(95)
-        self.txt_script.setPlaceholderText("Naskah siaran bahasa Indonesia otomatis akan tampil di sini saat lagu dipilih...")
-        self.txt_script.setStyleSheet("""
-            QTextEdit {
-                background-color: #18181D;
-                border: 1px solid #272730;
-                border-radius: 4px;
-                padding: 8px;
-                font-size: 11px;
-                color: #D4D4D8;
-                line-height: 1.4;
-            }
-        """)
+        self.txt_script.setPlaceholderText("Naskah siaran otomatis bahasa Indonesia akan tampil saat lagu dipilih.")
         cu_layout.addWidget(self.txt_script)
 
-        # Full Lyrics Viewer (Collapsible or scrollable)
+        # Full Lyrics Viewer
         self.txt_lyrics = QTextEdit()
         self.txt_lyrics.setReadOnly(True)
         self.txt_lyrics.setMinimumHeight(130)
-        self.txt_lyrics.setPlaceholderText("Lirik lengkap lagu...")
-        self.txt_lyrics.setStyleSheet("""
-            QTextEdit {
-                background-color: #18181D;
-                border: 1px solid #272730;
-                border-radius: 4px;
-                padding: 8px;
-                font-size: 11px;
-                color: #A1A1AA;
-            }
-        """)
+        self.txt_lyrics.setPlaceholderText("Lirik lengkap lagu.")
         cu_layout.addWidget(self.txt_lyrics)
 
         c_layout.addWidget(cue_frame)
         c_layout.addStretch()
 
         scroll.setWidget(container)
-        main_layout.addWidget(scroll)
+        main_layout.addWidget(scroll, 1)
 
     def set_track(self, track: Dict[str, Any]):
         """Load selected song into Cue Deck."""
@@ -481,9 +355,9 @@ class CueDeckWidget(QWidget):
         self.lbl_chip_year.setText(f"Tahun: {track.get('year') or '-'}")
         self.lbl_chip_duration.setText(f"Durasi: {track.get('duration') or '00:00'}")
 
-        # Stop any active preview
+        # Stop active preview
         self.player.stop()
-        self.btn_preview_play.setText("▶ Audisi CUE")
+        self.btn_preview_play.setText("Audisi CUE")
         self.slider_seek.setValue(0)
         self.lbl_preview_time.setText(f"00:00 / {track.get('duration') or '00:00'}")
 
@@ -514,7 +388,6 @@ class CueDeckWidget(QWidget):
         for t in tabs:
             self.cmb_tabs.addItem(t)
 
-        # Restore previous selection if possible
         idx = self.cmb_tabs.findText(current_selection)
         if idx >= 0:
             self.cmb_tabs.setCurrentIndex(idx)
@@ -523,7 +396,7 @@ class CueDeckWidget(QWidget):
         """Clean noise tags from track title."""
         raw = self.txt_title.text()
         clean = re.sub(
-            r"(?i)\s*[\(\[](official\s*video|official\s*music\s*video|official\s*audio|video\s*clip|lirik|lyrics|hd|4k|audio|remastered|visualizer)[\)\]]",
+            r"(?i)\s*[\(\[].*?(official|video|clip|lirik|lyrics|hd|4k|audio|remastered|visualizer).*?[\)\]]",
             "",
             raw,
         ).strip()
@@ -536,19 +409,13 @@ class CueDeckWidget(QWidget):
 
     def _on_lyrics_loaded(self, data: dict):
         """Display talking script and lyrics."""
-        intro_script = data.get("intro_script", "")
-        talking_points = data.get("talking_points", [])
+        intro_script = data.get("talking_points", {}).get("intro_script", "") if isinstance(data.get("talking_points"), dict) else data.get("intro_script", "")
         lyrics = data.get("lyrics", "")
-
-        script_text = intro_script
-        if talking_points:
-            script_text += "\n\nPoin Utama:\n" + "\n".join([f"• {p}" for p in talking_points])
-
-        self.txt_script.setText(script_text if script_text else "Tidak ada naskah siar khusus.")
+        self.txt_script.setText(intro_script if intro_script else "Tidak ada naskah siar khusus.")
         self.txt_lyrics.setText(lyrics if lyrics else "Lirik tidak ditemukan di YouTube Music.")
 
     def _copy_talking_script(self):
-        """Copy Indonesian announcer script to clipboard."""
+        """Copy announcer script to clipboard."""
         text = self.txt_script.toPlainText()
         if text:
             clipboard = QGuiApplication.clipboard()
@@ -562,34 +429,31 @@ class CueDeckWidget(QWidget):
 
         if self.player.playbackState() == QMediaPlayer.PlayingState:
             self.player.pause()
-            self.btn_preview_play.setText("▶ Audisi CUE")
+            self.btn_preview_play.setText("Audisi CUE")
             self.lbl_headphone_state.setText("HEADPHONE MONITOR: PAUSED")
             return
 
-        # If already loaded and paused, resume
         if self.player.playbackState() == QMediaPlayer.PausedState:
             self.player.play()
-            self.btn_preview_play.setText("⏸ Jeda CUE")
-            self.lbl_headphone_state.setText("HEADPHONE MONITOR: AUDISI ON-AIR")
+            self.btn_preview_play.setText("Jeda CUE")
+            self.lbl_headphone_state.setText("HEADPHONE MONITOR: AUDISI")
             return
 
-        # Resolve stream URL
         video_id = self.current_track.get("video_id")
         if not video_id:
             return
 
-        self.lbl_headphone_state.setText("HEADPHONE MONITOR: RESOLVING...")
+        self.lbl_headphone_state.setText("HEADPHONE MONITOR: RESOLVING")
         self._stream_worker = StreamResolveThread(video_id)
         self._stream_worker.resolved.connect(self._on_stream_resolved)
         self._stream_worker.error.connect(self._on_stream_error)
         self._stream_worker.start()
 
     def _on_stream_resolved(self, url: str):
-        """Load resolved URL into QMediaPlayer and start playback."""
         self.player.setSource(QUrl(url))
         self.player.play()
-        self.btn_preview_play.setText("⏸ Jeda CUE")
-        self.lbl_headphone_state.setText("HEADPHONE MONITOR: AUDISI ON-AIR")
+        self.btn_preview_play.setText("Jeda CUE")
+        self.lbl_headphone_state.setText("HEADPHONE MONITOR: AUDISI")
 
     def _on_stream_error(self, err: str):
         self.lbl_headphone_state.setText("HEADPHONE MONITOR: ERROR")
@@ -597,7 +461,7 @@ class CueDeckWidget(QWidget):
 
     def _on_player_state_changed(self, state):
         if state == QMediaPlayer.StoppedState:
-            self.btn_preview_play.setText("▶ Audisi CUE")
+            self.btn_preview_play.setText("Audisi CUE")
             self.lbl_headphone_state.setText("HEADPHONE MONITOR: READY")
 
     def _on_player_position_changed(self, pos: int):
@@ -625,7 +489,6 @@ class CueDeckWidget(QWidget):
         self.audio_output.setVolume(val / 100.0)
 
     def _dispatch_queue(self, pos: int):
-        """Enqueue track into RadioBOSS."""
         if not self.current_track:
             self.status_message.emit("Pilih lagu terlebih dahulu sebelum menambahkan ke antrean.")
             return

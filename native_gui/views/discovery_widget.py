@@ -1,21 +1,20 @@
 """Left Zone: Discovery, Search Catalog, Mood Recommendations, and Playlist Sets."""
 import os
-import urllib.request
 from typing import Dict, Any, List, Optional
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
     QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QFrame,
-    QComboBox, QProgressBar, QMessageBox, QAbstractItemView
+    QProgressBar, QAbstractItemView
 )
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon, QPixmap, QColor, QFont, QCursor
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor, QFont, QCursor
 
 from native_gui.workers import SearchWorker, RecommendationsWorker
 
 
 class DiscoveryWidget(QFrame):
-    """Left Deck: YouTube Music Omnibox Search & Catalog."""
+    """Left Deck: YouTube Music Omnibox Search & Catalog (DESIGN.md specification)."""
     track_selected = Signal(dict)
     preview_requested = Signal(str, str) # video_id, title
     status_message = Signal(str)
@@ -32,11 +31,11 @@ class DiscoveryWidget(QFrame):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
 
         # Header Title
         header_layout = QHBoxLayout()
-        title_label = QLabel("DISCOVERY & CATALOG")
+        title_label = QLabel("DISCOVERY & KATALOG")
         title_label.setObjectName("SectionHeader")
         header_layout.addWidget(title_label)
         header_layout.addStretch()
@@ -50,7 +49,7 @@ class DiscoveryWidget(QFrame):
         self.search_input.setObjectName("Omnibox")
         self.search_input.setPlaceholderText("Cari lagu, artis, atau paste link YouTube / YT Music...")
         self.search_input.returnPressed.connect(self._start_search)
-        search_box_layout.addWidget(self.search_input)
+        search_box_layout.addWidget(self.search_input, 1)
 
         self.search_btn = QPushButton("Cari")
         self.search_btn.setObjectName("BtnPrimary")
@@ -60,22 +59,22 @@ class DiscoveryWidget(QFrame):
 
         layout.addLayout(search_box_layout)
 
-        # Category Mode Selector Buttons (Pencarian, Rekomendasi Radio Mood, Playlist Sets)
+        # Category Mode Selector Buttons (Clean Text without generic emoji slop)
         btn_bar = QHBoxLayout()
         btn_bar.setSpacing(6)
 
-        self.btn_mode_search = QPushButton("🔍 Hasil Pencarian")
+        self.btn_mode_search = QPushButton("Hasil Pencarian")
         self.btn_mode_search.setObjectName("TabButton")
         self.btn_mode_search.setProperty("active", "true")
         self.btn_mode_search.clicked.connect(lambda: self._set_mode("search"))
         btn_bar.addWidget(self.btn_mode_search)
 
-        self.btn_mode_mood = QPushButton("✨ Radio Mood")
+        self.btn_mode_mood = QPushButton("Radio Mood")
         self.btn_mode_mood.setObjectName("TabButton")
         self.btn_mode_mood.clicked.connect(lambda: self._set_mode("mood"))
         btn_bar.addWidget(self.btn_mode_mood)
 
-        self.btn_mode_sets = QPushButton("📁 Playlist Sets")
+        self.btn_mode_sets = QPushButton("Playlist Sets")
         self.btn_mode_sets.setObjectName("TabButton")
         self.btn_mode_sets.clicked.connect(lambda: self._set_mode("sets"))
         btn_bar.addWidget(self.btn_mode_sets)
@@ -89,7 +88,7 @@ class DiscoveryWidget(QFrame):
         mood_layout.setContentsMargins(0, 0, 0, 0)
         mood_layout.setSpacing(6)
 
-        moods = ["Semangat Pagi", "Santai Sore", "Top Hits Indo", "Galau", "Nostalgia 2000s"]
+        moods = ["Semangat Pagi", "Santai Sore", "Top Hits Indo", "Akustik", "Nostalgia"]
         for m in moods:
             btn = QPushButton(m)
             btn.setObjectName("TabButton")
@@ -107,7 +106,7 @@ class DiscoveryWidget(QFrame):
         self.progress_bar.setVisible(False)
         layout.addWidget(self.progress_bar)
 
-        # Track Table
+        # Track Table (Dense single-column row format with tabular nums per DESIGN.md)
         self.table = QTableWidget()
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["#", "Judul & Artis", "Album", "Durasi"])
@@ -116,17 +115,17 @@ class DiscoveryWidget(QFrame):
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
         self.table.setColumnWidth(0, 36)
-        self.table.setColumnWidth(3, 60)
+        self.table.setColumnWidth(3, 64)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
         self.table.itemClicked.connect(self._on_table_click)
         self.table.itemDoubleClicked.connect(self._on_table_double_click)
-        layout.addWidget(self.table)
+        layout.addWidget(self.table, 1)
 
         # Bottom Status Bar
-        self.status_lbl = QLabel("Ketik judul lagu untuk memulai pencarian di katalog studio.")
+        self.status_lbl = QLabel("Ketik judul lagu atau artis untuk memulai pencarian katalog.")
         self.status_lbl.setObjectName("SubtleText")
         layout.addWidget(self.status_lbl)
 
@@ -170,21 +169,23 @@ class DiscoveryWidget(QFrame):
         self.search_btn.setEnabled(True)
         self.current_tracks = results
         self._render_tracks(results)
-        self.status_lbl.setText(f"Ditemukan {len(results)} lagu dari YouTube Music.")
 
-        # Automatically select the first track
-        if results:
+        count = len(results)
+        if count > 0:
+            self.status_lbl.setText(f"Ditemukan {count} lagu resmi dari YouTube Music.")
             self.table.selectRow(0)
             self.track_selected.emit(results[0])
+        else:
+            self.status_lbl.setText("Tidak ada lagu yang cocok. Periksa kata kunci pencarian.")
 
     def _on_search_error(self, err_msg: str):
         self.progress_bar.setVisible(False)
         self.search_btn.setEnabled(True)
-        self.status_lbl.setText(f"Error pencarian: {err_msg}")
+        self.status_lbl.setText(f"Gagal mencari: {err_msg}")
 
     def _load_mood(self, mood_name: str):
         self.progress_bar.setVisible(True)
-        self.status_lbl.setText(f"Memuat kurasi mood '{mood_name}'...")
+        self.status_lbl.setText(f"Memuat kurasi suasana '{mood_name}'...")
 
         if self._recs_worker and self._recs_worker.isRunning():
             self._recs_worker.terminate()
@@ -195,14 +196,13 @@ class DiscoveryWidget(QFrame):
         self._recs_worker.start()
 
     def _load_playlist_sets(self):
-        # Fetch playlist sets from SQLite db
         from app.services.db_service import db_service
-        sets = db_service.get_playlist_sets()
+        sets = db_service.get_all_sets()
         self.table.setRowCount(0)
         self.current_tracks = []
 
         if not sets:
-            self.status_lbl.setText("Belum ada Playlist Set yang disimpan. Buat set dari antrean lagu.")
+            self.status_lbl.setText("Belum ada Playlist Set tersimpan di database.")
             return
 
         self.table.setColumnCount(3)
@@ -243,7 +243,7 @@ class DiscoveryWidget(QFrame):
             album_item = QTableWidgetItem(t.get("album", "") or "-")
             album_item.setForeground(QColor("#A1A1AA"))
 
-            dur_item = QTableWidgetItem(t.get("duration", "03:30"))
+            dur_item = QTableWidgetItem(t.get("duration", "00:00"))
             dur_item.setTextAlignment(Qt.AlignCenter)
             dur_item.setFont(QFont("JetBrains Mono", 9))
             dur_item.setForeground(QColor("#F59E0B"))

@@ -2,10 +2,8 @@
 import os
 import sys
 import logging
-from typing import Dict, Any
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon, QFont
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -16,7 +14,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QStatusBar,
     QFrame,
-    QApplication,
 )
 
 from native_gui.views.discovery_widget import DiscoveryWidget
@@ -24,7 +21,6 @@ from native_gui.views.cue_deck_widget import CueDeckWidget
 from native_gui.views.monitor_widget import MonitorWidget
 from native_gui.views.settings_dialog import SettingsDialog
 from native_gui.workers import RadioBossSyncWorker
-from app.services.settings_service import settings_service
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +28,11 @@ logger = logging.getLogger(__name__)
 class MainWindow(QMainWindow):
     """
     Radio Caster Bridge Pure Native Desktop Application:
-    - Top Rack Strip: Station Branding, Active Tab Status, Settings Button
-    - 3-Zone Horizontal Workbench:
-      1. Discovery Deck (Left): Omnibox search, category pills, tracklist
-      2. Cue Deck (Center): Selected track hero, metadata clean, preview, action buttons, lyrics
-      3. Monitor Zone (Right): On-Air LCD, transport rack, queue table, dead-air alert
+    - Top Master On-Air Rack Strip (DESIGN.md Zone 1): Console identity, connection status, settings
+    - 3-Zone Workbench Splitter:
+      1. Discovery Deck (Left, 7 columns)
+      2. Cue Deck (Center, channel strip)
+      3. Monitor Zone (Right, On-Air LCD & Live Queue)
     - Bottom Status Bar: Status messages, memory monitor, engine state
     """
 
@@ -54,7 +50,6 @@ class MainWindow(QMainWindow):
         self._init_ui()
         self._connect_signals()
         self._sync_timer.start()
-        # Trigger initial sync after event loop begins
         QTimer.singleShot(100, self._trigger_radioboss_sync)
 
     def _init_ui(self):
@@ -66,58 +61,27 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(12, 10, 12, 10)
         root_layout.setSpacing(10)
 
-        # === 1. TOP STUDIO RACK STRIP ===
+        # === 1. TOP MASTER ON-AIR RACK STRIP (Zone 1) ===
         top_rack = QFrame()
-        top_rack.setObjectName("TopRack")
-        top_rack.setStyleSheet("""
-            QFrame#TopRack {
-                background-color: #121216;
-                border: 1px solid #1C1C22;
-                border-radius: 6px;
-                padding: 4px 10px;
-            }
-        """)
+        top_rack.setObjectName("DeckModule")
         top_layout = QHBoxLayout(top_rack)
-        top_layout.setContentsMargins(8, 4, 8, 4)
+        top_layout.setContentsMargins(12, 8, 12, 8)
         top_layout.setSpacing(12)
 
-        # Brand Title
-        lbl_app_logo = QLabel("📻 RADIO CASTER BRIDGE")
-        lbl_app_logo.setStyleSheet("font-size: 13px; font-weight: 800; color: #FAFAFA; letter-spacing: 0.8px;")
+        # Console Identity
+        lbl_app_logo = QLabel("RADIO CASTER BRIDGE")
+        lbl_app_logo.setObjectName("HeaderTitle")
         top_layout.addWidget(lbl_app_logo)
 
-        lbl_engine_badge = QLabel("NATIVE v1.0")
-        lbl_engine_badge.setStyleSheet("""
-            background-color: rgba(245, 158, 11, 0.15);
-            color: #F59E0B;
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            border-radius: 4px;
-            padding: 2px 6px;
-            font-family: 'JetBrains Mono';
-            font-size: 10px;
-            font-weight: 700;
-        """)
+        lbl_engine_badge = QLabel("STUDIO CONSOLE v1.0")
+        lbl_engine_badge.setObjectName("BadgeAmber")
         top_layout.addWidget(lbl_engine_badge)
 
         top_layout.addStretch()
 
         # Settings Trigger Button
-        self.btn_settings = QPushButton("⚙ Pengaturan Studio")
-        self.btn_settings.setStyleSheet("""
-            QPushButton {
-                background-color: #18181D;
-                border: 1px solid #272730;
-                border-radius: 4px;
-                padding: 6px 14px;
-                font-size: 11px;
-                font-weight: 600;
-                color: #FAFAFA;
-            }
-            QPushButton:hover {
-                background-color: #272730;
-                border-color: #F59E0B;
-            }
-        """)
+        self.btn_settings = QPushButton("Pengaturan Studio")
+        self.btn_settings.setObjectName("BtnSecondary")
         self.btn_settings.clicked.connect(self._open_settings)
         top_layout.addWidget(self.btn_settings)
 
@@ -126,18 +90,10 @@ class MainWindow(QMainWindow):
         # === 2. 3-ZONE SPLITTER WORKBENCH ===
         self.splitter = QSplitter(Qt.Horizontal)
         self.splitter.setHandleWidth(4)
-        self.splitter.setStyleSheet("""
-            QSplitter::handle {
-                background-color: #1C1C22;
-            }
-            QSplitter::handle:hover {
-                background-color: #F59E0B;
-            }
-        """)
 
         # Left Zone: Discovery Deck
         self.discovery_deck = DiscoveryWidget()
-        self.discovery_deck.setMinimumWidth(320)
+        self.discovery_deck.setMinimumWidth(340)
         self.splitter.addWidget(self.discovery_deck)
 
         # Center Zone: Cue Deck (Inspector & Player)
@@ -156,18 +112,11 @@ class MainWindow(QMainWindow):
 
         # === 3. BOTTOM STATUS BAR ===
         self.status_bar = QStatusBar()
-        self.status_bar.setStyleSheet("""
-            QStatusBar {
-                background-color: #09090B;
-                color: #71717A;
-                font-size: 11px;
-                border-top: 1px solid #18181D;
-            }
-        """)
         self.setStatusBar(self.status_bar)
 
-        self.lbl_ram_usage = QLabel("Engine RAM: ~52 MB")
-        self.lbl_ram_usage.setStyleSheet("font-family: 'JetBrains Mono'; font-size: 10px; color: #10B981; padding-right: 12px;")
+        self.lbl_ram_usage = QLabel("Memory Footprint: Standby (~50-130 MB)")
+        self.lbl_ram_usage.setObjectName("MonoText")
+        self.lbl_ram_usage.setStyleSheet("color: #34D399; padding-right: 12px;")
         self.status_bar.addPermanentWidget(self.lbl_ram_usage)
 
         self.status_bar.showMessage("Siap menyiarkan ke RadioBOSS.")
