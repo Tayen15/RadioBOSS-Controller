@@ -132,6 +132,11 @@ class SettingsDialog(QDialog):
         self._setup_system_tab()
         self.tabs.addTab(self.tab_system, "Tentang & Sistem")
 
+        # Tab 5: CasterHub Cloud
+        self.tab_cloud = QWidget()
+        self._setup_cloud_tab()
+        self.tabs.addTab(self.tab_cloud, "CasterHub Cloud")
+
         main_layout.addWidget(self.tabs, 1)
 
         # Action Buttons (Simpan / Batal)
@@ -419,6 +424,47 @@ class SettingsDialog(QDialog):
 
         layout.addStretch()
 
+    def _setup_cloud_tab(self):
+        layout = QVBoxLayout(self.tab_cloud)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(12)
+
+        lbl_desc = QLabel("Pengaturan koneksi server pusat CasterHub untuk Global Charts dan Telemetri Anonim.")
+        lbl_desc.setStyleSheet("font-size: 11px; color: #71717A;")
+        layout.addWidget(lbl_desc)
+
+        # CasterHub URL
+        lbl_hub = QLabel("CasterHub Server Endpoint:")
+        lbl_hub.setStyleSheet("font-size: 11px; font-weight: 600; color: #FAFAFA;")
+        layout.addWidget(lbl_hub)
+
+        self.txt_hub_url = QLineEdit()
+        self.txt_hub_url.setPlaceholderText("http://localhost:3000 atau https://casterhub.vercel.app")
+        layout.addWidget(self.txt_hub_url)
+
+        # Telemetry Opt-in checkbox
+        self.chk_telemetry = QCheckBox("Aktifkan Pengiriman Statistik Anonim (Zero-PII)")
+        self.chk_telemetry.setStyleSheet("font-size: 11px; color: #FAFAFA;")
+        self.chk_telemetry.setToolTip("Mengirimkan jumlah pemutaran lagu anonim (SHA-256) untuk diagregasi ke Global Radio Charts.")
+        layout.addWidget(self.chk_telemetry)
+
+        # Station info banner
+        from app.services.telemetry_service import telemetry_service
+        stats = telemetry_service.get_session_stats()
+        info_frame = QFrame()
+        info_frame.setStyleSheet("background-color: #18181D; border: 1px solid #272730; border-radius: 6px; padding: 10px;")
+        inf_l = QVBoxLayout(info_frame)
+        lbl_stn_id = QLabel(f"Station ID Hash: {telemetry_service.station_hash[:16]}...")
+        lbl_stn_id.setStyleSheet("font-family: 'JetBrains Mono'; font-size: 10px; color: #F59E0B;")
+        inf_l.addWidget(lbl_stn_id)
+
+        lbl_stn_air = QLabel(f"Akumulasi Jam Terbang Siaran: {stats['lifetime_airtime_hours']} Jam")
+        lbl_stn_air.setStyleSheet("font-size: 11px; color: #A1A1AA;")
+        inf_l.addWidget(lbl_stn_air)
+        layout.addWidget(info_frame)
+
+        layout.addStretch()
+
     def _load_current_settings(self):
         cfg = settings_service.get_config()
         self.txt_host.setText(cfg.radioboss_host or "http://127.0.0.1")
@@ -437,6 +483,10 @@ class SettingsDialog(QDialog):
         cache_dir = cache_service.get_cache_dir()
         self.txt_cache_dir.setText(str(cache_dir))
         self._update_storage_usage()
+
+        # Cloud settings
+        self.txt_hub_url.setText(cfg.casterhub_url or "http://localhost:3000")
+        self.chk_telemetry.setChecked(cfg.enable_telemetry)
 
     def _update_storage_usage(self):
         try:
@@ -532,6 +582,9 @@ class SettingsDialog(QDialog):
             new_cache = self.txt_cache_dir.text().strip()
             if new_cache and new_cache != str(cache_service.get_cache_dir()):
                 cfg.custom_cache_dir = new_cache
+
+            cfg.casterhub_url = self.txt_hub_url.text().strip()
+            cfg.enable_telemetry = self.chk_telemetry.isChecked()
 
             settings_service.update_config(cfg)
 

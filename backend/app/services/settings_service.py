@@ -52,6 +52,18 @@ class AppConfig(BaseModel):
         default_factory=list,
         description="List of playlist tab names available in RadioBOSS"
     )
+    casterhub_url: str = Field(
+        default="http://localhost:3000",
+        description="CasterHub central server URL (e.g. https://casterhub.vercel.app)"
+    )
+    enable_telemetry: bool = Field(
+        default=True,
+        description="Share anonymous playback counts for Global Radio Charts & Network Stats"
+    )
+    total_airtime_seconds: int = Field(
+        default=0,
+        description="Total lifetime broadcast studio air-time in seconds"
+    )
 
 
 

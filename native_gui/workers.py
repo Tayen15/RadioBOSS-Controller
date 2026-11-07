@@ -19,6 +19,7 @@ from app.services.cache_service import cache_service
 from app.services.settings_service import settings_service
 from app.services.history_service import history_service
 from app.services.db_service import db_service
+from app.services.telemetry_service import telemetry_service
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,10 @@ class RecommendationsWorker(QThread):
                 tracks = ytmusic_service.search_songs(mood_name, limit=20)
                 dict_results = [_track_to_dict(t) for t in tracks]
                 self.finished.emit(dict_results)
+            elif self.category_or_id.startswith("casterhub:"):
+                chart_category = self.category_or_id.split("casterhub:", 1)[1]
+                tracks = asyncio.run(telemetry_service.get_global_charts(category=chart_category, limit=30))
+                self.finished.emit(tracks)
             else:
                 # Video ID for Up Next recommendations
                 clean_id = self.category_or_id.strip()
@@ -147,6 +152,12 @@ class RadioBossSyncWorker(QThread):
                 self.playlist_updated.emit(tracks if ok else [], msg)
             except Exception as e:
                 logger.debug(f"Error querying playlist: {e}")
+
+            # 4. Background Sync Telemetry Outbox & Airtime to CasterHub
+            try:
+                await telemetry_service.sync_outbox_to_casterhub()
+            except Exception as e:
+                logger.debug(f"Background telemetry sync exception: {e}")
 
         try:
             asyncio.run(_sync_all())
@@ -286,6 +297,26 @@ class QueueWorker(QThread):
                 )
             except Exception as e:
                 logger.debug(f"Could not record SQLite play count: {e}")
+
+            # Enqueue to CasterHub anonymous telemetry outbox
+            try:
+                is_cached = bool(cached_file and os.path.isfile(cached_file))
+                file_sz = os.path.getsize(cached_file) if is_cached else 0
+                telemetry_service.enqueue_airplay_event(
+                    video_id=clean_id,
+                    title=self.song_title,
+                    artist=self.artist,
+                    album=self.album,
+                    genre=self.genre or "Pop",
+                    thumbnail_url=self.thumbnail_url,
+                    duration_seconds=180,
+                    duration_formatted="03:00",
+                    action_type="queue_next" if target_pos == -2 else "queue_bottom",
+                    is_from_cache=is_cached,
+                    file_size_bytes=file_sz,
+                )
+            except Exception as e:
+                logger.debug(f"Could not enqueue telemetry: {e}")
 
             self.success.emit(action_label, display_title)
 

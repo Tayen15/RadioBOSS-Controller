@@ -204,6 +204,21 @@ class CueDeckWidget(QFrame):
         chips_row.addStretch()
         meta_box.addLayout(chips_row)
 
+        # CasterHub Global vs Local Intelligence Row
+        intel_row = QHBoxLayout()
+        intel_row.setSpacing(6)
+
+        self.lbl_global_badge = QLabel("CasterHub: Global Top Track")
+        self.lbl_global_badge.setObjectName("BadgeAmber")
+        intel_row.addWidget(self.lbl_global_badge)
+
+        self.lbl_local_badge = QLabel("Lokal: 0x Diputar")
+        self.lbl_local_badge.setObjectName("BadgeEmerald")
+        intel_row.addWidget(self.lbl_local_badge)
+
+        intel_row.addStretch()
+        meta_box.addLayout(intel_row)
+
         h_layout.addLayout(meta_box, 1)
         c_layout.addWidget(hero_frame)
 
@@ -353,7 +368,31 @@ class CueDeckWidget(QFrame):
         self.txt_artist.setText(artist_str)
         self.lbl_chip_album.setText(f"Album: {track.get('album') or '-'}")
         self.lbl_chip_year.setText(f"Tahun: {track.get('year') or '-'}")
-        self.lbl_chip_duration.setText(f"Durasi: {track.get('duration') or '00:00'}")
+        self.lbl_chip_duration.setText(f"Durasi: {track.get('duration_formatted') or track.get('duration') or '00:00'}")
+
+        # Update CasterHub Intelligence Badges
+        rank_val = track.get("rank")
+        unique_stn = track.get("unique_stations")
+        if rank_val:
+            self.lbl_global_badge.setText(f"CasterHub Global #{rank_val:02d} ({unique_stn or 1} Stasiun)")
+            self.lbl_global_badge.setVisible(True)
+        else:
+            self.lbl_global_badge.setVisible(False)
+
+        # Check local play count
+        clean_id = (track.get("video_id") or "").replace(".mp3", "").strip()
+        local_plays = 0
+        try:
+            from app.services.db_service import db_service
+            with db_service.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT play_count FROM cached_tracks WHERE video_id = ?;", (clean_id,))
+                row = cursor.fetchone()
+                if row:
+                    local_plays = row["play_count"] or 0
+        except Exception:
+            pass
+        self.lbl_local_badge.setText(f"Lokal: {local_plays}x Diputar")
 
         # Stop active preview
         self.player.stop()

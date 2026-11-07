@@ -114,6 +114,11 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
+        self.lbl_airtime_stats = QLabel("Jam Terbang: 0.0j • Sesi: 00j 00m")
+        self.lbl_airtime_stats.setObjectName("MonoText")
+        self.lbl_airtime_stats.setStyleSheet("color: #F59E0B; padding-right: 14px; font-weight: 700;")
+        self.status_bar.addPermanentWidget(self.lbl_airtime_stats)
+
         self.lbl_ram_usage = QLabel("Memory Footprint: Standby (~50-130 MB)")
         self.lbl_ram_usage.setObjectName("MonoText")
         self.lbl_ram_usage.setStyleSheet("color: #34D399; padding-right: 12px;")
@@ -138,6 +143,16 @@ class MainWindow(QMainWindow):
 
     def _trigger_radioboss_sync(self):
         """Launch background sync for live status, tabs, and queue."""
+        # Update Air-Time display
+        try:
+            from app.services.telemetry_service import telemetry_service
+            stats = telemetry_service.get_session_stats()
+            self.lbl_airtime_stats.setText(
+                f"Jam Terbang: {stats['lifetime_airtime_hours']}j • Sesi: {stats['session_time_formatted']} ({stats['songs_today']} lagu hari ini)"
+            )
+        except Exception:
+            pass
+
         if self._sync_worker and self._sync_worker.isRunning():
             return
 

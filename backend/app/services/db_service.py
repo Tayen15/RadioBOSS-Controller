@@ -205,6 +205,39 @@ class DatabaseService:
                 ON cached_tracks (last_played_at DESC);
             """)
 
+            # 6. Telemetry Outbox Table (Offline Queue for CasterHub Central Hub)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS telemetry_outbox (
+                    id TEXT PRIMARY KEY,
+                    video_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    artist TEXT DEFAULT '',
+                    album TEXT DEFAULT '',
+                    genre TEXT DEFAULT 'Pop',
+                    thumbnail_url TEXT DEFAULT '',
+                    duration_seconds INTEGER DEFAULT 0,
+                    duration_formatted TEXT DEFAULT '00:00',
+                    action_type TEXT DEFAULT 'queue_bottom',
+                    time_belt TEXT DEFAULT 'morning',
+                    timestamp REAL NOT NULL,
+                    retry_count INTEGER DEFAULT 0,
+                    created_at REAL NOT NULL
+                );
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_telemetry_outbox_created
+                ON telemetry_outbox (created_at ASC);
+            """)
+
+            # 7. Global Charts Cache Table (Local SQLite Cache for CasterHub)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS global_charts_cache (
+                    category TEXT PRIMARY KEY,
+                    data_json TEXT NOT NULL,
+                    updated_at REAL NOT NULL
+                );
+            """)
+
     def _auto_migrate_from_legacy_json(self):
         """Automatically import data from legacy config.json and history.json if available."""
         default_dir = _get_default_storage_dir()
