@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
-from native_gui.workers import QueueWorker
+from native_gui.workers import QueueWorker, CrowdMetadataWorker
 from app.services.ytmusic_service import ytmusic_service
 from app.services.ytdlp_service import ytdlp_service
 
@@ -219,6 +219,29 @@ class CueDeckWidget(QFrame):
         intel_row.addStretch()
         meta_box.addLayout(intel_row)
 
+        # Crowd-Cleaned Metadata Suggestion Button
+        self.btn_crowd_suggestion = QPushButton("✨ Saran Judul Komunitas...")
+        self.btn_crowd_suggestion.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(245, 158, 11, 0.12);
+                border: 1px solid rgba(245, 158, 11, 0.35);
+                border-radius: 4px;
+                color: #F59E0B;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 4px 8px;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: rgba(245, 158, 11, 0.22);
+            }
+        """)
+        self.btn_crowd_suggestion.setVisible(False)
+        self.btn_crowd_suggestion.clicked.connect(self._apply_crowd_suggestion)
+        self._suggested_clean_title = ""
+        self._suggested_clean_artist = ""
+        meta_box.addWidget(self.btn_crowd_suggestion)
+
         h_layout.addLayout(meta_box, 1)
         c_layout.addWidget(hero_frame)
 
@@ -394,6 +417,15 @@ class CueDeckWidget(QFrame):
             pass
         self.lbl_local_badge.setText(f"Lokal: {local_plays}x Diputar")
 
+        # Reset and query crowd-cleaned metadata suggestion
+        self.btn_crowd_suggestion.setVisible(False)
+        self._suggested_clean_title = ""
+        self._suggested_clean_artist = ""
+        if clean_id:
+            self._crowd_meta_worker = CrowdMetadataWorker(clean_id, title, artist_str)
+            self._crowd_meta_worker.result.connect(self._on_crowd_meta_result)
+            self._crowd_meta_worker.start()
+
         # Stop active preview
         self.player.stop()
         self.btn_preview_play.setText("Audisi CUE")
@@ -430,6 +462,32 @@ class CueDeckWidget(QFrame):
         idx = self.cmb_tabs.findText(current_selection)
         if idx >= 0:
             self.cmb_tabs.setCurrentIndex(idx)
+
+    def _on_crowd_meta_result(self, data: dict):
+        """Handle crowd metadata response from CasterHub."""
+        if not data:
+            return
+        clean_title = (data.get("clean_title") or "").strip()
+        clean_artist = (data.get("clean_artist") or "").strip()
+        curr_title = self.txt_title.text().strip()
+
+        # If suggestion is cleaner/different than current title
+        if clean_title and clean_title.lower() != curr_title.lower():
+            self._suggested_clean_title = clean_title
+            self._suggested_clean_artist = clean_artist
+            votes = data.get("votes_count", 0)
+            votes_badge = f" ({votes} stasiun)" if votes > 1 else ""
+            self.btn_crowd_suggestion.setText(f"✨ Saran Komunitas: \"{clean_title}\"{votes_badge} (Klik Terapkan)")
+            self.btn_crowd_suggestion.setVisible(True)
+
+    def _apply_crowd_suggestion(self):
+        """Apply crowd-cleaned metadata suggestion to inputs."""
+        if self._suggested_clean_title:
+            self.txt_title.setText(self._suggested_clean_title)
+            if self._suggested_clean_artist:
+                self.txt_artist.setText(self._suggested_clean_artist)
+            self.btn_crowd_suggestion.setVisible(False)
+            self.status_message.emit(f"Judul komunitas diterapkan: {self._suggested_clean_title}")
 
     def _magic_clean_title(self):
         """Clean noise tags from track title."""

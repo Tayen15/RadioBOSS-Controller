@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Navbar } from "@/app/components/Navbar";
 
 async function getCharts(category: string = "top50") {
   try {
@@ -38,26 +38,8 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between">
-      {/* Header Bar */}
-      <header className="border-b border-borderLine bg-slateDeck/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="font-extrabold text-sm tracking-wider text-white">
-              RADIO CASTER HUB
-            </span>
-            <span className="bg-amberSignal/15 text-amberSignal border border-amberSignal/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded">
-              NETWORK v1.0
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs font-mono">
-            <div className="flex items-center gap-2 text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>{stats.active_stations_online} Stasiun Online</span>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Global Navbar */}
+      <Navbar activeStationsOnline={stats.active_stations_online} currentPath="/" />
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-8">

@@ -147,8 +147,10 @@ class MainWindow(QMainWindow):
         try:
             from app.services.telemetry_service import telemetry_service
             stats = telemetry_service.get_session_stats()
+            stn_name = stats.get("station_name", "")
+            stn_prefix = f"[{stn_name}] " if stn_name else ""
             self.lbl_airtime_stats.setText(
-                f"Jam Terbang: {stats['lifetime_airtime_hours']}j • Sesi: {stats['session_time_formatted']} ({stats['songs_today']} lagu hari ini)"
+                f"{stn_prefix}Jam Terbang: {stats['lifetime_airtime_hours']}j • Sesi: {stats['session_time_formatted']} ({stats['songs_today']} lagu)"
             )
         except Exception:
             pass

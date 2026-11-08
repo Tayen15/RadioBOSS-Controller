@@ -442,11 +442,26 @@ class SettingsDialog(QDialog):
         self.txt_hub_url.setPlaceholderText("http://localhost:3000 atau https://casterhub.vercel.app")
         layout.addWidget(self.txt_hub_url)
 
+        # Station Public Name
+        lbl_stn_name = QLabel("Nama Publik Stasiun (Opsional, untuk Direktori CasterHub):")
+        lbl_stn_name.setStyleSheet("font-size: 11px; font-weight: 600; color: #FAFAFA;")
+        layout.addWidget(lbl_stn_name)
+
+        self.txt_station_name = QLineEdit()
+        self.txt_station_name.setPlaceholderText("Contoh: Prambors FM atau Radio Komunitas Ardan (kosongkan jika ingin anonim)")
+        layout.addWidget(self.txt_station_name)
+
         # Telemetry Opt-in checkbox
         self.chk_telemetry = QCheckBox("Aktifkan Pengiriman Statistik Anonim (Zero-PII)")
         self.chk_telemetry.setStyleSheet("font-size: 11px; color: #FAFAFA;")
         self.chk_telemetry.setToolTip("Mengirimkan jumlah pemutaran lagu anonim (SHA-256) untuk diagregasi ke Global Radio Charts.")
         layout.addWidget(self.chk_telemetry)
+
+        # Crowd Cleaned Metadata checkbox
+        self.chk_crowd_metadata = QCheckBox("Gunakan Saran Judul Bersih Otomatis dari Komunitas CasterHub")
+        self.chk_crowd_metadata.setStyleSheet("font-size: 11px; color: #FAFAFA;")
+        self.chk_crowd_metadata.setToolTip("Otomatis mengambil judul dan artis bersih yang telah dikurasi oleh para penyiar.")
+        layout.addWidget(self.chk_crowd_metadata)
 
         # Station info banner
         from app.services.telemetry_service import telemetry_service
@@ -486,7 +501,9 @@ class SettingsDialog(QDialog):
 
         # Cloud settings
         self.txt_hub_url.setText(cfg.casterhub_url or "http://localhost:3000")
+        self.txt_station_name.setText(cfg.station_public_name or "")
         self.chk_telemetry.setChecked(cfg.enable_telemetry)
+        self.chk_crowd_metadata.setChecked(cfg.enable_crowd_metadata)
 
     def _update_storage_usage(self):
         try:
@@ -584,7 +601,9 @@ class SettingsDialog(QDialog):
                 cfg.custom_cache_dir = new_cache
 
             cfg.casterhub_url = self.txt_hub_url.text().strip()
+            cfg.station_public_name = self.txt_station_name.text().strip()
             cfg.enable_telemetry = self.chk_telemetry.isChecked()
+            cfg.enable_crowd_metadata = self.chk_crowd_metadata.isChecked()
 
             settings_service.update_config(cfg)
 

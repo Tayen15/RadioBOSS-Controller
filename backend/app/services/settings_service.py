@@ -60,6 +60,14 @@ class AppConfig(BaseModel):
         default=True,
         description="Share anonymous playback counts for Global Radio Charts & Network Stats"
     )
+    station_public_name: str = Field(
+        default="",
+        description="Optional public station or studio name for CasterHub Station Directory (leave blank for anonymous)"
+    )
+    enable_crowd_metadata: bool = Field(
+        default=True,
+        description="Automatically look up and apply crowd-cleaned title suggestions from CasterHub"
+    )
     total_airtime_seconds: int = Field(
         default=0,
         description="Total lifetime broadcast studio air-time in seconds"

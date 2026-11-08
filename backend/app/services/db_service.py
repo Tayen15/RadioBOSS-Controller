@@ -212,6 +212,8 @@ class DatabaseService:
                     video_id TEXT NOT NULL,
                     title TEXT NOT NULL,
                     artist TEXT DEFAULT '',
+                    clean_title TEXT DEFAULT '',
+                    clean_artist TEXT DEFAULT '',
                     album TEXT DEFAULT '',
                     genre TEXT DEFAULT 'Pop',
                     thumbnail_url TEXT DEFAULT '',
@@ -224,6 +226,13 @@ class DatabaseService:
                     created_at REAL NOT NULL
                 );
             """)
+            # Migration check for existing outbox
+            try:
+                cursor.execute("ALTER TABLE telemetry_outbox ADD COLUMN clean_title TEXT DEFAULT '';")
+                cursor.execute("ALTER TABLE telemetry_outbox ADD COLUMN clean_artist TEXT DEFAULT '';")
+            except Exception:
+                pass
+
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_telemetry_outbox_created
                 ON telemetry_outbox (created_at ASC);
@@ -235,6 +244,19 @@ class DatabaseService:
                     category TEXT PRIMARY KEY,
                     data_json TEXT NOT NULL,
                     updated_at REAL NOT NULL
+                );
+            """)
+
+            # 8. Crowd Metadata Cache Table (Curated titles from CasterHub)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS crowd_metadata_cache (
+                    video_id TEXT PRIMARY KEY,
+                    clean_title TEXT NOT NULL,
+                    clean_artist TEXT DEFAULT '',
+                    original_title TEXT DEFAULT '',
+                    votes_count INTEGER DEFAULT 0,
+                    is_crowd_cleaned INTEGER DEFAULT 0,
+                    cached_at REAL NOT NULL
                 );
             """)
 

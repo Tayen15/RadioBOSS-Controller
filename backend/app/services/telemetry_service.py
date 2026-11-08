@@ -6,6 +6,7 @@ import os
 import platform
 import subprocess
 import time
+import urllib.parse
 from typing import Dict, Any, List, Optional
 import httpx
 
@@ -20,7 +21,6 @@ def _get_machine_hash() -> str:
     raw_ident = ""
     if platform.system() == "Windows":
         try:
-            # Query machine GUID from registry
             output = subprocess.check_output(
                 'reg query "HKLM\\SOFTWARE\\Microsoft\\Cryptography" /v MachineGuid',
                 shell=True,
@@ -37,7 +37,6 @@ def _get_machine_hash() -> str:
     if not raw_ident:
         raw_ident = f"{platform.node()}-{os.getlogin() if hasattr(os, 'getlogin') else 'caster'}"
 
-    # One-way SHA-256 with static CasterHub salt
     salted = f"CasterHub::Salt::2026::{raw_ident}".encode("utf-8")
     return hashlib.sha256(salted).hexdigest()
 
@@ -51,6 +50,16 @@ class TelemetryService:
         self.last_airtime_sync = time.time()
         self.session_songs_dispatched = 0
         self.session_cache_saved_bytes = 0
+        self.latest_onair_track: Optional[Dict[str, str]] = None
+
+    def set_onair_track(self, title: str, artist: str = "", video_id: str = ""):
+        """Cache current playing on-air song for telemetry heartbeat."""
+        if title:
+            self.latest_onair_track = {
+                "title": title,
+                "artist": artist,
+                "video_id": video_id,
+            }
 
     def get_time_belt(self) -> str:
         """Determine time-belt category from local studio hour."""
@@ -78,7 +87,6 @@ class TelemetryService:
         cfg = settings_service.get_config()
         lifetime_hours = (cfg.total_airtime_seconds or 0) / 3600.0
 
-        # Query songs dispatched today from queue_history
         today_midnight = time.mktime(time.strptime(time.strftime("%Y-%m-%d"), "%Y-%m-%d"))
         songs_today = 0
         try:
@@ -95,6 +103,8 @@ class TelemetryService:
         m, s = divmod(session_duration_sec, 60)
         h, m = divmod(m, 60)
 
+        station_name = cfg.station_public_name or f"Stasiun #{self.station_hash[:6].upper()}"
+
         return {
             "session_time_formatted": f"{h:02d}j {m:02d}m",
             "session_seconds": session_duration_sec,
@@ -103,6 +113,7 @@ class TelemetryService:
             "session_songs_dispatched": self.session_songs_dispatched,
             "session_cache_saved_mb": round(self.session_cache_saved_bytes / (1024 * 1024), 1),
             "station_hash_short": self.station_hash[:8],
+            "station_name": station_name,
         }
 
     def enqueue_airplay_event(
@@ -110,6 +121,8 @@ class TelemetryService:
         video_id: str,
         title: str,
         artist: str = "",
+        clean_title: str = "",
+        clean_artist: str = "",
         album: str = "",
         genre: str = "Pop",
         thumbnail_url: str = "",
@@ -123,6 +136,9 @@ class TelemetryService:
         self.session_songs_dispatched += 1
         if is_from_cache and file_size_bytes > 0:
             self.session_cache_saved_bytes += file_size_bytes
+
+        # Update on-air track cache
+        self.set_onair_track(clean_title or title, clean_artist or artist, video_id)
 
         cfg = settings_service.get_config()
         if not cfg.enable_telemetry:
@@ -138,14 +154,16 @@ class TelemetryService:
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO telemetry_outbox
-                    (id, video_id, title, artist, album, genre, thumbnail_url, duration_seconds, duration_formatted, action_type, time_belt, timestamp, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    (id, video_id, title, artist, clean_title, clean_artist, album, genre, thumbnail_url, duration_seconds, duration_formatted, action_type, time_belt, timestamp, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     (
                         event_id,
                         video_id,
                         title,
                         artist,
+                        clean_title or title,
+                        clean_artist or artist,
                         album,
                         genre or "Pop",
                         thumbnail_url,
@@ -192,22 +210,26 @@ class TelemetryService:
             events_payload.append({
                 "video_id": r["video_id"],
                 "title": r["title"],
-                "artist": r["artist"] or "",
-                "album": r["album"] or "",
-                "genre": r["genre"] or "Pop",
-                "thumbnail_url": r["thumbnail_url"] or "",
-                "duration_seconds": r["duration_seconds"] or 0,
-                "duration_formatted": r["duration_formatted"] or "00:00",
-                "action_type": r["action_type"] or "queue_bottom",
-                "time_belt": r["time_belt"] or "morning",
+                "artist": r.get("artist") or "",
+                "clean_title": r.get("clean_title") or r["title"],
+                "clean_artist": r.get("clean_artist") or r.get("artist") or "",
+                "album": r.get("album") or "",
+                "genre": r.get("genre") or "Pop",
+                "thumbnail_url": r.get("thumbnail_url") or "",
+                "duration_seconds": r.get("duration_seconds") or 0,
+                "duration_formatted": r.get("duration_formatted") or "00:00",
+                "action_type": r.get("action_type") or "queue_bottom",
+                "time_belt": r.get("time_belt") or "morning",
                 "timestamp": r["timestamp"],
             })
 
         payload = {
             "station_hash": self.station_hash,
+            "station_name": cfg.station_public_name.strip() if cfg.station_public_name else "",
             "app_version": "1.0.0",
             "airtime_delta_seconds": delta_airtime,
             "cache_saved_bytes": self.session_cache_saved_bytes,
+            "now_playing": self.latest_onair_track,
             "events": events_payload,
         }
 
@@ -231,20 +253,95 @@ class TelemetryService:
 
         return False
 
+    async def get_crowd_clean_metadata(
+        self,
+        video_id: str,
+        title: str = "",
+        artist: str = ""
+    ) -> Optional[Dict[str, Any]]:
+        """Look up crowd-cleaned title and artist for a song, cached in SQLite."""
+        cfg = settings_service.get_config()
+        if not cfg.enable_crowd_metadata:
+            return None
+
+        now = time.time()
+        # 1. Check local cache (valid for 24 hours)
+        try:
+            with db_service.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT * FROM crowd_metadata_cache WHERE video_id = ?;",
+                    (video_id,),
+                )
+                row = cursor.fetchone()
+                if row and (now - row["cached_at"]) < 86400:
+                    return {
+                        "clean_title": row["clean_title"],
+                        "clean_artist": row["clean_artist"],
+                        "original_title": row["original_title"],
+                        "votes_count": row["votes_count"],
+                        "is_crowd_cleaned": bool(row["is_crowd_cleaned"]),
+                    }
+        except Exception as e:
+            logger.debug(f"Error checking crowd metadata cache: {e}")
+
+        # 2. Query remote CasterHub metadata API
+        hub_url = (cfg.casterhub_url or "http://localhost:3000").rstrip("/")
+        params = {
+            "video_id": video_id,
+            "title": title,
+            "artist": artist,
+        }
+        query_str = urllib.parse.urlencode(params)
+        endpoint = f"{hub_url}/api/v1/metadata/clean?{query_str}"
+
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(endpoint)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("success"):
+                        clean_title = data.get("clean_title") or title
+                        clean_artist = data.get("clean_artist") or artist
+                        votes = data.get("votes_count") or 0
+                        is_cleaned = 1 if data.get("is_crowd_cleaned") else 0
+
+                        # Save to SQLite cache
+                        with db_service.get_connection() as conn:
+                            cursor = conn.cursor()
+                            cursor.execute(
+                                """
+                                INSERT OR REPLACE INTO crowd_metadata_cache
+                                (video_id, clean_title, clean_artist, original_title, votes_count, is_crowd_cleaned, cached_at)
+                                VALUES (?, ?, ?, ?, ?, ?, ?);
+                                """,
+                                (video_id, clean_title, clean_artist, title, votes, is_cleaned, now),
+                            )
+
+                        return {
+                            "clean_title": clean_title,
+                            "clean_artist": clean_artist,
+                            "original_title": title,
+                            "votes_count": votes,
+                            "is_crowd_cleaned": bool(is_cleaned),
+                        }
+        except Exception as e:
+            logger.debug(f"Failed to fetch crowd metadata from CasterHub: {e}")
+
+        return None
+
     async def get_global_charts(self, category: str = "top50", limit: int = 25) -> List[Dict[str, Any]]:
         """Fetch global radio charts from CasterHub with local SQLite caching."""
         cfg = settings_service.get_config()
         hub_url = (cfg.casterhub_url or "http://localhost:3000").rstrip("/")
         endpoint = f"{hub_url}/api/v1/charts?category={category}&limit={limit}"
 
-        # 1. Try remote fetch
         try:
             async with httpx.AsyncClient(timeout=3.5) as client:
                 resp = await client.get(endpoint)
                 if resp.status_code == 200:
                     data = resp.json()
                     tracks = data.get("tracks", [])
-                    # Cache to SQLite
                     with db_service.get_connection() as conn:
                         cursor = conn.cursor()
                         cursor.execute(
@@ -255,7 +352,6 @@ class TelemetryService:
         except Exception as e:
             logger.debug(f"Failed to fetch remote charts ({e}), falling back to local cache.")
 
-        # 2. Fallback to local SQLite cache
         try:
             with db_service.get_connection() as conn:
                 cursor = conn.cursor()
@@ -266,7 +362,6 @@ class TelemetryService:
         except Exception as e:
             logger.debug(f"Could not load local charts cache: {e}")
 
-        # 3. Smart local DJ top chart fallback if no network yet
         try:
             local_chart = db_service.get_dj_top_chart(limit=limit)
             return [
@@ -312,5 +407,4 @@ class TelemetryService:
         }
 
 
-# Singleton service
 telemetry_service = TelemetryService()

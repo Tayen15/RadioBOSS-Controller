@@ -14,7 +14,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const { station_hash, app_version, airtime_delta_seconds, cache_saved_bytes, events } = parsed.data;
+    const {
+      station_hash,
+      station_name,
+      app_version,
+      airtime_delta_seconds,
+      cache_saved_bytes,
+      now_playing,
+      events,
+    } = parsed.data;
+
     const now = new Date();
     const db = await getDb();
 
@@ -28,9 +37,20 @@ export async function POST(request: Request) {
       });
     }
 
-    // 1. Update or Insert Station Pulse (Air-Time, Last Seen, Saved Bytes)
+    // 1. Update or Insert Station Pulse (Air-Time, Last Seen, Saved Bytes, Station Name, Now Playing)
     const stationsCol = db.collection("stations_pulse");
     const totalMusicSeconds = events.reduce((sum, e) => sum + e.duration_seconds, 0);
+
+    const stationUpdateSet: Record<string, any> = {
+      app_version,
+      last_seen_at: now,
+    };
+    if (station_name && station_name.trim().length > 0) {
+      stationUpdateSet.station_name = station_name.trim();
+    }
+    if (now_playing && now_playing.title) {
+      stationUpdateSet.now_playing = now_playing;
+    }
 
     await stationsCol.updateOne(
       { station_hash },
@@ -41,10 +61,7 @@ export async function POST(request: Request) {
           total_music_duration_seconds: totalMusicSeconds,
           cache_saved_bytes: cache_saved_bytes,
         },
-        $set: {
-          app_version,
-          last_seen_at: now,
-        },
+        $set: stationUpdateSet,
         $setOnInsert: {
           first_seen_at: now,
         },
@@ -58,10 +75,9 @@ export async function POST(request: Request) {
 
     // Ensure Indexes are set (idempotent)
     await eventsCol.createIndex({ created_at: 1 }, { expireAfterSeconds: 2592000 }); // TTL 30 days
-    await eventsCol.createIndex(
-      { station_hash: 1, video_id: 1, date_bucket: 1 },
-      { unique: true }
-    ).catch(() => {});
+    await eventsCol
+      .createIndex({ station_hash: 1, video_id: 1, date_bucket: 1 }, { unique: true })
+      .catch(() => {});
 
     for (const evt of events) {
       const evtDate = new Date(evt.timestamp * 1000);
@@ -93,6 +109,10 @@ export async function POST(request: Request) {
         { upsert: true }
       );
 
+      // Handle Crowd-Cleaned Metadata Variant Tracking
+      const cleanTitle = evt.clean_title?.trim() || evt.title.trim();
+      const cleanArtist = evt.clean_artist?.trim() || evt.artist?.trim() || "";
+
       // Update Catalog Crowd-Cleaned Info & Global Score
       await tracksCol.updateOne(
         { video_id: evt.video_id },
@@ -105,6 +125,8 @@ export async function POST(request: Request) {
             thumbnail_url: evt.thumbnail_url,
             duration_seconds: evt.duration_seconds,
             duration_formatted: evt.duration_formatted,
+            master_clean_title: cleanTitle,
+            master_clean_artist: cleanArtist,
             last_played_at: evtDate,
           },
           $inc: { total_plays: 1 },

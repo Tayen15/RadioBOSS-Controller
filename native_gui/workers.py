@@ -306,6 +306,8 @@ class QueueWorker(QThread):
                     video_id=clean_id,
                     title=self.song_title,
                     artist=self.artist,
+                    clean_title=self.song_title,
+                    clean_artist=self.artist,
                     album=self.album,
                     genre=self.genre or "Pop",
                     thumbnail_url=self.thumbnail_url,
@@ -344,3 +346,31 @@ class TransportWorker(QThread):
             self.finished.emit(ok, msg)
         except Exception as e:
             self.finished.emit(False, str(e))
+
+
+class CrowdMetadataWorker(QThread):
+    """Asynchronous worker to query CasterHub for crowd-cleaned title suggestions."""
+    result = Signal(dict)
+
+    def __init__(self, video_id: str, title: str, artist: str = ""):
+        super().__init__()
+        self.video_id = video_id
+        self.title = title
+        self.artist = artist
+
+    def run(self):
+        async def _query():
+            from app.services.telemetry_service import telemetry_service
+            return await telemetry_service.get_crowd_clean_metadata(
+                video_id=self.video_id,
+                title=self.title,
+                artist=self.artist,
+            )
+
+        try:
+            res = asyncio.run(_query())
+            if res:
+                self.result.emit(res)
+        except Exception as e:
+            logger.debug(f"CrowdMetadataWorker error: {e}")
+
