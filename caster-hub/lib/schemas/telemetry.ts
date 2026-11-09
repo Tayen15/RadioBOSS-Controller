@@ -26,6 +26,8 @@ export const NowPlayingTrackSchema = z.object({
 export const SyncPayloadSchema = z.object({
   station_hash: z.string().min(16),
   station_name: z.string().max(64).optional().default(""),
+  public_stream_url: z.string().optional().default(""),
+  enable_online_requests: z.boolean().optional().default(true),
   app_version: z.string().default("1.0.0"),
   airtime_delta_seconds: z.number().int().nonnegative().default(0),
   cache_saved_bytes: z.number().int().nonnegative().default(0),

@@ -68,6 +68,14 @@ class AppConfig(BaseModel):
         default=True,
         description="Automatically look up and apply crowd-cleaned title suggestions from CasterHub"
     )
+    public_stream_url: str = Field(
+        default="",
+        description="Public live audio stream URL (e.g. Icecast, Shoutcast, ZenoFM) for online web listeners"
+    )
+    enable_online_requests: bool = Field(
+        default=True,
+        description="Enable online song request box on public CasterHub station page"
+    )
     total_airtime_seconds: int = Field(
         default=0,
         description="Total lifetime broadcast studio air-time in seconds"

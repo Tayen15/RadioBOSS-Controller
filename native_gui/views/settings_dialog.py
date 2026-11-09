@@ -463,6 +463,21 @@ class SettingsDialog(QDialog):
         self.chk_crowd_metadata.setToolTip("Otomatis mengambil judul dan artis bersih yang telah dikurasi oleh para penyiar.")
         layout.addWidget(self.chk_crowd_metadata)
 
+        # Public Live Stream URL
+        lbl_stream = QLabel("URL Live Audio Streaming Publik (Icecast / Shoutcast / Zeno.fm):")
+        lbl_stream.setStyleSheet("font-size: 11px; font-weight: 600; color: #FAFAFA;")
+        layout.addWidget(lbl_stream)
+
+        self.txt_stream_url = QLineEdit()
+        self.txt_stream_url.setPlaceholderText("Contoh: https://stream.zeno.fm/f3wvbbqmdg8uv atau http://stream.station.com:8000/live")
+        layout.addWidget(self.txt_stream_url)
+
+        # Online Requests checkbox
+        self.chk_online_requests = QCheckBox("Buka Kotak Request Lagu Online untuk Pendengar di Web")
+        self.chk_online_requests.setStyleSheet("font-size: 11px; color: #FAFAFA;")
+        self.chk_online_requests.setToolTip("Mengizinkan pendengar di web publik mengirim request lagu langsung ke tab 'Request Masuk'.")
+        layout.addWidget(self.chk_online_requests)
+
         # Station info banner
         from app.services.telemetry_service import telemetry_service
         stats = telemetry_service.get_session_stats()
@@ -476,9 +491,40 @@ class SettingsDialog(QDialog):
         lbl_stn_air = QLabel(f"Akumulasi Jam Terbang Siaran: {stats['lifetime_airtime_hours']} Jam")
         lbl_stn_air.setStyleSheet("font-size: 11px; color: #A1A1AA;")
         inf_l.addWidget(lbl_stn_air)
+
+        share_row = QHBoxLayout()
+        hub_url = (self.txt_hub_url.text().strip() or "http://localhost:3000").rstrip("/")
+        self.lbl_station_web_link = QLabel(f"Tautan Pendengar: {hub_url}/station/{telemetry_service.station_hash[:10]}...")
+        self.lbl_station_web_link.setStyleSheet("font-family: 'JetBrains Mono'; font-size: 10px; color: #38BDF8;")
+        share_row.addWidget(self.lbl_station_web_link, 1)
+
+        btn_copy_link = QPushButton("Salin Tautan")
+        btn_copy_link.setStyleSheet("""
+            QPushButton {
+                background-color: #1C1C22;
+                border: 1px solid #272730;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 10px;
+                color: #FAFAFA;
+            }
+            QPushButton:hover { background-color: #272730; }
+        """)
+        btn_copy_link.clicked.connect(self._copy_listener_link)
+        share_row.addWidget(btn_copy_link)
+        inf_l.addLayout(share_row)
+
         layout.addWidget(info_frame)
 
         layout.addStretch()
+
+    def _copy_listener_link(self):
+        from PySide6.QtGui import QGuiApplication
+        from app.services.telemetry_service import telemetry_service
+        hub_url = (self.txt_hub_url.text().strip() or "http://localhost:3000").rstrip("/")
+        full_url = f"{hub_url}/station/{telemetry_service.station_hash}"
+        QGuiApplication.clipboard().setText(full_url)
+        QMessageBox.information(self, "Tautan Disalin", f"Tautan web pendengar berhasil disalin:\n{full_url}")
 
     def _load_current_settings(self):
         cfg = settings_service.get_config()
@@ -502,8 +548,10 @@ class SettingsDialog(QDialog):
         # Cloud settings
         self.txt_hub_url.setText(cfg.casterhub_url or "http://localhost:3000")
         self.txt_station_name.setText(cfg.station_public_name or "")
+        self.txt_stream_url.setText(cfg.public_stream_url or "")
         self.chk_telemetry.setChecked(cfg.enable_telemetry)
         self.chk_crowd_metadata.setChecked(cfg.enable_crowd_metadata)
+        self.chk_online_requests.setChecked(cfg.enable_online_requests)
 
     def _update_storage_usage(self):
         try:
@@ -602,8 +650,10 @@ class SettingsDialog(QDialog):
 
             cfg.casterhub_url = self.txt_hub_url.text().strip()
             cfg.station_public_name = self.txt_station_name.text().strip()
+            cfg.public_stream_url = self.txt_stream_url.text().strip()
             cfg.enable_telemetry = self.chk_telemetry.isChecked()
             cfg.enable_crowd_metadata = self.chk_crowd_metadata.isChecked()
+            cfg.enable_online_requests = self.chk_online_requests.isChecked()
 
             settings_service.update_config(cfg)
 

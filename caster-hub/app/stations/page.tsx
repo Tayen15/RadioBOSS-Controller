@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Navbar } from "@/app/components/Navbar";
 
 async function getStations() {
@@ -125,6 +126,14 @@ export default async function StationsPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Direct Listener Page Link */}
+                <Link
+                  href={`/station/${st.station_hash}`}
+                  className="w-full bg-surfaceControl hover:bg-amberSignal hover:text-carbon text-zinc-300 font-bold text-xs py-2 px-3 rounded-lg text-center transition flex items-center justify-center gap-1.5"
+                >
+                  <span>📻 Dengar Live & Kirim Request</span>
+                </Link>
               </div>
             ))
           )}

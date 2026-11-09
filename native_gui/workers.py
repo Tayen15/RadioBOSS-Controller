@@ -374,3 +374,42 @@ class CrowdMetadataWorker(QThread):
         except Exception as e:
             logger.debug(f"CrowdMetadataWorker error: {e}")
 
+
+class ListenerRequestsWorker(QThread):
+    """Asynchronous worker to fetch pending listener requests from CasterHub."""
+    requests_ready = Signal(list)
+
+    def run(self):
+        async def _fetch():
+            from app.services.telemetry_service import telemetry_service
+            return await telemetry_service.get_station_listener_requests(status="pending")
+
+        try:
+            items = asyncio.run(_fetch())
+            self.requests_ready.emit(items or [])
+        except Exception as e:
+            logger.debug(f"ListenerRequestsWorker error: {e}")
+            self.requests_ready.emit([])
+
+
+class ActionRequestWorker(QThread):
+    """Asynchronous worker to accept/reject/mark played a listener request."""
+    finished = Signal(bool, str)
+
+    def __init__(self, request_id: str, action: str):
+        super().__init__()
+        self.request_id = request_id
+        self.action = action
+
+    def run(self):
+        async def _action():
+            from app.services.telemetry_service import telemetry_service
+            return await telemetry_service.action_listener_request(self.request_id, self.action)
+
+        try:
+            ok = asyncio.run(_action())
+            self.finished.emit(ok, self.action)
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+

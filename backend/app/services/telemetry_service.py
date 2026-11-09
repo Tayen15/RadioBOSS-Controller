@@ -226,6 +226,8 @@ class TelemetryService:
         payload = {
             "station_hash": self.station_hash,
             "station_name": cfg.station_public_name.strip() if cfg.station_public_name else "",
+            "public_stream_url": cfg.public_stream_url.strip() if cfg.public_stream_url else "",
+            "enable_online_requests": cfg.enable_online_requests,
             "app_version": "1.0.0",
             "airtime_delta_seconds": delta_airtime,
             "cache_saved_bytes": self.session_cache_saved_bytes,
@@ -405,6 +407,46 @@ class TelemetryService:
             },
             "live_ticker": [],
         }
+
+    async def get_station_listener_requests(self, status: str = "pending") -> List[Dict[str, Any]]:
+        """Fetch incoming listener song requests for this station from CasterHub."""
+        cfg = settings_service.get_config()
+        if not cfg.enable_online_requests:
+            return []
+
+        hub_url = (cfg.casterhub_url or "http://localhost:3000").rstrip("/")
+        endpoint = f"{hub_url}/api/v1/requests/station?station_hash={self.station_hash}&status={status}"
+
+        try:
+            async with httpx.AsyncClient(timeout=3.5) as client:
+                resp = await client.get(endpoint)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data.get("requests", [])
+        except Exception as e:
+            logger.debug(f"Failed to fetch listener requests: {e}")
+
+        return []
+
+    async def action_listener_request(self, request_id: str, action: str = "accept") -> bool:
+        """Update status of a listener request (accept, reject, played)."""
+        cfg = settings_service.get_config()
+        hub_url = (cfg.casterhub_url or "http://localhost:3000").rstrip("/")
+        endpoint = f"{hub_url}/api/v1/requests/action"
+
+        payload = {
+            "station_hash": self.station_hash,
+            "request_id": request_id,
+            "action": action,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=3.5) as client:
+                resp = await client.post(endpoint, json=payload)
+                return resp.status_code == 200
+        except Exception as e:
+            logger.debug(f"Failed to action listener request: {e}")
+            return False
 
 
 telemetry_service = TelemetryService()

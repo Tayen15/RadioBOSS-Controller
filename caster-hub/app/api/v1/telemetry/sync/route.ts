@@ -17,6 +17,8 @@ export async function POST(request: Request) {
     const {
       station_hash,
       station_name,
+      public_stream_url,
+      enable_online_requests,
       app_version,
       airtime_delta_seconds,
       cache_saved_bytes,
@@ -37,16 +39,20 @@ export async function POST(request: Request) {
       });
     }
 
-    // 1. Update or Insert Station Pulse (Air-Time, Last Seen, Saved Bytes, Station Name, Now Playing)
+    // 1. Update or Insert Station Pulse (Air-Time, Last Seen, Saved Bytes, Station Name, Now Playing, Stream URL)
     const stationsCol = db.collection("stations_pulse");
     const totalMusicSeconds = events.reduce((sum, e) => sum + e.duration_seconds, 0);
 
     const stationUpdateSet: Record<string, any> = {
       app_version,
       last_seen_at: now,
+      enable_online_requests: enable_online_requests !== false,
     };
     if (station_name && station_name.trim().length > 0) {
       stationUpdateSet.station_name = station_name.trim();
+    }
+    if (public_stream_url && public_stream_url.trim().length > 0) {
+      stationUpdateSet.public_stream_url = public_stream_url.trim();
     }
     if (now_playing && now_playing.title) {
       stationUpdateSet.now_playing = now_playing;
