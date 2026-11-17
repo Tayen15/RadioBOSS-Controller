@@ -1,20 +1,11 @@
 import Link from "next/link";
 import { Navbar } from "@/app/components/Navbar";
+import { getStationsData } from "@/lib/queries";
 
-async function getStations() {
-  try {
-    const res = await fetch("http://localhost:3000/api/v1/stations", {
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) return { stations: [], online_count: 0 };
-    return await res.json();
-  } catch {
-    return { stations: [], online_count: 0 };
-  }
-}
+export const dynamic = "force-dynamic";
 
 export default async function StationsPage() {
-  const data = await getStations();
+  const data = await getStationsData().catch(() => ({ stations: [], online_count: 0 }));
   const stations = data.stations || [];
   const onlineCount = data.online_count || 0;
 

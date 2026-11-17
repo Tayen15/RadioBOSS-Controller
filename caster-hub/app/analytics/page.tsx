@@ -1,19 +1,10 @@
 import { Navbar } from "@/app/components/Navbar";
+import { getAnalyticsData } from "@/lib/queries";
 
-async function getAnalytics() {
-  try {
-    const res = await fetch("http://localhost:3000/api/v1/analytics", {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
+export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
-  const data = await getAnalytics();
+  const data = await getAnalyticsData().catch(() => null);
   const peakHours = data?.peak_hours || [];
   const genres = data?.genre_distribution || [];
   const leaderboard = data?.leaderboard || [];

@@ -1,32 +1,14 @@
 import { Navbar } from "@/app/components/Navbar";
+import { getChartsData, getNetworkStatsData } from "@/lib/queries";
 
-async function getCharts(category: string = "top50") {
-  try {
-    const res = await fetch(`http://localhost:3000/api/v1/charts?category=${category}&limit=20`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.tracks || [];
-  } catch {
-    return [];
-  }
-}
-
-async function getStats() {
-  try {
-    const res = await fetch("http://localhost:3000/api/v1/network-stats", {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [tracks, networkData] = await Promise.all([getCharts("top50"), getStats()]);
+  const [chartsRes, networkData] = await Promise.all([
+    getChartsData("top50", 20).catch(() => null),
+    getNetworkStatsData().catch(() => null),
+  ]);
+  const tracks = chartsRes?.tracks || [];
   const stats = networkData?.stats || {
     total_airtime_hours: 1420.5,
     total_songs_dispatched: 18450,
