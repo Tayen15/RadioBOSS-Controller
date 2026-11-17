@@ -53,8 +53,8 @@ class AppConfig(BaseModel):
         description="List of playlist tab names available in RadioBOSS"
     )
     casterhub_url: str = Field(
-        default="http://localhost:3000",
-        description="CasterHub central server URL (e.g. https://casterhub.vercel.app)"
+        default="https://radio-boss-controller.vercel.app",
+        description="CasterHub central server URL (e.g. https://radio-boss-controller.vercel.app)"
     )
     enable_telemetry: bool = Field(
         default=True,

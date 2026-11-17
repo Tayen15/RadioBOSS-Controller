@@ -14,6 +14,7 @@ from app.services.db_service import db_service
 from app.services.settings_service import settings_service
 
 logger = logging.getLogger(__name__)
+DEFAULT_CASTERHUB_URL = "https://radio-boss-controller.vercel.app"
 
 
 def _get_machine_hash() -> str:
@@ -184,7 +185,7 @@ class TelemetryService:
         if not cfg.enable_telemetry:
             return False
 
-        hub_url = (cfg.casterhub_url or "http://localhost:3000").rstrip("/")
+        hub_url = (cfg.casterhub_url or DEFAULT_CASTERHUB_URL).rstrip("/")
         endpoint = f"{hub_url}/api/v1/telemetry/sync"
 
         # Calculate air-time delta since last sync
@@ -223,7 +224,7 @@ class TelemetryService:
                 "timestamp": r["timestamp"],
             })
 
-        payload = {
+        payload: Dict[str, Any] = {
             "station_hash": self.station_hash,
             "station_name": cfg.station_public_name.strip() if cfg.station_public_name else "",
             "public_stream_url": cfg.public_stream_url.strip() if cfg.public_stream_url else "",
@@ -231,12 +232,13 @@ class TelemetryService:
             "app_version": "1.0.0",
             "airtime_delta_seconds": delta_airtime,
             "cache_saved_bytes": self.session_cache_saved_bytes,
-            "now_playing": self.latest_onair_track,
             "events": events_payload,
         }
+        if self.latest_onair_track:
+            payload["now_playing"] = self.latest_onair_track
 
         try:
-            async with httpx.AsyncClient(timeout=4.0) as client:
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 resp = await client.post(endpoint, json=payload)
                 if resp.status_code == 200:
                     # Clear synced events from SQLite outbox
@@ -288,7 +290,7 @@ class TelemetryService:
             logger.debug(f"Error checking crowd metadata cache: {e}")
 
         # 2. Query remote CasterHub metadata API
-        hub_url = (cfg.casterhub_url or "http://localhost:3000").rstrip("/")
+        hub_url = (cfg.casterhub_url or DEFAULT_CASTERHUB_URL).rstrip("/")
         params = {
             "video_id": video_id,
             "title": title,
@@ -335,11 +337,11 @@ class TelemetryService:
     async def get_global_charts(self, category: str = "top50", limit: int = 25) -> List[Dict[str, Any]]:
         """Fetch global radio charts from CasterHub with local SQLite caching."""
         cfg = settings_service.get_config()
-        hub_url = (cfg.casterhub_url or "http://localhost:3000").rstrip("/")
+        hub_url = (cfg.casterhub_url or DEFAULT_CASTERHUB_URL).rstrip("/")
         endpoint = f"{hub_url}/api/v1/charts?category={category}&limit={limit}"
 
         try:
-            async with httpx.AsyncClient(timeout=3.5) as client:
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 resp = await client.get(endpoint)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -387,7 +389,7 @@ class TelemetryService:
     async def get_network_pulse(self) -> Dict[str, Any]:
         """Fetch network stats and live on-air ticker from CasterHub."""
         cfg = settings_service.get_config()
-        hub_url = (cfg.casterhub_url or "http://localhost:3000").rstrip("/")
+        hub_url = (cfg.casterhub_url or DEFAULT_CASTERHUB_URL).rstrip("/")
         endpoint = f"{hub_url}/api/v1/network-stats"
 
         try:
@@ -414,11 +416,11 @@ class TelemetryService:
         if not cfg.enable_online_requests:
             return []
 
-        hub_url = (cfg.casterhub_url or "http://localhost:3000").rstrip("/")
+        hub_url = (cfg.casterhub_url or DEFAULT_CASTERHUB_URL).rstrip("/")
         endpoint = f"{hub_url}/api/v1/requests/station?station_hash={self.station_hash}&status={status}"
 
         try:
-            async with httpx.AsyncClient(timeout=3.5) as client:
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 resp = await client.get(endpoint)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -431,7 +433,7 @@ class TelemetryService:
     async def action_listener_request(self, request_id: str, action: str = "accept") -> bool:
         """Update status of a listener request (accept, reject, played)."""
         cfg = settings_service.get_config()
-        hub_url = (cfg.casterhub_url or "http://localhost:3000").rstrip("/")
+        hub_url = (cfg.casterhub_url or DEFAULT_CASTERHUB_URL).rstrip("/")
         endpoint = f"{hub_url}/api/v1/requests/action"
 
         payload = {
@@ -441,7 +443,7 @@ class TelemetryService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=3.5) as client:
+            async with httpx.AsyncClient(timeout=8.0) as client:
                 resp = await client.post(endpoint, json=payload)
                 return resp.status_code == 200
         except Exception as e:
