@@ -12,6 +12,7 @@ import httpx
 
 from app.services.db_service import db_service
 from app.services.settings_service import settings_service
+from app.version import VERSION
 
 logger = logging.getLogger(__name__)
 DEFAULT_CASTERHUB_URL = "https://radio-boss-controller.vercel.app"
@@ -229,7 +230,7 @@ class TelemetryService:
             "station_name": cfg.station_public_name.strip() if cfg.station_public_name else "",
             "public_stream_url": cfg.public_stream_url.strip() if cfg.public_stream_url else "",
             "enable_online_requests": cfg.enable_online_requests,
-            "app_version": "1.0.0",
+            "app_version": VERSION,
             "airtime_delta_seconds": delta_airtime,
             "cache_saved_bytes": self.session_cache_saved_bytes,
             "events": events_payload,
