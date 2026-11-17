@@ -11,6 +11,7 @@ const config: Config = {
         carbon: "#09090B",
         slateDeck: "#121216",
         control: "#1C1C22",
+        surfaceControl: "#1C1C22",
         borderLine: "#272730",
         amberSignal: "#F59E0B",
         amberHover: "#FBBF24",

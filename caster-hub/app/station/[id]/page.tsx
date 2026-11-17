@@ -55,15 +55,12 @@ export default function StationPage() {
             setStation({
               station_hash: stationId,
               station_name: `Stasiun #${stationId.slice(0, 6).toUpperCase()}`,
-              is_online: true,
-              total_airtime_formatted: "48j 20m",
-              total_songs_played: 1240,
-              public_stream_url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
+              is_online: false,
+              total_airtime_formatted: "0j 0m",
+              total_songs_played: 0,
+              public_stream_url: "",
               enable_online_requests: true,
-              now_playing: {
-                title: "Siaran Langsung Radio",
-                artist: "Studio Master",
-              },
+              now_playing: null,
             });
           }
         }
@@ -182,14 +179,15 @@ export default function StationPage() {
     );
   }
 
-  const streamSrc = station?.public_stream_url || "https://stream.zeno.fm/f3wvbbqmdg8uv";
+  const hasStreamUrl = Boolean(station?.public_stream_url && station.public_stream_url.trim().length > 0);
+  const streamSrc = hasStreamUrl ? station.public_stream_url.trim() : "";
 
   return (
-    <div className="min-h-screen flex flex-col justify-between">
+    <div className="min-h-screen flex flex-col justify-between font-sans">
       <Navbar currentPath="/stations" />
 
-      {/* Hidden Audio Element */}
-      <audio ref={audioRef} src={streamSrc} preload="none" />
+      {/* Audio Element mounted ONLY if public stream URL is configured */}
+      {hasStreamUrl && <audio ref={audioRef} src={streamSrc} preload="none" />}
 
       <main className="max-w-5xl mx-auto px-4 py-8 flex-1 w-full space-y-6">
         {/* Navigation Breadcrumb */}
@@ -199,7 +197,7 @@ export default function StationPage() {
           </Link>
           <button
             onClick={copyStationLink}
-            className="bg-surfaceControl hover:bg-zinc-700 text-zinc-300 hover:text-white border border-borderLine px-3 py-1 rounded transition flex items-center gap-1"
+            className="bg-control hover:bg-zinc-700 text-zinc-300 hover:text-white border border-borderLine px-3 py-1 rounded transition flex items-center gap-1"
           >
             <span>🔗 Bagikan Stasiun</span>
           </button>
@@ -222,7 +220,7 @@ export default function StationPage() {
                       station?.is_online ? "bg-emerald-400 animate-pulse" : "bg-zinc-500"
                     }`}
                   />
-                  {station?.is_online ? "ON-AIR STREAMING LIVE" : "OFFLINE / STANDBY"}
+                  {station?.is_online ? "ON-AIR STUDIO AKTIF" : "OFFLINE / STANDBY"}
                 </span>
                 <span className="text-xs font-mono text-zinc-500">ID: {stationId.slice(0, 10)}</span>
               </div>
@@ -251,48 +249,89 @@ export default function StationPage() {
             </div>
           </div>
 
-          {/* Web Live Audio Player */}
-          <div className="bg-carbon border border-amberSignal/30 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4 w-full sm:w-auto">
-              <button
-                onClick={togglePlay}
-                className={`h-14 w-14 rounded-full flex items-center justify-center font-bold text-xl shrink-0 transition-all ${
-                  isPlaying
-                    ? "bg-red-500 text-white shadow-lg shadow-red-500/30 animate-pulse"
-                    : "bg-amberSignal text-carbon shadow-lg shadow-amberSignal/20 hover:scale-105"
-                }`}
-              >
-                {isPlaying ? "❚❚" : "▶"}
-              </button>
+          {/* Conditional Audio Player or Local Station Notice */}
+          {hasStreamUrl ? (
+            <div className="bg-carbon border border-amberSignal/30 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4 w-full sm:w-auto">
+                <button
+                  onClick={togglePlay}
+                  className={`h-14 w-14 rounded-full flex items-center justify-center font-bold text-xl shrink-0 transition-all ${
+                    isPlaying
+                      ? "bg-red-500 text-white shadow-lg shadow-red-500/30 animate-pulse"
+                      : "bg-amberSignal text-carbon shadow-lg shadow-amberSignal/20 hover:scale-105"
+                  }`}
+                >
+                  {isPlaying ? "❚❚" : "▶"}
+                </button>
 
-              <div className="min-w-0">
-                <div className="text-[10px] font-mono text-amberSignal uppercase tracking-wider font-semibold">
-                  {isPlaying ? "SEDANG MENDENGARKAN LIVE STREAM" : "KLIK TOMBOL UNTUK MENDENGARKAN"}
-                </div>
-                <div className="font-bold text-sm sm:text-base text-white truncate mt-0.5">
-                  {station?.now_playing?.title || "Audio Stream Siaran Studio"}
-                </div>
-                <div className="text-xs text-zinc-400 truncate">
-                  {station?.now_playing?.artist || station?.station_name || "Radio Live"}
+                <div className="min-w-0">
+                  <div className="text-[10px] font-mono text-amberSignal uppercase tracking-wider font-semibold">
+                    {isPlaying ? "SEDANG MENDENGARKAN LIVE STREAM" : "KLIK TOMBOL UNTUK MENDENGARKAN"}
+                  </div>
+                  <div className="font-bold text-sm sm:text-base text-white truncate mt-0.5">
+                    {station?.now_playing?.title || "Audio Stream Siaran Studio"}
+                  </div>
+                  <div className="text-xs text-zinc-400 truncate">
+                    {station?.now_playing?.artist || station?.station_name || "Radio Live"}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Volume Control */}
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-end text-xs font-mono">
-              <span className="text-zinc-400">Vol:</span>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={volume}
-                onChange={handleVolumeChange}
-                className="w-24 sm:w-28 accent-amberSignal"
-              />
-              <span className="text-zinc-300 w-8 text-right">{Math.round(volume * 100)}%</span>
+              {/* Volume Control */}
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end text-xs font-mono">
+                <span className="text-zinc-400">Vol:</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={volume}
+                  onChange={handleVolumeChange}
+                  className="w-24 sm:w-28 accent-amberSignal"
+                />
+                <span className="text-zinc-300 w-8 text-right">{Math.round(volume * 100)}%</span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-carbon border border-borderLine rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 rounded-xl bg-control border border-borderLine flex items-center justify-center text-amberSignal text-2xl shrink-0">
+                  📻
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider font-semibold flex items-center gap-2">
+                    <span className="text-amberSignal font-bold">STUDIO LOKAL</span>
+                    <span className="text-zinc-600">•</span>
+                    <span className={station?.is_online ? "text-emerald-400" : "text-zinc-500"}>
+                      {station?.is_online ? "Sistem Siaran Aktif" : "Standby / Offline"}
+                    </span>
+                  </div>
+                  <div className="font-bold text-sm text-white truncate mt-0.5">
+                    {station?.now_playing?.title ? (
+                      <span>
+                        Sedang On-Air: <span className="text-amberSignal">{station.now_playing.title}</span>
+                        {station.now_playing.artist ? ` - ${station.now_playing.artist}` : ""}
+                      </span>
+                    ) : (
+                      "Stasiun Beroperasi Lokal (Tanpa Streaming Publik)"
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {station?.now_playing?.title
+                      ? "Lagu sedang diputar di studio bilik siar lokal. Penyiar belum menyematkan link audio stream online publik."
+                      : "Stasiun berjalan langsung di PC studio lokal. Penyiar belum mengonfigurasi URL audio stream publik (Icecast/Shoutcast)."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                <span className="text-[11px] font-mono text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  {station?.enable_online_requests !== false ? "Kotak Request Terbuka" : "Request Ditutup"}
+                </span>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Public Song Request Box */}

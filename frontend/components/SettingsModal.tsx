@@ -147,7 +147,7 @@ export function SettingsModal({
   const [systemSpecs, setSystemSpecs] = useState<SystemSpecs | null>(null);
 
   // CasterHub Cloud settings
-  const [casterhubUrl, setCasterhubUrl] = useState("https://radio-boss-controller.vercel.app");
+  const [casterhubUrl, setCasterhubUrl] = useState("https://rcb.oktaa.my.id");
   const [enableTelemetry, setEnableTelemetry] = useState(true);
   const [stationPublicName, setStationPublicName] = useState("");
   const [enableCrowdMetadata, setEnableCrowdMetadata] = useState(true);
@@ -255,7 +255,7 @@ export function SettingsModal({
         );
         setTargetPlaylistTab(cfg.target_playlist_tab || "");
         setCasterhubUrl(
-          cfg.casterhub_url || "https://radio-boss-controller.vercel.app"
+          cfg.casterhub_url || "https://rcb.oktaa.my.id"
         );
         setEnableTelemetry(
           cfg.enable_telemetry !== undefined ? cfg.enable_telemetry : true
@@ -495,7 +495,7 @@ export function SettingsModal({
       auto_cleanup_cache: autoCleanupCache,
       target_playlist_tab: targetPlaylistTab.trim(),
       available_playlist_tabs: availablePlaylistTabs,
-      casterhub_url: casterhubUrl.trim() || "https://radio-boss-controller.vercel.app",
+      casterhub_url: casterhubUrl.trim() || "https://rcb.oktaa.my.id",
       enable_telemetry: enableTelemetry,
       station_public_name: stationPublicName.trim(),
       enable_crowd_metadata: enableCrowdMetadata,
@@ -1392,7 +1392,7 @@ export function SettingsModal({
                           type="url"
                           value={casterhubUrl}
                           onChange={(e) => setCasterhubUrl(e.target.value)}
-                          placeholder="https://radio-boss-controller.vercel.app"
+                          placeholder="https://rcb.oktaa.my.id"
                           className="input input-bordered input-sm w-full bg-base-100 border-base-300 font-mono text-xs text-base-content"
                         />
                       </label>
@@ -1474,12 +1474,12 @@ export function SettingsModal({
                         </div>
                         <div className="flex items-center justify-between gap-2 pt-1 border-t border-base-300">
                           <span className="font-mono text-[11px] text-accent truncate">
-                            {`${(casterhubUrl || "https://radio-boss-controller.vercel.app").replace(/\/+$/, "")}/station/${stationHash}`}
+                            {`${(casterhubUrl || "https://rcb.oktaa.my.id").replace(/\/+$/, "")}/station/${stationHash}`}
                           </span>
                           <button
                             type="button"
                             onClick={() => {
-                              const url = `${(casterhubUrl || "https://radio-boss-controller.vercel.app").replace(/\/+$/, "")}/station/${stationHash}`;
+                              const url = `${(casterhubUrl || "https://rcb.oktaa.my.id").replace(/\/+$/, "")}/station/${stationHash}`;
                               navigator.clipboard?.writeText(url);
                               setCopiedLink(true);
                               setTimeout(() => setCopiedLink(false), 2000);
