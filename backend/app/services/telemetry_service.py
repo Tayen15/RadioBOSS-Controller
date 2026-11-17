@@ -63,6 +63,10 @@ class TelemetryService:
                 "video_id": video_id,
             }
 
+    def clear_onair_track(self):
+        """Clear cached on-air song when RadioBOSS playback is paused, stopped, or idle."""
+        self.latest_onair_track = None
+
     def get_time_belt(self) -> str:
         """Determine time-belt category from local studio hour."""
         hour = time.localtime().tm_hour

@@ -210,17 +210,27 @@ export default function StationPage() {
               <div className="flex items-center gap-2">
                 <span
                   className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 ${
-                    station?.is_online
+                    !station?.is_online
+                      ? "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                      : station?.now_playing
                       ? "bg-emerald-400/15 text-emerald-400 border border-emerald-400/30"
-                      : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                      : "bg-amberSignal/15 text-amberSignal border border-amberSignal/30"
                   }`}
                 >
                   <span
                     className={`h-2 w-2 rounded-full ${
-                      station?.is_online ? "bg-emerald-400 animate-pulse" : "bg-zinc-500"
+                      !station?.is_online
+                        ? "bg-zinc-500"
+                        : station?.now_playing
+                        ? "bg-emerald-400 animate-pulse"
+                        : "bg-amberSignal"
                     }`}
                   />
-                  {station?.is_online ? "ON-AIR STUDIO AKTIF" : "OFFLINE / STANDBY"}
+                  {!station?.is_online
+                    ? "OFFLINE"
+                    : station?.now_playing
+                    ? "ON-AIR (PLAYING)"
+                    : "STANDBY (IDLE)"}
                 </span>
                 <span className="text-xs font-mono text-zinc-500">ID: {stationId.slice(0, 10)}</span>
               </div>

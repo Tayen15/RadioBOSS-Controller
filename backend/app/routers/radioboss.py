@@ -34,12 +34,19 @@ router = APIRouter(prefix="/api", tags=["RadioBOSS"])
 async def get_radioboss_status():
     """Check RadioBOSS connectivity and get live Now Playing info."""
     status_resp = await radioboss_service.check_status()
-    if status_resp.connected and status_resp.now_playing and status_resp.now_playing.title:
-        from app.services.telemetry_service import telemetry_service
+    from app.services.telemetry_service import telemetry_service
+    if (
+        status_resp.connected
+        and status_resp.playback_state == "playing"
+        and status_resp.now_playing
+        and status_resp.now_playing.title
+    ):
         telemetry_service.set_onair_track(
             title=status_resp.now_playing.title,
             artist=status_resp.now_playing.artist or "",
         )
+    else:
+        telemetry_service.clear_onair_track()
     return status_resp
 
 
