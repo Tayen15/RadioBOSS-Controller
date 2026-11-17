@@ -45,6 +45,7 @@ import {
   switchRadioBossTab,
   fetchRadioBossTabs,
   getAppSettings,
+  fetchCasterHubStats,
 } from "@/lib/api";
 
 export default function DashboardPage() {
@@ -59,6 +60,27 @@ export default function DashboardPage() {
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(
     null
   );
+  const [airtimeSummary, setAirtimeSummary] = useState<string>("");
+
+  useEffect(() => {
+    let mounted = true;
+    const loadStats = () => {
+      fetchCasterHubStats()
+        .then((res) => {
+          if (!mounted || !res.success || !res.session) return;
+          setAirtimeSummary(
+            `Jam Terbang: ${res.session.lifetime_airtime_hours}j • Sesi: ${res.session.session_time_formatted} (${res.session.songs_today} lagu)`
+          );
+        })
+        .catch(() => {});
+    };
+    loadStats();
+    const t = setInterval(loadStats, 60000);
+    return () => {
+      mounted = false;
+      clearInterval(t);
+    };
+  }, []);
 
   // Search & Track selection states
   const [searchResults, setSearchResults] = useState<TrackItem[]>([]);
@@ -889,12 +911,20 @@ export default function DashboardPage() {
       {/* Studio Console Footer */}
       <footer className="py-4 px-6 border-t border-base-300 text-center text-xs text-base-content/60">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="flex items-center gap-2">
+          <p className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
             <span className="font-semibold text-base-content/80">
               Radio Caster Bridge
             </span>
             <span>•</span>
             <span className="font-mono tabular-nums">v{APP_VERSION}</span>
+            {airtimeSummary && (
+              <>
+                <span>•</span>
+                <span className="font-mono tabular-nums text-primary font-semibold">
+                  {airtimeSummary}
+                </span>
+              </>
+            )}
           </p>
           <p>
             Crafted by{" "}
