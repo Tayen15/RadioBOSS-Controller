@@ -28,6 +28,8 @@ import {
   RotateCcw,
   Cpu,
   Sparkles,
+  Globe,
+  Copy,
 } from "lucide-react";
 import {
   AppConfig,
@@ -48,6 +50,7 @@ import {
   clearAudioCache,
   fetchCachedTracks,
   trimAudioCache,
+  fetchCasterHubStats,
 } from "@/lib/api";
 
 interface SettingsModalProps {
@@ -57,12 +60,13 @@ interface SettingsModalProps {
   onOpenUpdateModal?: () => void;
 }
 
-type SettingsTab = "connection" | "broadcast" | "storage" | "system";
+type SettingsTab = "connection" | "broadcast" | "storage" | "casterhub" | "system";
 
 const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "connection", label: "Koneksi RadioBOSS", icon: Radio },
   { id: "broadcast", label: "Format & Audio", icon: Sliders },
   { id: "storage", label: "Penyimpanan & Disk", icon: HardDrive },
+  { id: "casterhub", label: "CasterHub Cloud", icon: Globe },
   { id: "system", label: "Sistem & Info", icon: Info },
 ];
 
@@ -141,6 +145,17 @@ export function SettingsModal({
   const [targetPlaylistTab, setTargetPlaylistTab] = useState<string>("");
   const [availablePlaylistTabs, setAvailablePlaylistTabs] = useState<string[]>([]);
   const [systemSpecs, setSystemSpecs] = useState<SystemSpecs | null>(null);
+
+  // CasterHub Cloud settings
+  const [casterhubUrl, setCasterhubUrl] = useState("https://radio-boss-controller.vercel.app");
+  const [enableTelemetry, setEnableTelemetry] = useState(true);
+  const [stationPublicName, setStationPublicName] = useState("");
+  const [enableCrowdMetadata, setEnableCrowdMetadata] = useState(true);
+  const [publicStreamUrl, setPublicStreamUrl] = useState("");
+  const [enableOnlineRequests, setEnableOnlineRequests] = useState(true);
+  const [stationHash, setStationHash] = useState("");
+  const [lifetimeAirtime, setLifetimeAirtime] = useState(0);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -239,6 +254,28 @@ export function SettingsModal({
           cfg.auto_cleanup_cache !== undefined ? cfg.auto_cleanup_cache : true
         );
         setTargetPlaylistTab(cfg.target_playlist_tab || "");
+        setCasterhubUrl(
+          cfg.casterhub_url || "https://radio-boss-controller.vercel.app"
+        );
+        setEnableTelemetry(
+          cfg.enable_telemetry !== undefined ? cfg.enable_telemetry : true
+        );
+        setStationPublicName(cfg.station_public_name || "");
+        setEnableCrowdMetadata(
+          cfg.enable_crowd_metadata !== undefined ? cfg.enable_crowd_metadata : true
+        );
+        setPublicStreamUrl(cfg.public_stream_url || "");
+        setEnableOnlineRequests(
+          cfg.enable_online_requests !== undefined ? cfg.enable_online_requests : true
+        );
+
+        fetchCasterHubStats()
+          .then((st) => {
+            if (!isMounted) return;
+            setStationHash(st.station_hash || "");
+            setLifetimeAirtime(st.session?.lifetime_airtime_hours || 0);
+          })
+          .catch(() => {});
         if (
           cfg.available_playlist_tabs &&
           Array.isArray(cfg.available_playlist_tabs) &&
@@ -458,6 +495,12 @@ export function SettingsModal({
       auto_cleanup_cache: autoCleanupCache,
       target_playlist_tab: targetPlaylistTab.trim(),
       available_playlist_tabs: availablePlaylistTabs,
+      casterhub_url: casterhubUrl.trim() || "https://radio-boss-controller.vercel.app",
+      enable_telemetry: enableTelemetry,
+      station_public_name: stationPublicName.trim(),
+      enable_crowd_metadata: enableCrowdMetadata,
+      public_stream_url: publicStreamUrl.trim(),
+      enable_online_requests: enableOnlineRequests,
     };
 
     try {
@@ -1328,7 +1371,131 @@ export function SettingsModal({
                   </div>
                 )}
 
-                {/* TAB 4: SISTEM & INFO */}
+                {/* TAB 4: CASTERHUB CLOUD */}
+                {activeTab === "casterhub" && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div>
+                      <h4 className="text-xs font-bold text-base-content uppercase tracking-wider mb-1">
+                        CasterHub Cloud &amp; Listener Network
+                      </h4>
+                      <p className="text-xs text-base-content/60">
+                        Hubungkan studio ke Global Radio Charts, telemetri Zero-PII, dan Kotak Request Online.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="block space-y-1">
+                        <span className="text-xs font-semibold text-base-content">
+                          CasterHub Server URL
+                        </span>
+                        <input
+                          type="url"
+                          value={casterhubUrl}
+                          onChange={(e) => setCasterhubUrl(e.target.value)}
+                          placeholder="https://radio-boss-controller.vercel.app"
+                          className="input input-bordered input-sm w-full bg-base-100 border-base-300 font-mono text-xs text-base-content"
+                        />
+                      </label>
+
+                      <label className="block space-y-1">
+                        <span className="text-xs font-semibold text-base-content">
+                          Nama Publik Stasiun (Opsional)
+                        </span>
+                        <input
+                          type="text"
+                          value={stationPublicName}
+                          onChange={(e) => setStationPublicName(e.target.value)}
+                          placeholder="Kosongkan untuk tampil sebagai Stasiun Anonim"
+                          className="input input-bordered input-sm w-full bg-base-100 border-base-300 text-xs text-base-content"
+                        />
+                      </label>
+
+                      <label className="block space-y-1">
+                        <span className="text-xs font-semibold text-base-content">
+                          URL Live Stream Publik (Icecast / Shoutcast / ZenoFM)
+                        </span>
+                        <input
+                          type="url"
+                          value={publicStreamUrl}
+                          onChange={(e) => setPublicStreamUrl(e.target.value)}
+                          placeholder="https://stream.zeno.fm/..."
+                          className="input input-bordered input-sm w-full bg-base-100 border-base-300 font-mono text-xs text-base-content"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-base-100 border border-base-300 space-y-2.5">
+                      <label className="flex items-center justify-between gap-3 cursor-pointer">
+                        <span className="text-xs font-medium text-base-content">
+                          Kirim Statistik Pemutaran Anonim (Zero-PII)
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={enableTelemetry}
+                          onChange={(e) => setEnableTelemetry(e.target.checked)}
+                          className="toggle toggle-primary toggle-sm"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between gap-3 cursor-pointer">
+                        <span className="text-xs font-medium text-base-content">
+                          Saran Judul Bersih Komunitas (Crowd-Cleaned)
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={enableCrowdMetadata}
+                          onChange={(e) => setEnableCrowdMetadata(e.target.checked)}
+                          className="toggle toggle-primary toggle-sm"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between gap-3 cursor-pointer">
+                        <span className="text-xs font-medium text-base-content">
+                          Buka Kotak Request Online untuk Pendengar
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={enableOnlineRequests}
+                          onChange={(e) => setEnableOnlineRequests(e.target.checked)}
+                          className="toggle toggle-primary toggle-sm"
+                        />
+                      </label>
+                    </div>
+
+                    {stationHash && (
+                      <div className="p-3.5 rounded-xl bg-base-100 border border-base-300 space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[11px] text-primary">
+                            Station Hash: {stationHash.slice(0, 16)}...
+                          </span>
+                          <span className="font-mono text-[11px] text-base-content/70">
+                            Jam Terbang: {lifetimeAirtime} Jam
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-base-300">
+                          <span className="font-mono text-[11px] text-accent truncate">
+                            {`${(casterhubUrl || "https://radio-boss-controller.vercel.app").replace(/\/+$/, "")}/station/${stationHash}`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = `${(casterhubUrl || "https://radio-boss-controller.vercel.app").replace(/\/+$/, "")}/station/${stationHash}`;
+                              navigator.clipboard?.writeText(url);
+                              setCopiedLink(true);
+                              setTimeout(() => setCopiedLink(false), 2000);
+                            }}
+                            className="btn btn-xs h-7 px-2.5 rounded-md bg-base-200 border border-base-300 text-xs font-semibold text-base-content hover:bg-base-300 gap-1 shrink-0"
+                          >
+                            {copiedLink ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+                            <span>{copiedLink ? "Disalin" : "Salin Link"}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 5: SISTEM & INFO */}
                 {activeTab === "system" && (
                   <div className="space-y-4 animate-fade-in">
                     <div>

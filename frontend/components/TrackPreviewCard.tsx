@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Music2,
@@ -22,9 +22,10 @@ import {
   Wand2,
   RotateCcw,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { TrackItem, CachedTrackItem } from "@/lib/types";
-import { getStreamRelayUrl } from "@/lib/api";
+import { getStreamRelayUrl, fetchCrowdCleanMetadata } from "@/lib/api";
 import { cleanBroadcastTitle } from "@/lib/titleCleaner";
 import { LyricsModal } from "@/components/LyricsModal";
 
@@ -68,6 +69,11 @@ export function TrackPreviewCard({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [prevTrackId, setPrevTrackId] = useState(track.video_id);
   const [metadataSaveMsg, setMetadataSaveMsg] = useState<string | null>(null);
+  const [crowdSuggestion, setCrowdSuggestion] = useState<{
+    title: string;
+    artist: string;
+    votes: number;
+  } | null>(null);
 
   // Sync state during render when selected track changes
   if (track.video_id !== prevTrackId) {
@@ -79,7 +85,26 @@ export function TrackPreviewCard({
     setAudioState("idle");
     setAudioError(null);
     setMetadataSaveMsg(null);
+    setCrowdSuggestion(null);
   }
+
+  useEffect(() => {
+    let active = true;
+    const rawArtist = track.artists.filter(Boolean).join(", ");
+    fetchCrowdCleanMetadata(track.video_id, track.title, rawArtist).then((meta) => {
+      if (!active || !meta || !meta.clean_title) return;
+      if (meta.clean_title.trim().toLowerCase() !== track.title.trim().toLowerCase()) {
+        setCrowdSuggestion({
+          title: meta.clean_title.trim(),
+          artist: (meta.clean_artist || rawArtist).trim(),
+          votes: meta.votes_count || 1,
+        });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [track.video_id, track.title, track.artists]);
 
   const isMetadataCustomized =
     editedTitle.trim() !== track.title.trim() ||
@@ -278,6 +303,31 @@ export function TrackPreviewCard({
                     ✓ {metadataSaveMsg}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Crowd-Cleaned Community Metadata Suggestion */}
+            {crowdSuggestion && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditedTitle(crowdSuggestion.title);
+                    if (crowdSuggestion.artist) setEditedArtist(crowdSuggestion.artist);
+                    if (onUpdateMetadata) {
+                      onUpdateMetadata(track.video_id, crowdSuggestion.title, crowdSuggestion.artist);
+                    }
+                    setCrowdSuggestion(null);
+                    setMetadataSaveMsg("Judul komunitas diterapkan!");
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/15 border border-primary/35 text-primary hover:bg-primary/25 text-xs font-semibold transition-colors"
+                >
+                  <Sparkles className="h-3 w-3 shrink-0" />
+                  <span className="truncate max-w-xs">
+                    Saran Komunitas: &ldquo;{crowdSuggestion.title}&rdquo;
+                    {crowdSuggestion.votes > 1 ? ` (${crowdSuggestion.votes} stasiun)` : ""}
+                  </span>
+                </button>
               </div>
             )}
 

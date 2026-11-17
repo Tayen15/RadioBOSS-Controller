@@ -87,6 +87,13 @@ export interface AppConfig {
   auto_cleanup_cache?: boolean;
   target_playlist_tab?: string;
   available_playlist_tabs?: string[];
+  casterhub_url?: string;
+  enable_telemetry?: boolean;
+  station_public_name?: string;
+  enable_crowd_metadata?: boolean;
+  public_stream_url?: string;
+  enable_online_requests?: boolean;
+  total_airtime_seconds?: number;
 }
 
 export interface SystemSpecs {
@@ -323,6 +330,66 @@ export interface UpdateDownloadStatus {
   file_path: string | null;
   file_name: string | null;
   error: string | null;
+}
+
+export interface CasterHubChartTrack {
+  rank: number;
+  video_id: string;
+  title: string;
+  artist: string;
+  album?: string;
+  genre?: string;
+  duration_formatted?: string;
+  total_plays: number;
+  unique_stations: number;
+  movement?: string;
+}
+
+export interface CasterHubChartsResponse {
+  success: boolean;
+  category: string;
+  tracks: CasterHubChartTrack[];
+}
+
+export interface CasterHubStatsResponse {
+  success: boolean;
+  station_hash: string;
+  session: {
+    session_time_formatted: string;
+    session_seconds: number;
+    lifetime_airtime_hours: number;
+    songs_today: number;
+    session_songs_dispatched: number;
+    session_cache_saved_mb: number;
+    station_hash_short: string;
+    station_name: string;
+  };
+  network: {
+    active_stations_online?: number;
+    total_airtime_hours?: number;
+    total_songs_dispatched?: number;
+  };
+}
+
+export interface CasterHubCrowdMetadata {
+  clean_title: string;
+  clean_artist: string;
+  original_title: string;
+  votes_count: number;
+  is_crowd_cleaned: boolean;
+}
+
+export interface CasterHubListenerRequest {
+  id: string;
+  sender_name: string;
+  message: string;
+  video_id: string;
+  title: string;
+  artist: string;
+  thumbnail_url?: string;
+  duration_formatted?: string;
+  status: string;
+  created_at: string;
 }
 
 

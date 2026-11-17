@@ -5,6 +5,7 @@ from .settings import router as settings_router
 from .recommendations import router as recommendations_router
 from .playlist_sets import router as playlist_sets_router
 from .update import router as update_router
+from .casterhub import router as casterhub_router
 
 __all__ = [
     "search_router",
@@ -14,4 +15,5 @@ __all__ = [
     "recommendations_router",
     "playlist_sets_router",
     "update_router",
+    "casterhub_router",
 ]

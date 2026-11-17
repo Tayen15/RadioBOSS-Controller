@@ -52,6 +52,34 @@ class AppConfig(BaseModel):
         default_factory=list,
         description="List of playlist tab names available in RadioBOSS"
     )
+    casterhub_url: str = Field(
+        default="https://radio-boss-controller.vercel.app",
+        description="CasterHub central server URL (e.g. https://radio-boss-controller.vercel.app)"
+    )
+    enable_telemetry: bool = Field(
+        default=True,
+        description="Share anonymous playback counts for Global Radio Charts & Network Stats"
+    )
+    station_public_name: str = Field(
+        default="",
+        description="Optional public station or studio name for CasterHub Station Directory (leave blank for anonymous)"
+    )
+    enable_crowd_metadata: bool = Field(
+        default=True,
+        description="Automatically look up and apply crowd-cleaned title suggestions from CasterHub"
+    )
+    public_stream_url: str = Field(
+        default="",
+        description="Public live audio stream URL (e.g. Icecast, Shoutcast, ZenoFM) for online web listeners"
+    )
+    enable_online_requests: bool = Field(
+        default=True,
+        description="Enable online song request box on public CasterHub station page"
+    )
+    total_airtime_seconds: int = Field(
+        default=0,
+        description="Total lifetime broadcast studio air-time in seconds"
+    )
 
 
 

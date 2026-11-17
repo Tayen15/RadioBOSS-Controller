@@ -31,7 +31,7 @@ export const SyncPayloadSchema = z.object({
   app_version: z.string().default("1.0.0"),
   airtime_delta_seconds: z.number().int().nonnegative().default(0),
   cache_saved_bytes: z.number().int().nonnegative().default(0),
-  now_playing: NowPlayingTrackSchema.optional(),
+  now_playing: NowPlayingTrackSchema.nullable().optional(),
   events: z.array(AirplayEventSchema).default([]),
 });
 
