@@ -218,7 +218,10 @@ export async function getNetworkStatsData(): Promise<NetworkStatsResult> {
 
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
   const activeStationsCount = await stationsCol.countDocuments({
-    last_seen_at: { $gte: tenMinutesAgo },
+    $or: [
+      { last_seen_at: { $gte: tenMinutesAgo } },
+      { last_seen_at: { $gte: tenMinutesAgo.toISOString() } },
+    ],
   });
 
   const totalsAgg = await stationsCol
