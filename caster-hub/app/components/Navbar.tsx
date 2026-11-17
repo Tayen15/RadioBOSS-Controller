@@ -5,7 +5,7 @@ interface NavbarProps {
   currentPath?: "/" | "/stations" | "/analytics";
 }
 
-export function Navbar({ activeStationsOnline = 12, currentPath = "/" }: NavbarProps) {
+export function Navbar({ activeStationsOnline = 0, currentPath = "/" }: NavbarProps) {
   const navLinks = [
     { href: "/", label: "Global Charts", id: "/" },
     { href: "/stations", label: "Direktori Stasiun", id: "/stations" },
@@ -46,9 +46,23 @@ export function Navbar({ activeStationsOnline = 12, currentPath = "/" }: NavbarP
         </div>
 
         <div className="flex items-center gap-4 text-xs font-mono">
-          <div className="flex items-center gap-2 text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>{activeStationsOnline} Stasiun Online</span>
+          <div
+            className={`flex items-center gap-2 px-2.5 py-1 rounded border transition ${
+              activeStationsOnline > 0
+                ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/20"
+                : "text-zinc-400 bg-zinc-900/80 border-borderLine"
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                activeStationsOnline > 0 ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"
+              }`}
+            />
+            <span>
+              {activeStationsOnline > 0
+                ? `${activeStationsOnline} Stasiun Online`
+                : "0 Stasiun Online (Standby)"}
+            </span>
           </div>
         </div>
       </div>

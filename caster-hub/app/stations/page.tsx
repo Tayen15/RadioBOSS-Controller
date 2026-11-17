@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Navbar } from "@/app/components/Navbar";
+import { Footer } from "@/app/components/Footer";
 import { getStationsData } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -141,9 +142,7 @@ export default async function StationsPage() {
         </div>
       </main>
 
-      <footer className="border-t border-borderLine bg-slateDeck/50 py-4 text-center text-xs text-zinc-500 font-mono">
-        CasterHub Broadcast Intelligence Network &copy; {new Date().getFullYear()} • Zero-PII Anonymous Telemetry
-      </footer>
+      <Footer />
     </div>
   );
 }

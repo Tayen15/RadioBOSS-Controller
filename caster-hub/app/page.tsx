@@ -1,4 +1,5 @@
 import { Navbar } from "@/app/components/Navbar";
+import { Footer } from "@/app/components/Footer";
 import { getChartsData, getNetworkStatsData } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -10,11 +11,11 @@ export default async function HomePage() {
   ]);
   const tracks = chartsRes?.tracks || [];
   const stats = networkData?.stats || {
-    total_airtime_hours: 1420.5,
-    total_songs_dispatched: 18450,
-    total_music_hours: 1140.2,
-    total_cache_saved_gb: 92.4,
-    active_stations_online: 12,
+    total_airtime_hours: 0,
+    total_songs_dispatched: 0,
+    total_music_hours: 0,
+    total_cache_saved_gb: 0,
+    active_stations_online: 0,
   };
   const liveTicker = networkData?.live_ticker || [];
 
@@ -131,9 +132,7 @@ export default async function HomePage() {
       </main>
 
       {/* Footer Bar */}
-      <footer className="border-t border-borderLine bg-slateDeck/50 py-4 text-center text-xs text-zinc-500 font-mono">
-        CasterHub Broadcast Intelligence Network &copy; {new Date().getFullYear()} • Zero-PII Anonymous Telemetry
-      </footer>
+      <Footer />
     </div>
   );
 }

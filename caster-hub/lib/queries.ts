@@ -480,8 +480,17 @@ export async function getAnalyticsData() {
       };
     });
 
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const activeStationsCount = await stationsCol.countDocuments({
+      $or: [
+        { last_seen_at: { $gte: tenMinutesAgo } },
+        { last_seen_at: { $gte: tenMinutesAgo.toISOString() } },
+      ],
+    });
+
     return {
       success: true,
+      active_stations_online: activeStationsCount,
       peak_hours: peakHours,
       genre_distribution: genreDistribution,
       leaderboard: leaderBoard,
@@ -491,6 +500,7 @@ export async function getAnalyticsData() {
   return {
     success: true,
     mock_mode: true,
+    active_stations_online: 0,
     peak_hours: [
       { hour: "00:00", weight: 15 },
       { hour: "02:00", weight: 8 },

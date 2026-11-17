@@ -1,17 +1,19 @@
 import { Navbar } from "@/app/components/Navbar";
+import { Footer } from "@/app/components/Footer";
 import { getAnalyticsData } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
   const data = await getAnalyticsData().catch(() => null);
+  const activeStationsOnline = data?.active_stations_online ?? 0;
   const peakHours = data?.peak_hours || [];
   const genres = data?.genre_distribution || [];
   const leaderboard = data?.leaderboard || [];
 
   return (
-    <div className="min-h-screen flex flex-col justify-between">
-      <Navbar currentPath="/analytics" />
+    <div className="min-h-screen flex flex-col justify-between font-sans">
+      <Navbar activeStationsOnline={activeStationsOnline} currentPath="/analytics" />
 
       <main className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
         {/* Title Section */}
@@ -76,30 +78,36 @@ export default async function AnalyticsPage() {
             </p>
 
             <div className="space-y-3 pt-2">
-              {genres.map((g: any, idx: number) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-semibold text-zinc-200">{g.genre}</span>
-                    <span className="font-mono text-zinc-400">
-                      {g.count?.toLocaleString()} rotasi ({g.percentage}%)
-                    </span>
-                  </div>
-                  <div className="h-2 w-full bg-carbon rounded-full overflow-hidden border border-borderLine">
-                    <div
-                      style={{ width: `${g.percentage}%` }}
-                      className={`h-full rounded-full ${
-                        idx === 0
-                          ? "bg-amberSignal"
-                          : idx === 1
-                          ? "bg-cyan-400"
-                          : idx === 2
-                          ? "bg-emerald-400"
-                          : "bg-zinc-500"
-                      }`}
-                    />
-                  </div>
+              {genres.length === 0 ? (
+                <div className="py-8 text-center text-zinc-500 text-xs">
+                  Sedang mengagregasi data rotasi genre musik siaran...
                 </div>
-              ))}
+              ) : (
+                genres.map((g: any, idx: number) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-semibold text-zinc-200">{g.genre}</span>
+                      <span className="font-mono text-zinc-400">
+                        {g.count?.toLocaleString()} rotasi ({g.percentage}%)
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-carbon rounded-full overflow-hidden border border-borderLine">
+                      <div
+                        style={{ width: `${g.percentage}%` }}
+                        className={`h-full rounded-full ${
+                          idx === 0
+                            ? "bg-amberSignal"
+                            : idx === 1
+                            ? "bg-cyan-400"
+                            : idx === 2
+                            ? "bg-emerald-400"
+                            : "bg-zinc-500"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </section>
 
@@ -113,45 +121,49 @@ export default async function AnalyticsPage() {
             </p>
 
             <div className="divide-y divide-borderLine pt-1">
-              {leaderboard.map((lb: any) => (
-                <div key={lb.rank} className="py-2.5 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span
-                      className={`font-mono font-bold text-xs w-5 h-5 flex items-center justify-center rounded ${
-                        lb.rank === 1
-                          ? "bg-amberSignal text-carbon"
-                          : lb.rank === 2
-                          ? "bg-zinc-300 text-carbon"
-                          : lb.rank === 3
-                          ? "bg-amber-800 text-amber-200"
-                          : "bg-surfaceControl text-zinc-400"
-                      }`}
-                    >
-                      {lb.rank}
-                    </span>
-                    <span className="font-bold text-sm text-white truncate">
-                      {lb.station_name}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-4 text-xs font-mono shrink-0">
-                    <span className="text-amberSignal font-bold">
-                      {lb.total_airtime_hours} Jam
-                    </span>
-                    <span className="text-zinc-500">
-                      {lb.total_songs_played.toLocaleString()} Lagu
-                    </span>
-                  </div>
+              {leaderboard.length === 0 ? (
+                <div className="py-8 text-center text-zinc-500 text-xs">
+                  Belum ada akumulasi jam siaran stasiun tercatat.
                 </div>
-              ))}
+              ) : (
+                leaderboard.map((lb: any) => (
+                  <div key={lb.rank} className="py-2.5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`font-mono font-bold text-xs w-5 h-5 flex items-center justify-center rounded ${
+                          lb.rank === 1
+                            ? "bg-amberSignal text-carbon"
+                            : lb.rank === 2
+                            ? "bg-zinc-300 text-carbon"
+                            : lb.rank === 3
+                            ? "bg-amber-800 text-amber-200"
+                            : "bg-surfaceControl text-zinc-400"
+                        }`}
+                      >
+                        {lb.rank}
+                      </span>
+                      <span className="font-bold text-sm text-white truncate">
+                        {lb.station_name}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs font-mono shrink-0">
+                      <span className="text-amberSignal font-bold">
+                        {lb.total_airtime_hours} Jam
+                      </span>
+                      <span className="text-zinc-500">
+                        {lb.total_songs_played.toLocaleString()} Lagu
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </section>
         </div>
       </main>
 
-      <footer className="border-t border-borderLine bg-slateDeck/50 py-4 text-center text-xs text-zinc-500 font-mono">
-        CasterHub Broadcast Intelligence Network &copy; {new Date().getFullYear()} • Zero-PII Anonymous Telemetry
-      </footer>
+      <Footer />
     </div>
   );
 }
