@@ -880,6 +880,34 @@ async fn handle_command(
             });
         }
 
+        AppCommand::DeleteCachedFile(video_id) => {
+            let cfg = services.settings.get_config();
+            if let Some(item) = services.db.get_cached_track(&video_id) {
+                if let Some(ref fp) = item.file_path {
+                    let p = std::path::PathBuf::from(fp);
+                    let _ = std::fs::remove_file(&p);
+                    let _ = std::fs::remove_file(p.with_extension("jpg"));
+                }
+            }
+            services.db.mark_video_evicted(&video_id);
+            let stats = services.cache.get_cache_stats(&cfg);
+            let cached_list = services.db.get_all_cached_tracks(200);
+            let ids: HashSet<String> = cached_list
+                .iter()
+                .filter(|c| c.is_cached)
+                .map(|c| c.video_id.clone())
+                .collect();
+            emit(AppEvent::CachedIdsUpdated(ids));
+            emit(AppEvent::CacheStatsUpdated {
+                stats,
+                cached_tracks: cached_list,
+            });
+            emit(AppEvent::Toast {
+                is_error: false,
+                text: "File cache dihapus dari disk".to_string(),
+            });
+        }
+
         AppCommand::CheckForUpdates { manual } => {
             emit(AppEvent::LoadingState {
                 key: "update_check",

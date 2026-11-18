@@ -85,6 +85,7 @@ pub enum AppCommand {
     RefreshCacheStats,
     TrimCache,
     ClearCache,
+    DeleteCachedFile(String),
     CheckForUpdates {
         manual: bool,
     },

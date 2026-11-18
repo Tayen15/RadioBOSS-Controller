@@ -6,9 +6,10 @@ use crate::models::config::{AppConfig, TitleFormatMode};
 use crate::models::APP_VERSION;
 use crate::services::system_service;
 use crate::ui::theme::{
-    amber_button, bold_text, danger_button, dialog_frame, lcd_frame, mono_text, semibold_text,
-    slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CONTROL_BG,
-    SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    amber_button, bold_text, danger_button, dialog_frame, lcd_frame, list_row_frame, mono_text,
+    semibold_text, slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR,
+    CONTROL_BG, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY,
+    TEXT_SECONDARY,
 };
 use crate::ui::toast::ToastItem;
 
@@ -30,7 +31,7 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         .movable(true)
         .frame(dialog_frame())
         .default_width(740.0)
-        .default_height(540.0)
+        .default_height(580.0)
         .show(ctx, |ui| {
             ui.horizontal_top(|ui| {
                 // Left Sidebar Navigation (5 Tabs)
@@ -78,7 +79,7 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                     ui.set_min_width(510.0);
                     egui::ScrollArea::vertical()
                         .id_salt("settings_content_scroll")
-                        .max_height(430.0)
+                        .max_height(475.0)
                         .show(ui, |ui| match app.settings_tab {
                             SettingsTab::Connection => render_connection_tab(ui, app),
                             SettingsTab::Broadcast => render_broadcast_tab(ui, app),
@@ -439,28 +440,72 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
         });
     });
 
-    if !app.cached_tracks_list.is_empty() {
+    let cached_only: Vec<_> = app
+        .cached_tracks_list
+        .iter()
+        .filter(|c| c.is_cached)
+        .cloned()
+        .collect();
+
+    if !cached_only.is_empty() {
         ui.add_space(8.0);
-        ui.label(bold_text("Daftar File Cache Audio Studio", 12.0, TEXT_PRIMARY));
-        egui::ScrollArea::vertical()
-            .id_salt("settings_cached_files_scroll")
-            .max_height(130.0)
-            .show(ui, |ui| {
-                for c in &app.cached_tracks_list {
-                    if !c.is_cached {
-                        continue;
-                    }
-                    ui.horizontal(|ui| {
-                        ui.label(mono_text(format!("{:.1} MB", c.file_size_mb), 11.0, SIGNAL_CYAN));
-                        ui.label(mono_text(format!("{}x", c.play_count), 11.0, AMBER_PRIMARY));
-                        ui.label(semibold_text(
-                            format!("{} - {}", c.artist, c.title),
-                            11.5,
-                            TEXT_PRIMARY,
-                        ));
-                    });
-                }
+        lcd_frame().show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(bold_text("Lagu Tersimpan di Disk", 12.5, TEXT_PRIMARY));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    status_pill(
+                        ui,
+                        &format!(
+                            "{} file • {:.1} MB",
+                            cached_only.len(),
+                            app.cache_stats.total_size_mb
+                        ),
+                        SIGNAL_CYAN,
+                    );
+                });
             });
+            ui.label(semibold_text(
+                "Diputar instan tanpa mengunduh ulang. Hapus item tertentu jika ingin mengosongkan ruang.",
+                11.0,
+                TEXT_SECONDARY,
+            ));
+            ui.add_space(6.0);
+
+            for c in cached_only {
+                list_row_frame(false).show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.vertical(|ui| {
+                            ui.spacing_mut().item_spacing.y = 1.0;
+                            ui.set_max_width((ui.available_width() - 185.0).max(120.0));
+                            ui.add(
+                                egui::Label::new(semibold_text(&c.title, 12.0, TEXT_PRIMARY))
+                                    .truncate(),
+                            );
+                            ui.add(
+                                egui::Label::new(semibold_text(&c.artist, 11.0, TEXT_SECONDARY))
+                                    .truncate(),
+                            );
+                        });
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if danger_button(ui, "Hapus").clicked() {
+                                app.send_cmd(AppCommand::DeleteCachedFile(c.video_id.clone()));
+                            }
+                            ui.label(mono_text(
+                                format!("{:.1} MB", c.file_size_mb),
+                                11.0,
+                                SIGNAL_CYAN,
+                            ));
+                            ui.label(mono_text(
+                                format!("{}x putar", c.play_count),
+                                11.0,
+                                AMBER_PRIMARY,
+                            ));
+                        });
+                    });
+                });
+                ui.add_space(3.0);
+            }
+        });
     }
 }
 
