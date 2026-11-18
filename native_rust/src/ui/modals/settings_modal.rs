@@ -530,12 +530,12 @@ fn render_system_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 
     lcd_frame().show(ui, |ui| {
         ui.label(bold_text(
-            format!("Radio Caster Bridge v{APP_VERSION}"),
+            format!("Radio Caster Bridge Studio (RCB Studio) v{APP_VERSION}"),
             13.0,
             AMBER_PRIMARY,
         ));
         ui.label(semibold_text(
-            "Arsitektur: Pure Native Rust GPU Engine (Zero-WebView, Zero-Python)",
+            "Copyright © 2026 Radio Caster Bridge Studio • Tayen (hi.oktaa.my.id)",
             12.0,
             TEXT_PRIMARY,
         ));

@@ -65,7 +65,7 @@ fn main() -> eframe::Result<()> {
     };
 
     let mut viewport = egui::ViewportBuilder::default()
-        .with_title("Radio Caster Bridge | YouTube Music Studio Streamer & RadioBOSS Controller")
+        .with_title("Radio Caster Bridge Studio | RCB Studio")
         .with_inner_size([1360.0, 860.0])
         .with_min_inner_size([1024.0, 680.0]);
 
@@ -79,7 +79,7 @@ fn main() -> eframe::Result<()> {
     };
 
     eframe::run_native(
-        "Radio Caster Bridge",
+        "Radio Caster Bridge Studio",
         native_options,
         Box::new(move |cc| {
             let _enter = rt.enter();

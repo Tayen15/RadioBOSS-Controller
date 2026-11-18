@@ -1,10 +1,14 @@
 [package]
-name = "radioboss_caster"
+name = "rcb_studio"
 version = "0.9.4"
 edition = "2021"
 authors = ["Firtiansyah Okta <tiantiantitik@gmail.com>"]
-description = "Radio Caster Bridge - Pure Native Broadcast Studio Controller & YouTube Music Streamer"
+description = "Radio Caster Bridge Studio (RCB Studio) - Broadcast Audio Bridge & Controller"
 build = "build.rs"
+
+[[bin]]
+name = "RCBStudio"
+path = "src/main.rs"
 
 [dependencies]
 # Pure Native GPU GUI (Zero-WebView)

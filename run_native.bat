@@ -1,10 +1,14 @@
 @echo off
-title Radio Caster Bridge - Pure Native Rust
-echo Memulai Radio Caster Bridge Native Engine (Rust)...
+title Radio Caster Bridge Studio (RCB Studio)
+echo Memulai Radio Caster Bridge Studio...
 cd /d "%~dp0native_rust"
-cargo run --release
+if exist "target\release\RCBStudio.exe" (
+    start "" "target\release\RCBStudio.exe"
+) else (
+    cargo run --release --bin RCBStudio
+)
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] Gagal menjalankan aplikasi Native Rust. Pastikan Rust toolchain terpasang.
+    echo [ERROR] Gagal menjalankan RCB Studio.
     pause
 )

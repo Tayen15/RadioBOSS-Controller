@@ -24,8 +24,8 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing.y = 1.0;
             ui.horizontal(|ui| {
-                ui.label(bold_text("RADIO CASTER BRIDGE", 14.5, TEXT_PRIMARY));
-                status_pill(ui, "NATIVE RUST", SIGNAL_CYAN);
+                ui.label(bold_text("RADIO CASTER BRIDGE STUDIO", 14.5, TEXT_PRIMARY));
+                status_pill(ui, "RCB STUDIO", SIGNAL_CYAN);
             });
             ui.label(semibold_text(
                 "YouTube Music Studio Streamer & RadioBOSS Controller",

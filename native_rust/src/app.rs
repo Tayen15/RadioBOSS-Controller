@@ -470,9 +470,9 @@ impl eframe::App for RadioCasterApp {
             )
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label(semibold_text("Radio Caster Bridge", 11.5, TEXT_SECONDARY));
+                    ui.label(semibold_text("Radio Caster Bridge Studio", 11.5, TEXT_SECONDARY));
                     ui.label(mono_text("•", 11.5, TEXT_MUTED));
-                    ui.label(mono_text(format!("v{APP_VERSION} (Rust Native)"), 11.5, TEXT_MUTED));
+                    ui.label(mono_text(format!("v{APP_VERSION}"), 11.5, TEXT_MUTED));
                     if self.session_stats.session_seconds > 0
                         || self.session_stats.lifetime_airtime_hours > 0.0
                     {
@@ -496,7 +496,7 @@ impl eframe::App for RadioCasterApp {
                         {
                             crate::services::system_service::open_in_system("https://hi.oktaa.my.id");
                         }
-                        ui.label(semibold_text("Crafted by", 11.5, TEXT_MUTED));
+                        ui.label(semibold_text("Copyright © 2026 RCB Studio •", 11.5, TEXT_MUTED));
                     });
                 });
             });
