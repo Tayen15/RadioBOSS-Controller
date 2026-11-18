@@ -111,11 +111,22 @@ pub fn configure_studio_theme(ctx: &egui::Context) {
     ctx.set_visuals(visuals);
 
     ctx.global_style_mut(|style| {
-        style.animation_time = 0.15;
+        style.animation_time = 0.18;
         style.spacing.item_spacing = egui::vec2(8.0, 8.0);
         style.spacing.button_padding = egui::vec2(10.0, 6.0);
         style.spacing.scroll.bar_width = 6.0;
     });
+}
+
+/// Linearly interpolates two `Color32` values (`t` in `0.0..=1.0`).
+pub fn lerp_color(a: Color32, b: Color32, t: f32) -> Color32 {
+    let t = t.clamp(0.0, 1.0);
+    Color32::from_rgba_unmultiplied(
+        (a.r() as f32 + (b.r() as f32 - a.r() as f32) * t) as u8,
+        (a.g() as f32 + (b.g() as f32 - a.g() as f32) * t) as u8,
+        (a.b() as f32 + (b.b() as f32 - a.b() as f32) * t) as u8,
+        (a.a() as f32 + (b.a() as f32 - a.a() as f32) * t) as u8,
+    )
 }
 
 /// Studio module card (`#121216`, border `#272730`, `12px` corner radius).
@@ -293,32 +304,145 @@ pub fn mono_text(text: impl Into<String>, size: f32, color: Color32) -> RichText
         .family(FontFamily::Monospace)
 }
 
+struct PillButtonStyle {
+    size_y: f32,
+    base_fill: Color32,
+    hover_fill: Color32,
+    press_fill: Color32,
+    base_stroke: Color32,
+    hover_stroke: Color32,
+    text_col: Color32,
+    bold: bool,
+}
+
+fn animated_pill_button(ui: &mut egui::Ui, label: &str, style: PillButtonStyle) -> egui::Response {
+    let font = egui::FontId::new(
+        if style.bold { 12.5 } else { 12.0 },
+        FontFamily::Name(if style.bold { "bold" } else { "semibold" }.into()),
+    );
+    let galley = ui
+        .painter()
+        .layout_no_wrap(label.to_string(), font, style.text_col);
+    let desired = egui::vec2(galley.size().x + 22.0, style.size_y);
+    let (rect, resp) = ui.allocate_exact_size(desired, egui::Sense::click());
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+
+    let hover_t = ui.ctx().animate_bool_responsive(resp.id, resp.hovered());
+    let press_t = ui
+        .ctx()
+        .animate_bool_responsive(resp.id.with("press"), resp.is_pointer_button_down_on());
+
+    let fill = lerp_color(
+        lerp_color(style.base_fill, style.hover_fill, hover_t),
+        style.press_fill,
+        press_t,
+    );
+    let stroke_col = lerp_color(style.base_stroke, style.hover_stroke, hover_t);
+    let stroke = if stroke_col.a() == 0 {
+        Stroke::NONE
+    } else {
+        Stroke::new(1.0, stroke_col)
+    };
+
+    ui.painter()
+        .rect(rect, CornerRadius::same(8), fill, stroke, egui::StrokeKind::Inside);
+    ui.painter()
+        .galley(rect.center() - galley.size() * 0.5, galley, style.text_col);
+    resp
+}
+
 pub fn amber_button(ui: &mut egui::Ui, label: &str) -> egui::Response {
-    let btn = egui::Button::new(bold_text(label, 12.5, AMBER_DARK_TEXT))
-        .fill(AMBER_PRIMARY)
-        .stroke(Stroke::NONE)
-        .corner_radius(CornerRadius::same(8))
-        .min_size(egui::vec2(0.0, 32.0));
-    ui.add(btn)
+    animated_pill_button(
+        ui,
+        label,
+        PillButtonStyle {
+            size_y: 32.0,
+            base_fill: AMBER_PRIMARY,
+            hover_fill: Color32::from_rgb(251, 184, 52),
+            press_fill: Color32::from_rgb(217, 119, 6),
+            base_stroke: Color32::TRANSPARENT,
+            hover_stroke: Color32::TRANSPARENT,
+            text_col: AMBER_DARK_TEXT,
+            bold: true,
+        },
+    )
 }
 
 pub fn slate_button(ui: &mut egui::Ui, label: &str) -> egui::Response {
-    let btn = egui::Button::new(semibold_text(label, 12.0, TEXT_PRIMARY))
-        .fill(SLATE_BTN)
-        .stroke(Stroke::new(1.0, BORDER_COLOR))
-        .corner_radius(CornerRadius::same(8))
-        .min_size(egui::vec2(0.0, 30.0));
-    ui.add(btn)
+    animated_pill_button(
+        ui,
+        label,
+        PillButtonStyle {
+            size_y: 30.0,
+            base_fill: SLATE_BTN,
+            hover_fill: Color32::from_rgb(54, 54, 67),
+            press_fill: Color32::from_rgb(31, 31, 39),
+            base_stroke: BORDER_COLOR,
+            hover_stroke: Color32::from_rgb(84, 84, 102),
+            text_col: TEXT_PRIMARY,
+            bold: false,
+        },
+    )
 }
 
 pub fn danger_button(ui: &mut egui::Ui, label: &str) -> egui::Response {
-    let fill = Color32::from_rgba_unmultiplied(248, 113, 113, 28);
-    let btn = egui::Button::new(semibold_text(label, 12.0, STATUS_ERROR))
-        .fill(fill)
-        .stroke(Stroke::new(1.0, Color32::from_rgba_unmultiplied(248, 113, 113, 90)))
-        .corner_radius(CornerRadius::same(8))
-        .min_size(egui::vec2(0.0, 30.0));
-    ui.add(btn)
+    animated_pill_button(
+        ui,
+        label,
+        PillButtonStyle {
+            size_y: 30.0,
+            base_fill: Color32::from_rgba_unmultiplied(248, 113, 113, 28),
+            hover_fill: Color32::from_rgba_unmultiplied(248, 113, 113, 58),
+            press_fill: Color32::from_rgba_unmultiplied(220, 38, 38, 85),
+            base_stroke: Color32::from_rgba_unmultiplied(248, 113, 113, 90),
+            hover_stroke: Color32::from_rgba_unmultiplied(248, 113, 113, 165),
+            text_col: STATUS_ERROR,
+            bold: false,
+        },
+    )
+}
+
+/// Smoothly animated segmented tab button (cross-fades fill and text color on hover & active).
+pub fn animated_segment_tab(
+    ui: &mut egui::Ui,
+    size: egui::Vec2,
+    label: &str,
+    active: bool,
+    amber_accent: bool,
+    corner_radius: u8,
+) -> egui::Response {
+    let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click());
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+
+    let act_t = ui
+        .ctx()
+        .animate_bool_responsive(resp.id.with("seg_act"), active);
+    let hov_t = ui
+        .ctx()
+        .animate_bool_responsive(resp.id.with("seg_hov"), resp.hovered() && !active);
+
+    let (active_fill, active_text) = if amber_accent {
+        (AMBER_PRIMARY, AMBER_DARK_TEXT)
+    } else {
+        (Color32::from_rgb(56, 56, 66), TEXT_PRIMARY)
+    };
+    let base_fill = lerp_color(Color32::TRANSPARENT, Color32::from_rgb(32, 32, 40), hov_t);
+    let fill = lerp_color(base_fill, active_fill, act_t);
+    let hover_text = lerp_color(TEXT_SECONDARY, TEXT_PRIMARY, hov_t);
+    let text_col = lerp_color(hover_text, active_text, act_t);
+
+    if fill.a() > 0 {
+        ui.painter()
+            .rect_filled(rect, CornerRadius::same(corner_radius), fill);
+    }
+
+    let font = egui::FontId::new(
+        12.0,
+        FontFamily::Name(if active { "bold" } else { "semibold" }.into()),
+    );
+    ui.painter()
+        .text(rect.center(), egui::Align2::CENTER_CENTER, label, font, text_col);
+    resp
 }
 
 pub fn status_pill(ui: &mut egui::Ui, text: &str, accent: Color32) {

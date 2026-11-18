@@ -6,10 +6,10 @@ use crate::models::config::{AppConfig, TitleFormatMode};
 use crate::models::APP_VERSION;
 use crate::services::system_service;
 use crate::ui::theme::{
-    amber_button, bold_text, copy_feedback_button, danger_button, list_row_frame, mono_text,
-    semibold_text, setting_group_frame, slate_button, split_dialog_frame, status_pill,
-    studio_toggle, window_close_x, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS,
-    TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    amber_button, animated_segment_tab, bold_text, copy_feedback_button, danger_button, lerp_color,
+    list_row_frame, mono_text, semibold_text, setting_group_frame, slate_button,
+    split_dialog_frame, status_pill, studio_toggle, window_close_x, AMBER_PRIMARY, SIGNAL_CYAN,
+    STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
@@ -208,19 +208,39 @@ fn sidebar_tab_button(
 ) -> egui::Response {
     let (rect, resp) = ui.allocate_exact_size(egui::vec2(174.0, 34.0), egui::Sense::click());
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
-    let fill = if active {
-        Color32::from_rgb(38, 38, 46)
-    } else if resp.hovered() {
-        Color32::from_rgb(26, 26, 32)
-    } else {
-        Color32::TRANSPARENT
-    };
-    if fill != Color32::TRANSPARENT {
+
+    let act_t = ui
+        .ctx()
+        .animate_bool_responsive(resp.id.with("sb_act"), active);
+    let hov_t = ui
+        .ctx()
+        .animate_bool_responsive(resp.id.with("sb_hov"), resp.hovered() && !active);
+
+    let hover_bg = lerp_color(Color32::TRANSPARENT, Color32::from_rgb(26, 26, 32), hov_t);
+    let fill = lerp_color(hover_bg, Color32::from_rgb(38, 38, 46), act_t);
+    if fill.a() > 0 {
         ui.painter()
             .rect_filled(rect, CornerRadius::same(8), fill);
     }
 
-    let col = if active { TEXT_PRIMARY } else { TEXT_SECONDARY };
+    if act_t > 0.02 {
+        let bar_h = 16.0 * act_t;
+        let bar_rect = egui::Rect::from_center_size(
+            egui::pos2(rect.left() + 2.5, rect.center().y),
+            egui::vec2(3.0, bar_h),
+        );
+        ui.painter().rect_filled(
+            bar_rect,
+            CornerRadius::same(2),
+            lerp_color(Color32::TRANSPARENT, AMBER_PRIMARY, act_t),
+        );
+    }
+
+    let col = lerp_color(
+        lerp_color(TEXT_SECONDARY, TEXT_PRIMARY, hov_t),
+        TEXT_PRIMARY,
+        act_t,
+    );
     let icon_c = rect.left_center() + egui::vec2(16.0, 0.0);
     let stroke = Stroke::new(1.4, col);
     let p = ui.painter();
@@ -477,23 +497,15 @@ fn render_broadcast_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 ui.horizontal(|ui| {
                     for (val, lbl) in bitrates {
                         let active = app.draft_config.audio_quality == val;
-                        if ui
-                            .add_sized(
-                                [seg_w, 26.0],
-                                egui::Button::new(semibold_text(
-                                    lbl,
-                                    11.5,
-                                    if active { TEXT_PRIMARY } else { TEXT_SECONDARY },
-                                ))
-                                .fill(if active {
-                                    Color32::from_rgb(56, 56, 66)
-                                } else {
-                                    Color32::TRANSPARENT
-                                })
-                                .stroke(Stroke::NONE)
-                                .corner_radius(CornerRadius::same(5)),
-                            )
-                            .clicked()
+                        if animated_segment_tab(
+                            ui,
+                            egui::vec2(seg_w, 26.0),
+                            lbl,
+                            active,
+                            false,
+                            5,
+                        )
+                        .clicked()
                         {
                             app.draft_config.audio_quality = val.to_string();
                         }
@@ -633,23 +645,15 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 ui.horizontal(|ui| {
                     for (mb, lbl) in limits {
                         let active = app.draft_config.max_cache_size_mb == mb;
-                        if ui
-                            .add_sized(
-                                [seg_w, 24.0],
-                                egui::Button::new(semibold_text(
-                                    lbl,
-                                    11.0,
-                                    if active { TEXT_PRIMARY } else { TEXT_SECONDARY },
-                                ))
-                                .fill(if active {
-                                    Color32::from_rgb(56, 56, 66)
-                                } else {
-                                    Color32::TRANSPARENT
-                                })
-                                .stroke(Stroke::NONE)
-                                .corner_radius(CornerRadius::same(5)),
-                            )
-                            .clicked()
+                        if animated_segment_tab(
+                            ui,
+                            egui::vec2(seg_w, 24.0),
+                            lbl,
+                            active,
+                            false,
+                            5,
+                        )
+                        .clicked()
                         {
                             app.draft_config.max_cache_size_mb = mb;
                         }

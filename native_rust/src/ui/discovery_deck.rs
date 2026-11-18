@@ -1,11 +1,11 @@
-use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, Stroke};
+use eframe::egui::{self, CornerRadius, Frame, Margin, Stroke};
 
 use crate::app::{CatalogMainTab, RadioCasterApp};
 use crate::events::AppCommand;
 use crate::models::track::TrackItem;
 use crate::ui::theme::{
-    amber_button, bold_text, lcd_frame, list_row_frame, module_frame, mono_text, semibold_text,
-    slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CONTROL_BG,
+    amber_button, animated_segment_tab, bold_text, lcd_frame, list_row_frame, module_frame,
+    mono_text, semibold_text, slate_button, status_pill, AMBER_PRIMARY, BORDER_COLOR, CONTROL_BG,
     SIGNAL_CYAN, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
@@ -85,53 +85,29 @@ pub fn render_discovery_deck(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             let half_w = (ui.available_width() - 6.0) / 2.0;
             ui.horizontal(|ui| {
                 let rec_active = app.catalog_tab == CatalogMainTab::Recommendations;
-                if ui
-                    .add_sized(
-                        [half_w, 30.0],
-                        egui::Button::new(bold_text(
-                            "Rekomendasi",
-                            12.0,
-                            if rec_active {
-                                AMBER_DARK_TEXT
-                            } else {
-                                TEXT_SECONDARY
-                            },
-                        ))
-                        .fill(if rec_active {
-                            AMBER_PRIMARY
-                        } else {
-                            Color32::TRANSPARENT
-                        })
-                        .stroke(Stroke::NONE)
-                        .corner_radius(CornerRadius::same(7)),
-                    )
-                    .clicked()
+                if animated_segment_tab(
+                    ui,
+                    egui::vec2(half_w, 30.0),
+                    "Rekomendasi",
+                    rec_active,
+                    true,
+                    7,
+                )
+                .clicked()
                 {
                     app.catalog_tab = CatalogMainTab::Recommendations;
                 }
 
                 let sets_active = app.catalog_tab == CatalogMainTab::PlaylistSets;
-                if ui
-                    .add_sized(
-                        [half_w, 30.0],
-                        egui::Button::new(bold_text(
-                            "Set Playlist",
-                            12.0,
-                            if sets_active {
-                                AMBER_DARK_TEXT
-                            } else {
-                                TEXT_SECONDARY
-                            },
-                        ))
-                        .fill(if sets_active {
-                            AMBER_PRIMARY
-                        } else {
-                            Color32::TRANSPARENT
-                        })
-                        .stroke(Stroke::NONE)
-                        .corner_radius(CornerRadius::same(7)),
-                    )
-                    .clicked()
+                if animated_segment_tab(
+                    ui,
+                    egui::vec2(half_w, 30.0),
+                    "Set Playlist",
+                    sets_active,
+                    true,
+                    7,
+                )
+                .clicked()
                 {
                     app.catalog_tab = CatalogMainTab::PlaylistSets;
                     app.send_cmd(AppCommand::LoadPlaylistSets);

@@ -1,9 +1,9 @@
-use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, Stroke};
+use eframe::egui::{self, CornerRadius, Frame, Margin, Stroke};
 
 use crate::app::{LyricsModalTab, RadioCasterApp};
 use crate::ui::theme::{
-    bold_text, copy_feedback_button, dialog_frame, lcd_frame, semibold_text, status_pill,
-    window_close_x, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, DECK_BG, SIGNAL_CYAN,
+    animated_segment_tab, bold_text, copy_feedback_button, dialog_frame, lcd_frame, semibold_text,
+    status_pill, window_close_x, AMBER_PRIMARY, BORDER_COLOR, DECK_BG, SIGNAL_CYAN,
     STATUS_SUCCESS, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
@@ -63,53 +63,29 @@ pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                     let half_w = (ui.available_width() - 6.0) / 2.0;
                     ui.horizontal(|ui| {
                         let cue_active = app.lyrics_modal_tab == LyricsModalTab::CueSheet;
-                        if ui
-                            .add_sized(
-                                [half_w, 30.0],
-                                egui::Button::new(bold_text(
-                                    "Cue Penyiar & Naskah",
-                                    12.0,
-                                    if cue_active {
-                                        AMBER_DARK_TEXT
-                                    } else {
-                                        TEXT_SECONDARY
-                                    },
-                                ))
-                                .fill(if cue_active {
-                                    AMBER_PRIMARY
-                                } else {
-                                    Color32::TRANSPARENT
-                                })
-                                .stroke(Stroke::NONE)
-                                .corner_radius(CornerRadius::same(6)),
-                            )
-                            .clicked()
+                        if animated_segment_tab(
+                            ui,
+                            egui::vec2(half_w, 30.0),
+                            "Cue Penyiar & Naskah",
+                            cue_active,
+                            true,
+                            6,
+                        )
+                        .clicked()
                         {
                             app.lyrics_modal_tab = LyricsModalTab::CueSheet;
                         }
 
                         let lyr_active = app.lyrics_modal_tab == LyricsModalTab::Lyrics;
-                        if ui
-                            .add_sized(
-                                [half_w, 30.0],
-                                egui::Button::new(bold_text(
-                                    "Lirik Lagu",
-                                    12.0,
-                                    if lyr_active {
-                                        AMBER_DARK_TEXT
-                                    } else {
-                                        TEXT_SECONDARY
-                                    },
-                                ))
-                                .fill(if lyr_active {
-                                    AMBER_PRIMARY
-                                } else {
-                                    Color32::TRANSPARENT
-                                })
-                                .stroke(Stroke::NONE)
-                                .corner_radius(CornerRadius::same(6)),
-                            )
-                            .clicked()
+                        if animated_segment_tab(
+                            ui,
+                            egui::vec2(half_w, 30.0),
+                            "Lirik Lagu",
+                            lyr_active,
+                            true,
+                            6,
+                        )
+                        .clicked()
                         {
                             app.lyrics_modal_tab = LyricsModalTab::Lyrics;
                         }
