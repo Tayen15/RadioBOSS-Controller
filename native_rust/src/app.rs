@@ -447,6 +447,7 @@ impl eframe::App for RadioCasterApp {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        handle_frameless_window_resize(&ctx);
         let audio_state = self.audio.get_state();
 
         // Top Rack Bar (Zone 1)
@@ -454,7 +455,12 @@ impl eframe::App for RadioCasterApp {
             .frame(
                 egui::Frame::NONE
                     .fill(CHASSIS_BG)
-                    .inner_margin(egui::Margin::symmetric(14, 10)),
+                    .inner_margin(egui::Margin {
+                        left: 14,
+                        right: 14,
+                        top: 8,
+                        bottom: 8,
+                    }),
             )
             .show(ui, |ui| {
                 crate::ui::top_rack::render_top_rack(ui, self);
@@ -600,4 +606,63 @@ pub fn load_app_icon_data() -> Option<Arc<egui::IconData>> {
         width: w,
         height: h,
     }))
+}
+
+fn handle_frameless_window_resize(ctx: &egui::Context) {
+    let is_max = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
+    if is_max {
+        return;
+    }
+    let rect = ctx.content_rect();
+    let Some(pos) = ctx.input(|i| i.pointer.hover_pos()) else {
+        return;
+    };
+    let border = 5.0_f32;
+    let left = pos.x <= rect.left() + border;
+    let right = pos.x >= rect.right() - border;
+    let top = pos.y <= rect.top() + border;
+    let bottom = pos.y >= rect.bottom() - border;
+
+    let dir = match (left, right, top, bottom) {
+        (true, _, true, _) => Some((
+            egui::ResizeDirection::NorthWest,
+            egui::CursorIcon::ResizeNwSe,
+        )),
+        (_, true, true, _) => Some((
+            egui::ResizeDirection::NorthEast,
+            egui::CursorIcon::ResizeNeSw,
+        )),
+        (true, _, _, true) => Some((
+            egui::ResizeDirection::SouthWest,
+            egui::CursorIcon::ResizeNeSw,
+        )),
+        (_, true, _, true) => Some((
+            egui::ResizeDirection::SouthEast,
+            egui::CursorIcon::ResizeNwSe,
+        )),
+        (true, _, _, _) => Some((
+            egui::ResizeDirection::West,
+            egui::CursorIcon::ResizeHorizontal,
+        )),
+        (_, true, _, _) => Some((
+            egui::ResizeDirection::East,
+            egui::CursorIcon::ResizeHorizontal,
+        )),
+        (_, _, true, _) => Some((
+            egui::ResizeDirection::North,
+            egui::CursorIcon::ResizeVertical,
+        )),
+        (_, _, _, true) => Some((
+            egui::ResizeDirection::South,
+            egui::CursorIcon::ResizeVertical,
+        )),
+        _ => None,
+    };
+
+    if let Some((resize_dir, cursor)) = dir {
+        ctx.set_cursor_icon(cursor);
+        if ctx.input(|i| i.pointer.primary_pressed()) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::BeginResize(resize_dir));
+        }
+    }
 }

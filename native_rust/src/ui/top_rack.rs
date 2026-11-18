@@ -12,39 +12,93 @@ use crate::ui::theme::{
 };
 
 pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
-    // Row 1: Minimal Studio Header
-    ui.horizontal(|ui| {
-        if let Some(ref tex) = app.logo_texture {
-            ui.add(
-                egui::Image::new(tex)
-                    .fit_to_exact_size(egui::vec2(24.0, 24.0))
-                    .corner_radius(CornerRadius::same(6)),
-            );
+    // Row 1: Unified Frameless Titlebar + Studio Controls
+    let bar_h = 30.0_f32;
+    let (bar_rect, bar_resp) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width(), bar_h),
+        egui::Sense::click_and_drag(),
+    );
+
+    if bar_resp.drag_started_by(egui::PointerButton::Primary) {
+        ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
+    }
+    if bar_resp.double_clicked() {
+        let is_max = ui
+            .ctx()
+            .input(|i| i.viewport().maximized.unwrap_or(false));
+        ui.ctx()
+            .send_viewport_cmd(egui::ViewportCommand::Maximized(!is_max));
+    }
+
+    let mut bar_ui = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(bar_rect)
+            .layout(egui::Layout::left_to_right(egui::Align::Center)),
+    );
+    bar_ui.spacing_mut().item_spacing.x = 10.0;
+
+    if let Some(ref tex) = app.logo_texture {
+        bar_ui.add(
+            egui::Image::new(tex)
+                .fit_to_exact_size(egui::vec2(22.0, 22.0))
+                .corner_radius(CornerRadius::same(6)),
+        );
+    }
+
+    // Compact RadioBOSS connection status with vector dot
+    let (dot_col, status_txt) = if app.rb_status.connected {
+        (STATUS_SUCCESS, "RadioBOSS Terhubung")
+    } else {
+        (STATUS_ERROR, "RadioBOSS Terputus")
+    };
+    let (dot_rect, _) = bar_ui.allocate_exact_size(egui::vec2(8.0, 8.0), egui::Sense::hover());
+    if app.rb_status.connected {
+        bar_ui.painter().circle_filled(dot_rect.center(), 4.0, dot_col);
+    } else {
+        bar_ui
+            .painter()
+            .circle_stroke(dot_rect.center(), 3.5, Stroke::new(1.4, dot_col));
+    }
+    bar_ui.label(semibold_text(status_txt, 11.5, dot_col));
+
+    bar_ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        ui.spacing_mut().item_spacing.x = 4.0;
+        let is_max = ui.ctx().input(|i| i.viewport().maximized.unwrap_or(false));
+
+        if titlebar_win_btn(ui, WinBtnKind::Close).clicked() {
+            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
         }
-        ui.label(bold_text("Radio Caster Bridge Studio", 15.0, TEXT_PRIMARY));
+        if titlebar_win_btn(ui, WinBtnKind::Maximize(is_max)).clicked() {
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::Maximized(!is_max));
+        }
+        if titlebar_win_btn(ui, WinBtnKind::Minimize).clicked() {
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+        }
 
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if slate_button(ui, "Pengaturan").clicked() {
-                app.draft_config = app.config.clone();
-                app.ping_result = None;
-                app.is_settings_open = true;
-                app.send_cmd(AppCommand::RefreshCacheStats);
-            }
+        ui.add_space(6.0);
+        let sep_rect = ui.allocate_exact_size(egui::vec2(1.0, 16.0), egui::Sense::hover()).0;
+        ui.painter().line_segment(
+            [sep_rect.center_top(), sep_rect.center_bottom()],
+            Stroke::new(1.0, Color32::from_rgb(44, 44, 54)),
+        );
+        ui.add_space(6.0);
 
-            if let Some(ref upd) = app.update_check {
-                if upd.update_available
-                    && amber_button(ui, &format!("Update v{}", upd.latest_version)).clicked()
-                {
-                    app.is_update_open = true;
-                }
-            }
+        if slate_button(ui, "Pengaturan").clicked() {
+            app.draft_config = app.config.clone();
+            app.ping_result = None;
+            app.is_settings_open = true;
+            app.send_cmd(AppCommand::RefreshCacheStats);
+        }
 
-            if app.rb_status.connected {
-                ui.label(semibold_text("● RadioBOSS Terhubung", 11.5, STATUS_SUCCESS));
-            } else {
-                ui.label(semibold_text("○ RadioBOSS Terputus", 11.5, STATUS_ERROR));
+        if let Some(ref upd) = app.update_check {
+            if upd.update_available
+                && amber_button(ui, &format!("Update v{}", upd.latest_version)).clicked()
+            {
+                app.is_update_open = true;
             }
-        });
+        }
     });
 
     ui.add_space(6.0);
@@ -301,4 +355,66 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 });
             });
         });
+}
+
+#[derive(Clone, Copy)]
+enum WinBtnKind {
+    Minimize,
+    Maximize(bool),
+    Close,
+}
+
+fn titlebar_win_btn(ui: &mut egui::Ui, kind: WinBtnKind) -> egui::Response {
+    let (rect, resp) = ui.allocate_exact_size(egui::vec2(30.0, 26.0), egui::Sense::click());
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+    let is_close = matches!(kind, WinBtnKind::Close);
+    if resp.hovered() {
+        let fill = if is_close {
+            Color32::from_rgba_unmultiplied(239, 68, 68, 215)
+        } else {
+            CONTROL_BG
+        };
+        ui.painter()
+            .rect_filled(rect, CornerRadius::same(6), fill);
+    }
+
+    let col = if resp.hovered() {
+        Color32::WHITE
+    } else {
+        TEXT_SECONDARY
+    };
+    let c = rect.center();
+    let stroke = Stroke::new(1.3, col);
+    let p = ui.painter();
+
+    match kind {
+        WinBtnKind::Minimize => {
+            p.line_segment(
+                [c - egui::vec2(4.5, 0.0), c + egui::vec2(4.5, 0.0)],
+                stroke,
+            );
+        }
+        WinBtnKind::Maximize(true) => {
+            let r1 = egui::Rect::from_center_size(c + egui::vec2(-1.0, 1.0), egui::vec2(7.0, 7.0));
+            p.rect_stroke(r1, CornerRadius::same(1), stroke, egui::StrokeKind::Inside);
+            p.line_segment(
+                [c + egui::vec2(-1.5, -3.5), c + egui::vec2(3.5, -3.5)],
+                stroke,
+            );
+            p.line_segment(
+                [c + egui::vec2(3.5, -3.5), c + egui::vec2(3.5, 1.5)],
+                stroke,
+            );
+        }
+        WinBtnKind::Maximize(false) => {
+            let r = egui::Rect::from_center_size(c, egui::vec2(8.5, 8.5));
+            p.rect_stroke(r, CornerRadius::same(1), stroke, egui::StrokeKind::Inside);
+        }
+        WinBtnKind::Close => {
+            let d = 4.2_f32;
+            p.line_segment([c - egui::vec2(d, d), c + egui::vec2(d, d)], stroke);
+            p.line_segment([c + egui::vec2(d, -d), c + egui::vec2(-d, d)], stroke);
+        }
+    }
+    resp
 }
