@@ -277,16 +277,13 @@ class UpdateService:
 
         try:
             if sys.platform == "win32":
-                if file_path.lower().endswith(".exe"):
-                    # Launch installer in detached background process
-                    DETACHED_PROCESS = 0x00000008
-                    CREATE_NEW_PROCESS_GROUP = 0x00000200
-                    flags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
-                    subprocess.Popen([file_path], creationflags=flags, close_fds=True)
-                elif file_path.lower().endswith(".zip"):
+                if file_path.lower().endswith(".zip"):
                     # Open Explorer directory with the zip highlighted
                     subprocess.Popen(f'explorer.exe /select,"{file_path}"')
                 else:
+                    # Launch installer via native Windows ShellExecute (os.startfile).
+                    # This ensures proper interactive desktop session attachment, correct UAC elevation,
+                    # and avoids detached process flags that block Inno Setup postinstall app launch.
                     os.startfile(file_path)
             else:
                 # Linux: Make executable and launch or open directory

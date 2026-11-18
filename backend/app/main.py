@@ -18,6 +18,7 @@ from app.routers import (
     recommendations_router,
     playlist_sets_router,
     update_router,
+    casterhub_router,
 )
 from app.version import VERSION
 
@@ -55,10 +56,15 @@ import asyncio
 import gc
 
 async def _periodic_memory_cleanup():
-    """Background task running every 60s to collect garbage and trim working set memory."""
+    """Background task running every 60s to sync CasterHub telemetry, collect garbage, and trim memory."""
     while True:
         try:
             await asyncio.sleep(60)
+            try:
+                from app.services.telemetry_service import telemetry_service
+                await telemetry_service.sync_outbox_to_casterhub()
+            except Exception as te:
+                logger.debug(f"Periodic telemetry sync skipped: {te}")
             gc.collect()
             if sys.platform == "win32":
                 try:
@@ -130,6 +136,7 @@ app.include_router(settings_router)
 app.include_router(recommendations_router)
 app.include_router(playlist_sets_router)
 app.include_router(update_router)
+app.include_router(casterhub_router)
 
 
 @app.get("/api/health", tags=["Health"])

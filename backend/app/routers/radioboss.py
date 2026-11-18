@@ -33,7 +33,21 @@ router = APIRouter(prefix="/api", tags=["RadioBOSS"])
 @router.get("/radioboss/status", response_model=RadioBOSSStatusResponse)
 async def get_radioboss_status():
     """Check RadioBOSS connectivity and get live Now Playing info."""
-    return await radioboss_service.check_status()
+    status_resp = await radioboss_service.check_status()
+    from app.services.telemetry_service import telemetry_service
+    if (
+        status_resp.connected
+        and status_resp.playback_state == "playing"
+        and status_resp.now_playing
+        and status_resp.now_playing.title
+    ):
+        telemetry_service.set_onair_track(
+            title=status_resp.now_playing.title,
+            artist=status_resp.now_playing.artist or "",
+        )
+    else:
+        telemetry_service.clear_onair_track()
+    return status_resp
 
 
 @router.post("/radioboss/playback", response_model=PlaybackControlResponse)
@@ -279,6 +293,25 @@ async def queue_track(request: QueueRequest):
             year=year,
             genre=genre,
         )
+        from app.services.telemetry_service import telemetry_service
+        is_cached = bool(cached_file and os.path.isfile(cached_file))
+        file_sz = os.path.getsize(cached_file) if is_cached else 0
+        telemetry_service.enqueue_airplay_event(
+            video_id=clean_id,
+            title=song_title or display_title,
+            artist=artist,
+            clean_title=song_title or display_title,
+            clean_artist=artist,
+            album=album,
+            genre=genre or "Pop",
+            thumbnail_url=thumbnail_url or "",
+            duration_seconds=int(meta.get("duration") or 180) if str(meta.get("duration") or "").isdigit() else 180,
+            duration_formatted="03:00",
+            action_type="queue_next" if target_pos in (-2, 1) else "queue_bottom",
+            is_from_cache=is_cached,
+            file_size_bytes=file_sz,
+        )
+        asyncio.create_task(telemetry_service.sync_outbox_to_casterhub())
     except Exception as e:
         logger.warning(f"Failed to record history and play count: {e}")
 

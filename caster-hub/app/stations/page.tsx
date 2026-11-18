@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Navbar } from "@/app/components/Navbar";
+import { Footer } from "@/app/components/Footer";
 import { getStationsData } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -51,17 +52,27 @@ export default async function StationsPage() {
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span
                       className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded flex items-center gap-1.5 ${
-                        st.is_online
+                        !st.is_online
+                          ? "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                          : st.now_playing
                           ? "bg-emerald-400/15 text-emerald-400 border border-emerald-400/30"
-                          : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                          : "bg-amberSignal/15 text-amberSignal border border-amberSignal/30"
                       }`}
                     >
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${
-                          st.is_online ? "bg-emerald-400 animate-pulse" : "bg-zinc-500"
+                          !st.is_online
+                            ? "bg-zinc-500"
+                            : st.now_playing
+                            ? "bg-emerald-400 animate-pulse"
+                            : "bg-amberSignal"
                         }`}
                       />
-                      {st.is_online ? "ON-AIR SEKARANG" : "OFFLINE / STANDBY"}
+                      {!st.is_online
+                        ? "OFFLINE"
+                        : st.now_playing
+                        ? "ON-AIR (PLAYING)"
+                        : "STANDBY (IDLE)"}
                     </span>
                     <span className="text-[10px] font-mono text-zinc-500">v{st.app_version}</span>
                   </div>
@@ -131,9 +142,7 @@ export default async function StationsPage() {
         </div>
       </main>
 
-      <footer className="border-t border-borderLine bg-slateDeck/50 py-4 text-center text-xs text-zinc-500 font-mono">
-        CasterHub Broadcast Intelligence Network &copy; {new Date().getFullYear()} • Zero-PII Anonymous Telemetry
-      </footer>
+      <Footer />
     </div>
   );
 }

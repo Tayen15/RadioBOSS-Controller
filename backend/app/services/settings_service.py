@@ -53,8 +53,8 @@ class AppConfig(BaseModel):
         description="List of playlist tab names available in RadioBOSS"
     )
     casterhub_url: str = Field(
-        default="https://radio-boss-controller.vercel.app",
-        description="CasterHub central server URL (e.g. https://radio-boss-controller.vercel.app)"
+        default="https://rcb.oktaa.my.id",
+        description="CasterHub central server URL (e.g. https://rcb.oktaa.my.id)"
     )
     enable_telemetry: bool = Field(
         default=True,
@@ -108,6 +108,10 @@ class SettingsService:
                 # Keep active data dir in config
                 if str(self.db.storage_dir) != str(_get_appdata_dir()):
                     cfg.custom_data_dir = str(self.db.storage_dir)
+                # Auto-migrate legacy Vercel domain to custom official domain
+                if cfg.casterhub_url == "https://radio-boss-controller.vercel.app":
+                    cfg.casterhub_url = "https://rcb.oktaa.my.id"
+                    self._save(cfg)
                 return cfg
         except Exception as e:
             logger.warning(f"Could not load settings from SQLite: {e}")

@@ -30,6 +30,10 @@ import {
   TabsResponse,
   SwitchTabResponse,
   SystemSpecs,
+  CasterHubChartsResponse,
+  CasterHubStatsResponse,
+  CasterHubCrowdMetadata,
+  CasterHubListenerRequest,
 } from "./types";
 
 const API_BASE_URL =
@@ -709,6 +713,80 @@ export async function applyUpdate(): Promise<{ success: boolean; message: string
     throw new Error(data.message || data.detail || "Gagal menerapkan pembaruan.");
   }
   return data;
+}
+
+export async function fetchCasterHubCharts(
+  category: string = "top50",
+  limit: number = 25
+): Promise<CasterHubChartsResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/casterhub/charts?category=${encodeURIComponent(category)}&limit=${limit}`,
+    { method: "GET", cache: "no-store" }
+  );
+  if (!res.ok) {
+    throw new Error("Gagal memuat CasterHub Global Charts.");
+  }
+  return await res.json();
+}
+
+export async function fetchCasterHubStats(): Promise<CasterHubStatsResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/casterhub/stats`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error("Gagal memuat statistik CasterHub.");
+  }
+  return await res.json();
+}
+
+export async function fetchCrowdCleanMetadata(
+  videoId: string,
+  title: string = "",
+  artist: string = ""
+): Promise<CasterHubCrowdMetadata | null> {
+  try {
+    const qs = new URLSearchParams({ video_id: videoId, title, artist });
+    const res = await fetch(`${API_BASE_URL}/api/casterhub/metadata/clean?${qs.toString()}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.metadata || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchListenerRequests(): Promise<CasterHubListenerRequest[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/casterhub/requests`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.requests || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function actionListenerRequest(
+  requestId: string,
+  action: "accept" | "reject" | "played"
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/casterhub/requests/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: requestId, action }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 

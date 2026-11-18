@@ -54,9 +54,8 @@ export async function POST(request: Request) {
     if (public_stream_url && public_stream_url.trim().length > 0) {
       stationUpdateSet.public_stream_url = public_stream_url.trim();
     }
-    if (now_playing && now_playing.title) {
-      stationUpdateSet.now_playing = now_playing;
-    }
+    // Update live now_playing only when actively playing in RadioBOSS, or clear to null when idle/stopped
+    stationUpdateSet.now_playing = now_playing && now_playing.title ? now_playing : null;
 
     await stationsCol.updateOne(
       { station_hash },

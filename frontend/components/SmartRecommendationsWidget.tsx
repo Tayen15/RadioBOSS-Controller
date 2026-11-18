@@ -19,12 +19,16 @@ import {
   Headphones,
   Music2,
   FastForward,
+  Globe,
+  Inbox,
+  X,
 } from "lucide-react";
 import {
   TrackItem,
   PlaylistSet,
   CachedTrackItem,
   DJArtistStat,
+  CasterHubListenerRequest,
 } from "@/lib/types";
 import {
   fetchRecommendations,
@@ -35,6 +39,9 @@ import {
   addTrackToPlaylistSet,
   fetchDJTopChart,
   fetchDJSmartRecommendations,
+  fetchCasterHubCharts,
+  fetchListenerRequests,
+  actionListenerRequest,
 } from "@/lib/api";
 
 interface SmartRecommendationsWidgetProps {
@@ -53,6 +60,14 @@ const MOOD_OPTIONS = [
   { id: "nostalgia", label: "Era 2000an", query: "pop indonesia hits tahun 2000an" },
 ];
 
+const CASTERHUB_CATEGORIES = [
+  { id: "top50", label: "Top 50 Global" },
+  { id: "trending", label: "Trending 48h" },
+  { id: "morning", label: "Siaran Pagi" },
+  { id: "afternoon", label: "Santai Sore" },
+  { id: "night", label: "Siaran Malam" },
+];
+
 export function SmartRecommendationsWidget({
   seedTrack,
   currentArtist,
@@ -61,7 +76,7 @@ export function SmartRecommendationsWidget({
   isQueueing,
 }: SmartRecommendationsWidgetProps) {
   const [activeTab, setActiveTab] = useState<
-    "upnext" | "artist" | "djchart" | "djrecs" | "mood"
+    "upnext" | "artist" | "djchart" | "djrecs" | "mood" | "casterhub" | "requests"
   >("upnext");
   const [recommendations, setRecommendations] = useState<TrackItem[]>([]);
   const [artistTracks, setArtistTracks] = useState<TrackItem[]>([]);
@@ -79,6 +94,13 @@ export function SmartRecommendationsWidget({
   const [isLoadingMood, setIsLoadingMood] = useState<boolean>(false);
   const [isLoadingDJChart, setIsLoadingDJChart] = useState<boolean>(false);
   const [isLoadingDJRecs, setIsLoadingDJRecs] = useState<boolean>(false);
+
+  const [casterhubCategory, setCasterhubCategory] = useState<string>("top50");
+  const [casterhubTracks, setCasterhubTracks] = useState<TrackItem[]>([]);
+  const [isLoadingCasterhub, setIsLoadingCasterhub] = useState<boolean>(false);
+
+  const [listenerRequests, setListenerRequests] = useState<CasterHubListenerRequest[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState<boolean>(false);
 
   const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -223,6 +245,52 @@ export function SmartRecommendationsWidget({
   }, [activeTab]);
 
   useEffect(() => {
+    if (activeTab !== "casterhub") return;
+    let isMounted = true;
+    setIsLoadingCasterhub(true);
+    fetchCasterHubCharts(casterhubCategory, 25)
+      .then((res) => {
+        if (isMounted && res.success && Array.isArray(res.tracks)) {
+          setCasterhubTracks(
+            res.tracks.map((t) => ({
+              video_id: t.video_id,
+              title: t.title,
+              artists: t.artist ? [t.artist] : ["CasterHub"],
+              album: t.album || "Global Chart",
+              duration_formatted: t.duration_formatted || "00:00",
+              url: `https://music.youtube.com/watch?v=${t.video_id}`,
+              genre: t.genre || "Pop",
+            }))
+          );
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoadingCasterhub(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab, casterhubCategory]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const poll = () => {
+      fetchListenerRequests()
+        .then((reqs) => {
+          if (isMounted) setListenerRequests(reqs);
+        })
+        .catch(() => {});
+    };
+    poll();
+    const timer = setInterval(poll, 20000);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     if (activeTab !== "djrecs") return;
 
     let isMounted = true;
@@ -315,6 +383,32 @@ export function SmartRecommendationsWidget({
         })
         .catch(() => {})
         .finally(() => setIsLoadingMood(false));
+    } else if (activeTab === "casterhub") {
+      setIsLoadingCasterhub(true);
+      fetchCasterHubCharts(casterhubCategory, 25)
+        .then((res) => {
+          if (res.success && Array.isArray(res.tracks)) {
+            setCasterhubTracks(
+              res.tracks.map((t) => ({
+                video_id: t.video_id,
+                title: t.title,
+                artists: t.artist ? [t.artist] : ["CasterHub"],
+                album: t.album || "Global Chart",
+                duration_formatted: t.duration_formatted || "00:00",
+                url: `https://music.youtube.com/watch?v=${t.video_id}`,
+                genre: t.genre || "Pop",
+              }))
+            );
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingCasterhub(false));
+    } else if (activeTab === "requests") {
+      setIsLoadingRequests(true);
+      fetchListenerRequests()
+        .then((reqs) => setListenerRequests(reqs))
+        .catch(() => {})
+        .finally(() => setIsLoadingRequests(false));
     }
   };
 
@@ -379,6 +473,8 @@ export function SmartRecommendationsWidget({
     if (activeTab === "artist") return artistTracks;
     if (activeTab === "djchart") return djChart;
     if (activeTab === "djrecs") return [...djRotationReady, ...djAffinityRecs];
+    if (activeTab === "casterhub") return casterhubTracks;
+    if (activeTab === "requests") return [];
     return moodTracks;
   };
 
@@ -392,6 +488,10 @@ export function SmartRecommendationsWidget({
       ? isLoadingDJChart
       : activeTab === "djrecs"
       ? isLoadingDJRecs
+      : activeTab === "casterhub"
+      ? isLoadingCasterhub
+      : activeTab === "requests"
+      ? isLoadingRequests
       : isLoadingMood;
 
   return (
@@ -516,7 +616,136 @@ export function SmartRecommendationsWidget({
           <Compass className="h-3.5 w-3.5 shrink-0" />
           <span>Program Suasana</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("casterhub")}
+          className={`flex-1 min-w-fit inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold rounded-md transition-colors ${
+            activeTab === "casterhub"
+              ? "bg-primary text-primary-content font-bold"
+              : "text-base-content/70 hover:text-base-content hover:bg-base-200"
+          }`}
+        >
+          <Globe className="h-3.5 w-3.5 shrink-0" />
+          <span>CasterHub</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("requests")}
+          className={`flex-1 min-w-fit inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold rounded-md transition-colors ${
+            activeTab === "requests"
+              ? "bg-primary text-primary-content font-bold"
+              : listenerRequests.length > 0
+              ? "text-error hover:bg-base-200"
+              : "text-base-content/70 hover:text-base-content hover:bg-base-200"
+          }`}
+        >
+          <Inbox className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Request{listenerRequests.length > 0 ? ` (${listenerRequests.length})` : ""}
+          </span>
+        </button>
       </div>
+
+      {/* CasterHub Category Sub-Selector */}
+      {activeTab === "casterhub" && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {CASTERHUB_CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setCasterhubCategory(c.id)}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-colors ${
+                casterhubCategory === c.id
+                  ? "bg-primary/20 border-primary/40 text-primary"
+                  : "bg-base-100 border-base-300 text-base-content/70 hover:text-base-content"
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Listener Requests Inbox Panel */}
+      {activeTab === "requests" && (
+        <div className="space-y-2">
+          {listenerRequests.length === 0 ? (
+            <p className="text-xs text-base-content/60 text-center py-6">
+              Belum ada request lagu baru dari pendengar online.
+            </p>
+          ) : (
+            listenerRequests.map((req) => {
+              const reqTrack: TrackItem = {
+                video_id: req.video_id,
+                title: req.title,
+                artists: req.artist ? [req.artist] : ["Request Pendengar"],
+                album: `Request dari ${req.sender_name}`,
+                thumbnail_url: req.thumbnail_url || null,
+                duration_formatted: req.duration_formatted || "00:00",
+                url: `https://music.youtube.com/watch?v=${req.video_id}`,
+              };
+              return (
+                <div
+                  key={req.id}
+                  className="p-3 rounded-lg bg-base-100 border border-base-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-bold text-primary">{req.sender_name}</span>
+                      <span className="font-mono text-[11px] text-base-content/50">
+                        {req.created_at?.slice(11, 16)}
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-base-content truncate">
+                      {req.title} — <span className="font-normal text-base-content/70">{req.artist}</span>
+                    </p>
+                    {req.message && (
+                      <p className="text-xs text-base-content/70 italic line-clamp-2">
+                        &ldquo;{req.message}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onSelectTrack(reqTrack)}
+                      className="btn btn-xs h-8 px-2.5 rounded-md bg-base-200 border border-base-300 text-xs font-semibold text-base-content hover:bg-base-300"
+                    >
+                      Cue
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isQueueing}
+                      onClick={async () => {
+                        await onQueueTrack(reqTrack, 1);
+                        await actionListenerRequest(req.id, "accept");
+                        setListenerRequests((prev) => prev.filter((item) => item.id !== req.id));
+                      }}
+                      className="btn btn-primary btn-xs h-8 px-2.5 rounded-md text-xs font-bold text-primary-content gap-1"
+                    >
+                      <Play className="h-3 w-3 fill-current" />
+                      <span>Terima</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await actionListenerRequest(req.id, "reject");
+                        setListenerRequests((prev) => prev.filter((item) => item.id !== req.id));
+                      }}
+                      className="btn btn-xs h-8 px-2 rounded-md bg-base-200 border border-base-300 text-error hover:bg-error/15"
+                      title="Tolak request"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* Mood Program Selector (No emojis per R-04) */}
       {activeTab === "mood" && (

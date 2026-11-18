@@ -15,7 +15,7 @@ from app.services.settings_service import settings_service
 from app.version import VERSION
 
 logger = logging.getLogger(__name__)
-DEFAULT_CASTERHUB_URL = "https://radio-boss-controller.vercel.app"
+DEFAULT_CASTERHUB_URL = "https://rcb.oktaa.my.id"
 
 
 def _get_machine_hash() -> str:
@@ -62,6 +62,10 @@ class TelemetryService:
                 "artist": artist,
                 "video_id": video_id,
             }
+
+    def clear_onair_track(self):
+        """Clear cached on-air song when RadioBOSS playback is paused, stopped, or idle."""
+        self.latest_onair_track = None
 
     def get_time_belt(self) -> str:
         """Determine time-belt category from local studio hour."""

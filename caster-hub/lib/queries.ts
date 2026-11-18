@@ -218,7 +218,10 @@ export async function getNetworkStatsData(): Promise<NetworkStatsResult> {
 
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
   const activeStationsCount = await stationsCol.countDocuments({
-    last_seen_at: { $gte: tenMinutesAgo },
+    $or: [
+      { last_seen_at: { $gte: tenMinutesAgo } },
+      { last_seen_at: { $gte: tenMinutesAgo.toISOString() } },
+    ],
   });
 
   const totalsAgg = await stationsCol
@@ -319,7 +322,7 @@ export async function getStationsData(): Promise<{
       station_hash: "a1b2c3d4e5f60718",
       station_name: "Radio Komunitas Ardan Live",
       is_custom_name: true,
-      public_stream_url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
+      public_stream_url: "",
       enable_online_requests: true,
       app_version: "1.0.0",
       total_airtime_seconds: 524000,
@@ -338,7 +341,7 @@ export async function getStationsData(): Promise<{
       station_hash: "f8e7d6c5b4a39281",
       station_name: "Prambors Studio Jakarta",
       is_custom_name: true,
-      public_stream_url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
+      public_stream_url: "",
       enable_online_requests: true,
       app_version: "1.0.0",
       total_airtime_seconds: 412000,
@@ -477,8 +480,17 @@ export async function getAnalyticsData() {
       };
     });
 
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const activeStationsCount = await stationsCol.countDocuments({
+      $or: [
+        { last_seen_at: { $gte: tenMinutesAgo } },
+        { last_seen_at: { $gte: tenMinutesAgo.toISOString() } },
+      ],
+    });
+
     return {
       success: true,
+      active_stations_online: activeStationsCount,
       peak_hours: peakHours,
       genre_distribution: genreDistribution,
       leaderboard: leaderBoard,
@@ -488,6 +500,7 @@ export async function getAnalyticsData() {
   return {
     success: true,
     mock_mode: true,
+    active_stations_online: 0,
     peak_hours: [
       { hour: "00:00", weight: 15 },
       { hour: "02:00", weight: 8 },
