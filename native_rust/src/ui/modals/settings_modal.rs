@@ -14,17 +14,21 @@ use crate::ui::theme::{
 use crate::ui::toast::ToastItem;
 
 pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
+    let just_opened_id = egui::Id::unique("rcb_settings_just_opened");
     if !app.is_settings_open {
+        ctx.data_mut(|d| d.insert_temp(just_opened_id, false));
         return;
     }
 
     if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
         app.is_settings_open = false;
+        ctx.data_mut(|d| d.insert_temp(just_opened_id, false));
         return;
     }
 
+    let was_open = ctx.data(|d| d.get_temp::<bool>(just_opened_id).unwrap_or(false));
     let mut is_open = app.is_settings_open;
-    egui::Window::new("Pengaturan")
+    let mut win = egui::Window::new("Pengaturan")
         .id(egui::Id::unique("rcb_settings_dialog_v2"))
         .open(&mut is_open)
         .title_bar(false)
@@ -32,8 +36,15 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         .resizable(false)
         .movable(true)
         .frame(split_dialog_frame())
-        .fixed_size(egui::vec2(760.0, 560.0))
-        .show(ctx, |ui| {
+        .fixed_size(egui::vec2(760.0, 560.0));
+
+    if !was_open {
+        let center = ctx.content_rect().center() - egui::vec2(380.0, 280.0);
+        win = win.current_pos(center);
+        ctx.data_mut(|d| d.insert_temp(just_opened_id, true));
+    }
+
+    win.show(ctx, |ui| {
             let total_h = 560.0_f32;
             ui.horizontal_top(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
@@ -51,6 +62,7 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                     .inner_margin(Margin::symmetric(12, 14))
                     .show(ui, |ui| {
                         ui.vertical(|ui| {
+                            ui.spacing_mut().item_spacing.x = 8.0;
                             ui.set_width(176.0);
                             ui.set_min_height(total_h - 28.0);
 
@@ -66,22 +78,7 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
 
                             for (t, label) in tabs {
                                 let active = app.settings_tab == t;
-                                let fill = if active {
-                                    Color32::from_rgb(38, 38, 46)
-                                } else {
-                                    Color32::TRANSPARENT
-                                };
-                                let text_col = if active { TEXT_PRIMARY } else { TEXT_SECONDARY };
-                                let resp = ui
-                                    .add_sized(
-                                        [174.0, 34.0],
-                                        egui::Button::new(semibold_text(label, 12.5, text_col))
-                                            .fill(fill)
-                                            .stroke(Stroke::NONE)
-                                            .corner_radius(CornerRadius::same(8)),
-                                    )
-                                    .on_hover_cursor(egui::CursorIcon::PointingHand);
-                                if resp.clicked() {
+                                if sidebar_tab_button(ui, t, label, active).clicked() {
                                     app.settings_tab = t;
                                     if t == SettingsTab::Storage {
                                         app.send_cmd(AppCommand::RefreshCacheStats);
@@ -98,6 +95,7 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                     .inner_margin(Margin::symmetric(22, 18))
                     .show(ui, |ui| {
                         ui.vertical(|ui| {
+                            ui.spacing_mut().item_spacing.x = 8.0;
                             let pane_w = 516.0_f32;
                             ui.set_width(pane_w);
                             ui.set_min_height(total_h - 36.0);
@@ -129,7 +127,7 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
 
                             egui::ScrollArea::vertical()
                                 .id_salt("settings_content_scroll")
-                                .max_height(430.0)
+                                .max_height(424.0)
                                 .show(ui, |ui| {
                                     ui.set_width(pane_w);
                                     match app.settings_tab {
@@ -143,17 +141,49 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                                     }
                                 });
 
-                            ui.add_space(10.0);
+                            ui.add_space(12.0);
                             ui.allocate_ui_with_layout(
-                                egui::vec2(pane_w, 32.0),
+                                egui::vec2(pane_w, 34.0),
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
-                                    if amber_button(ui, "Simpan Pengaturan").clicked() {
+                                    ui.spacing_mut().item_spacing.x = 10.0;
+                                    if ui
+                                        .add_sized(
+                                            [144.0, 32.0],
+                                            egui::Button::new(bold_text(
+                                                "Simpan Pengaturan",
+                                                12.5,
+                                                Color32::from_rgb(18, 14, 8),
+                                            ))
+                                            .fill(AMBER_PRIMARY)
+                                            .stroke(Stroke::NONE)
+                                            .corner_radius(CornerRadius::same(7)),
+                                        )
+                                        .on_hover_cursor(egui::CursorIcon::PointingHand)
+                                        .clicked()
+                                    {
                                         let cfg = app.draft_config.clone();
                                         app.send_cmd(AppCommand::SaveSettings(cfg));
                                         app.is_settings_open = false;
                                     }
-                                    if slate_button(ui, "Batal").clicked() {
+                                    if ui
+                                        .add_sized(
+                                            [88.0, 32.0],
+                                            egui::Button::new(semibold_text(
+                                                "Batal",
+                                                12.5,
+                                                TEXT_PRIMARY,
+                                            ))
+                                            .fill(Color32::from_rgb(42, 42, 52))
+                                            .stroke(Stroke::new(
+                                                1.0,
+                                                Color32::from_rgb(60, 60, 72),
+                                            ))
+                                            .corner_radius(CornerRadius::same(7)),
+                                        )
+                                        .on_hover_cursor(egui::CursorIcon::PointingHand)
+                                        .clicked()
+                                    {
                                         app.is_settings_open = false;
                                     }
                                 },
@@ -166,6 +196,97 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
     if !is_open {
         app.is_settings_open = false;
     }
+    if !app.is_settings_open {
+        ctx.data_mut(|d| d.insert_temp(just_opened_id, false));
+    }
+}
+
+fn sidebar_tab_button(
+    ui: &mut egui::Ui,
+    tab: SettingsTab,
+    label: &str,
+    active: bool,
+) -> egui::Response {
+    let (rect, resp) = ui.allocate_exact_size(egui::vec2(174.0, 34.0), egui::Sense::click());
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+    let fill = if active {
+        Color32::from_rgb(38, 38, 46)
+    } else if resp.hovered() {
+        Color32::from_rgb(26, 26, 32)
+    } else {
+        Color32::TRANSPARENT
+    };
+    if fill != Color32::TRANSPARENT {
+        ui.painter()
+            .rect_filled(rect, CornerRadius::same(8), fill);
+    }
+
+    let col = if active { TEXT_PRIMARY } else { TEXT_SECONDARY };
+    let icon_c = rect.left_center() + egui::vec2(16.0, 0.0);
+    let stroke = Stroke::new(1.4, col);
+    let p = ui.painter();
+    match tab {
+        SettingsTab::Connection => {
+            p.circle_filled(icon_c, 2.0, col);
+            p.circle_stroke(icon_c, 5.5, stroke);
+        }
+        SettingsTab::Broadcast => {
+            p.rect_filled(
+                egui::Rect::from_center_size(icon_c + egui::vec2(-4.0, 1.5), egui::vec2(2.0, 7.0)),
+                CornerRadius::same(1),
+                col,
+            );
+            p.rect_filled(
+                egui::Rect::from_center_size(icon_c, egui::vec2(2.0, 11.0)),
+                CornerRadius::same(1),
+                col,
+            );
+            p.rect_filled(
+                egui::Rect::from_center_size(icon_c + egui::vec2(4.0, 2.5), egui::vec2(2.0, 5.0)),
+                CornerRadius::same(1),
+                col,
+            );
+        }
+        SettingsTab::Storage => {
+            let box_r = egui::Rect::from_center_size(icon_c, egui::vec2(12.0, 9.0));
+            p.rect_stroke(box_r, CornerRadius::same(2), stroke, egui::StrokeKind::Inside);
+            p.line_segment(
+                [
+                    egui::pos2(box_r.left() + 2.0, box_r.center().y),
+                    egui::pos2(box_r.right() - 2.0, box_r.center().y),
+                ],
+                stroke,
+            );
+        }
+        SettingsTab::CasterHub => {
+            p.circle_stroke(icon_c, 5.5, stroke);
+            p.line_segment(
+                [icon_c - egui::vec2(5.0, 0.0), icon_c + egui::vec2(5.0, 0.0)],
+                stroke,
+            );
+            p.line_segment(
+                [icon_c - egui::vec2(0.0, 5.0), icon_c + egui::vec2(0.0, 5.0)],
+                stroke,
+            );
+        }
+        SettingsTab::System => {
+            p.circle_stroke(icon_c, 5.5, stroke);
+            p.circle_filled(icon_c + egui::vec2(0.0, -2.5), 1.0, col);
+            p.line_segment(
+                [icon_c + egui::vec2(0.0, -0.5), icon_c + egui::vec2(0.0, 3.0)],
+                stroke,
+            );
+        }
+    }
+
+    p.text(
+        rect.left_center() + egui::vec2(30.0, 0.0),
+        egui::Align2::LEFT_CENTER,
+        label,
+        egui::FontId::proportional(12.5),
+        col,
+    );
+    resp
 }
 
 fn section_label(ui: &mut egui::Ui, text: &str) {
@@ -292,19 +413,41 @@ fn render_broadcast_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                         STATUS_SUCCESS
                     },
                 );
+                ui.add_space(4.0);
+                ui.add(
+                    egui::Label::new(mono_text(
+                        format!(
+                            "{} Core • {:.1} GB RAM • {}",
+                            specs.cpu_cores, specs.ram_gb, specs.os_name
+                        ),
+                        11.0,
+                        TEXT_SECONDARY,
+                    ))
+                    .truncate(),
+                );
+            });
+            ui.add_space(6.0);
+            ui.label(semibold_text(&specs.reason, 11.5, TEXT_PRIMARY));
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                if slate_button(ui, "Terapkan Preset Rekomendasi").clicked() {
+                    app.draft_config.enable_loudnorm = specs.recommended_loudnorm;
+                    app.draft_config.audio_quality = specs.recommended_bitrate.clone();
+                }
                 ui.label(mono_text(
-                    format!("{} • {} Core • {:.1} GB RAM", specs.os_name, specs.cpu_cores, specs.ram_gb),
+                    format!(
+                        "{} • {}",
+                        specs.recommended_bitrate,
+                        if specs.recommended_loudnorm {
+                            "Loudnorm ON"
+                        } else {
+                            "Loudnorm OFF"
+                        }
+                    ),
                     11.0,
-                    TEXT_SECONDARY,
+                    TEXT_MUTED,
                 ));
             });
-            ui.add_space(4.0);
-            ui.label(semibold_text(&specs.reason, 11.5, TEXT_PRIMARY));
-            ui.add_space(6.0);
-            if slate_button(ui, "Terapkan Preset Rekomendasi").clicked() {
-                app.draft_config.enable_loudnorm = specs.recommended_loudnorm;
-                app.draft_config.audio_quality = specs.recommended_bitrate.clone();
-            }
         });
         ui.add_space(12.0);
     }
@@ -564,40 +707,89 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 });
             });
             ui.add_space(6.0);
+            let filter_id = egui::Id::unique("rcb_cache_filter_query");
+            let mut filter_query = ui
+                .ctx()
+                .data(|d| d.get_temp::<String>(filter_id).unwrap_or_default());
+            ui.horizontal(|ui| {
+                ui.add_sized(
+                    [(ui.available_width() - if filter_query.is_empty() { 0.0 } else { 64.0 }).max(180.0), 28.0],
+                    egui::TextEdit::singleline(&mut filter_query)
+                        .hint_text("Cari judul atau artis di cache..."),
+                );
+                if !filter_query.is_empty() && slate_button(ui, "Reset").clicked() {
+                    filter_query.clear();
+                }
+            });
+            ui.ctx().data_mut(|d| d.insert_temp(filter_id, filter_query.clone()));
+            ui.add_space(6.0);
 
-            for c in cached_only {
-                list_row_frame(false).show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.vertical(|ui| {
-                            ui.spacing_mut().item_spacing.y = 1.0;
-                            ui.set_max_width((ui.available_width() - 185.0).max(120.0));
-                            ui.add(
-                                egui::Label::new(semibold_text(&c.title, 12.0, TEXT_PRIMARY))
-                                    .truncate(),
-                            );
-                            ui.add(
-                                egui::Label::new(semibold_text(&c.artist, 11.0, TEXT_SECONDARY))
-                                    .truncate(),
-                            );
-                        });
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if danger_button(ui, "Hapus").clicked() {
-                                app.send_cmd(AppCommand::DeleteCachedFile(c.video_id.clone()));
-                            }
-                            ui.label(mono_text(
-                                format!("{:.1} MB", c.file_size_mb),
-                                11.0,
-                                SIGNAL_CYAN,
-                            ));
-                            ui.label(mono_text(
-                                format!("{}x putar", c.play_count),
-                                11.0,
-                                AMBER_PRIMARY,
-                            ));
-                        });
+            let q_lower = filter_query.trim().to_lowercase();
+            let filtered: Vec<_> = cached_only
+                .iter()
+                .filter(|c| {
+                    q_lower.is_empty()
+                        || c.title.to_lowercase().contains(&q_lower)
+                        || c.artist.to_lowercase().contains(&q_lower)
+                })
+                .collect();
+
+            if filtered.is_empty() {
+                ui.label(semibold_text(
+                    "Tidak ada lagu cache yang cocok dengan pencarian.",
+                    11.5,
+                    TEXT_MUTED,
+                ));
+            } else {
+                egui::ScrollArea::vertical()
+                    .id_salt("cached_files_inner_scroll")
+                    .max_height(210.0)
+                    .show(ui, |ui| {
+                        for c in filtered {
+                            list_row_frame(false).show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.vertical(|ui| {
+                                        ui.spacing_mut().item_spacing.y = 1.0;
+                                        ui.set_max_width((ui.available_width() - 195.0).max(120.0));
+                                        ui.add(
+                                            egui::Label::new(semibold_text(&c.title, 12.0, TEXT_PRIMARY))
+                                                .truncate(),
+                                        );
+                                        ui.add(
+                                            egui::Label::new(semibold_text(
+                                                &c.artist,
+                                                11.0,
+                                                TEXT_SECONDARY,
+                                            ))
+                                            .truncate(),
+                                        );
+                                    });
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            ui.spacing_mut().item_spacing.x = 8.0;
+                                            if danger_button(ui, "Hapus").clicked() {
+                                                app.send_cmd(AppCommand::DeleteCachedFile(
+                                                    c.video_id.clone(),
+                                                ));
+                                            }
+                                            ui.label(mono_text(
+                                                format!("{:.1} MB", c.file_size_mb),
+                                                11.0,
+                                                SIGNAL_CYAN,
+                                            ));
+                                            ui.label(mono_text(
+                                                format!("{}x", c.play_count),
+                                                11.0,
+                                                AMBER_PRIMARY,
+                                            ));
+                                        },
+                                    );
+                                });
+                            });
+                            ui.add_space(3.0);
+                        }
                     });
-                });
-                ui.add_space(3.0);
             }
         });
     }

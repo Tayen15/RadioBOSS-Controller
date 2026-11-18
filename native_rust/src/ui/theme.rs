@@ -223,7 +223,7 @@ pub fn studio_toggle(ui: &mut egui::Ui, on: &mut bool) -> egui::Response {
     response
 }
 
-/// Clean flat `✕` close button for frameless studio dialogs.
+/// Clean flat `X` close button for frameless studio dialogs (vector-drawn so it never depends on font glyphs).
 pub fn window_close_x(ui: &mut egui::Ui) -> bool {
     let (rect, resp) = ui.allocate_exact_size(egui::vec2(26.0, 26.0), egui::Sense::click());
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
@@ -236,13 +236,13 @@ pub fn window_close_x(ui: &mut egui::Ui) -> bool {
     } else {
         TEXT_SECONDARY
     };
-    ui.painter().text(
-        rect.center(),
-        egui::Align2::CENTER_CENTER,
-        "✕",
-        egui::FontId::proportional(14.0),
-        col,
-    );
+    let c = rect.center();
+    let d = 4.5_f32;
+    let stroke = Stroke::new(1.6, col);
+    ui.painter()
+        .line_segment([c - egui::vec2(d, d), c + egui::vec2(d, d)], stroke);
+    ui.painter()
+        .line_segment([c + egui::vec2(d, -d), c + egui::vec2(-d, d)], stroke);
     resp.clicked()
 }
 
