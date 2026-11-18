@@ -29,6 +29,12 @@ pub struct YtDlpService {
     meta_cache: Arc<Mutex<HashMap<String, CachedMeta>>>,
 }
 
+impl Default for YtDlpService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl YtDlpService {
     pub fn new() -> Self {
         Self {

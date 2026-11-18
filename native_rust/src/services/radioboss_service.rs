@@ -3,6 +3,7 @@ use std::net::UdpSocket;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use once_cell::sync::Lazy;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use regex::Regex;
@@ -11,10 +12,24 @@ use reqwest::Client;
 use crate::models::config::AppConfig;
 use crate::models::radioboss::{NowPlayingTrack, PlaylistItem, RadioBossStatus, TabsResponse};
 
+static RE_PRF_TABS: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?s)PlaylistTabs\s*=\s*<(.*?)\r?\n\s*LastPlaylistTabIndex\s*=\s*(\d+)").unwrap()
+});
+static RE_PRF_CAPTION: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"Caption\s*=\s*'([^']+)'").unwrap());
+static RE_API_FILE_IDX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"(?i)FILE="[^"]*_(\d+)\.m3u""#).unwrap());
+
 /// Async client for RadioBOSS Web Remote Control HTTP API.
 #[derive(Clone)]
 pub struct RadioBossService {
     client: Client,
+}
+
+impl Default for RadioBossService {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RadioBossService {
@@ -201,10 +216,8 @@ impl RadioBossService {
                             match k.as_str() {
                                 "STATE" => playback_state = v.to_lowercase(),
                                 "POS" => pos_str = format_time_string(&v),
-                                "LEN" => {
-                                    if duration_str == "00:00" {
-                                        duration_str = format_time_string(&v);
-                                    }
+                                "LEN" if duration_str == "00:00" => {
+                                    duration_str = format_time_string(&v);
                                 }
                                 _ => {}
                             }
@@ -539,23 +552,18 @@ impl RadioBossService {
                                         (pe.path(), mtime)
                                     })
                                     .collect();
-                                prfs.sort_by(|a, b| b.1.cmp(&a.1));
+                                prfs.sort_by_key(|item| std::cmp::Reverse(item.1));
                                 prf_path = prfs.into_iter().next().map(|x| x.0);
                             }
                         }
                         if let Some(prf) = prf_path {
                             if let Ok(content) = fs::read_to_string(&prf) {
-                                let re_block = Regex::new(
-                                    r"(?s)PlaylistTabs\s*=\s*<(.*?)\r?\n\s*LastPlaylistTabIndex\s*=\s*(\d+)",
-                                )
-                                .unwrap();
-                                if let Some(caps) = re_block.captures(&content) {
+                                if let Some(caps) = RE_PRF_TABS.captures(&content) {
                                     let block = &caps[1];
                                     if let Ok(idx) = caps[2].parse::<usize>() {
                                         active_idx = idx;
                                     }
-                                    let re_cap = Regex::new(r"Caption\s*=\s*'([^']+)'").unwrap();
-                                    for cap in re_cap.captures_iter(block) {
+                                    for cap in RE_PRF_CAPTION.captures_iter(block) {
                                         let tab_name = cap[1].trim().to_string();
                                         if !tab_name.is_empty() && !discovered_tabs.contains(&tab_name) {
                                             discovered_tabs.push(tab_name);
@@ -582,8 +590,7 @@ impl RadioBossService {
         if let Ok(r) = self.client.get(&base_url).query(&params).timeout(Duration::from_secs(3)).send().await {
             if r.status().is_success() {
                 let text = r.text().await.unwrap_or_default();
-                let re_file = Regex::new(r#"(?i)FILE="[^"]*_(\d+)\.m3u""#).unwrap();
-                if let Some(caps) = re_file.captures(&text) {
+                if let Some(caps) = RE_API_FILE_IDX.captures(&text) {
                     if let Ok(idx) = caps[1].parse::<usize>() {
                         active_idx = idx;
                     }

@@ -79,10 +79,10 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 
             // Update Notification Badge if newer version available
             if let Some(ref upd) = app.update_check {
-                if upd.update_available {
-                    if amber_button(ui, &format!("Update v{}", upd.latest_version)).clicked() {
-                        app.is_update_open = true;
-                    }
+                if upd.update_available
+                    && amber_button(ui, &format!("Update v{}", upd.latest_version)).clicked()
+                {
+                    app.is_update_open = true;
                 }
             }
 
@@ -219,8 +219,8 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                                         .truncate(),
                                 );
 
-                                if app.rb_status.connected {
-                                    if ui
+                                if app.rb_status.connected
+                                    && ui
                                         .add(
                                             egui::Button::new(semibold_text(
                                                 "✎ Edit Cast Title",
@@ -231,13 +231,12 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                                             .corner_radius(CornerRadius::same(6)),
                                         )
                                         .clicked()
-                                    {
-                                        app.cast_title_input = np
-                                            .as_ref()
-                                            .map(|n| n.title.clone())
-                                            .unwrap_or_default();
-                                        app.is_editing_cast_title = true;
-                                    }
+                                {
+                                    app.cast_title_input = np
+                                        .as_ref()
+                                        .map(|n| n.title.clone())
+                                        .unwrap_or_default();
+                                    app.is_editing_cast_title = true;
                                 }
                             }
                         });

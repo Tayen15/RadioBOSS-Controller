@@ -1,20 +1,15 @@
 use serde::{Deserialize, Serialize};
 
 /// Format modes for broadcast track titles sent to RadioBOSS.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TitleFormatMode {
+    #[default]
     RadiobossNative,
     ArtistTitle,
     TitleArtist,
     TitleOnly,
     Custom,
-}
-
-impl Default for TitleFormatMode {
-    fn default() -> Self {
-        Self::RadiobossNative
-    }
 }
 
 impl TitleFormatMode {

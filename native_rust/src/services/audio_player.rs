@@ -33,6 +33,12 @@ struct AudioInner {
 
 unsafe impl Send for AudioInner {}
 
+impl Default for AudioPlayerService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AudioPlayerService {
     pub fn new() -> Self {
         Self {

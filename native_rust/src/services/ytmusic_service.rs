@@ -21,6 +21,12 @@ pub struct YtMusicService {
     client: Client,
 }
 
+impl Default for YtMusicService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl YtMusicService {
     pub fn new() -> Self {
         let client = Client::builder()

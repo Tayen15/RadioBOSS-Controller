@@ -20,6 +20,12 @@ pub struct UpdateService {
     download_status: Arc<Mutex<UpdateDownloadStatus>>,
 }
 
+impl Default for UpdateService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UpdateService {
     pub fn new() -> Self {
         let client = Client::builder()
