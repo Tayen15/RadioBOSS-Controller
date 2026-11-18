@@ -2,9 +2,9 @@ use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, Stroke};
 
 use crate::app::{LyricsModalTab, RadioCasterApp};
 use crate::ui::theme::{
-    bold_text, dialog_frame, lcd_frame, semibold_text, slate_button, status_pill, AMBER_DARK_TEXT,
-    AMBER_PRIMARY, BORDER_COLOR, DECK_BG, SIGNAL_CYAN, STATUS_SUCCESS, TEXT_PRIMARY,
-    TEXT_SECONDARY,
+    bold_text, dialog_frame, lcd_frame, semibold_text, slate_button, status_pill, window_close_dot,
+    AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, DECK_BG, SIGNAL_CYAN, STATUS_SUCCESS,
+    TEXT_PRIMARY, TEXT_SECONDARY,
 };
 use crate::ui::toast::ToastItem;
 
@@ -26,17 +26,21 @@ pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
     let mut is_open = app.is_lyrics_open;
     egui::Window::new("Lembar Cue Penyiar & Lirik Lagu")
         .open(&mut is_open)
+        .title_bar(false)
         .collapsible(false)
         .resizable(true)
         .movable(true)
         .frame(dialog_frame())
         .default_width(700.0)
-        .default_height(520.0)
+        .default_height(540.0)
         .show(ctx, |ui| {
             let tp = &data.talking_points;
             ui.horizontal(|ui| {
-                status_pill(ui, &tp.vibe_badge, AMBER_PRIMARY);
-                ui.label(bold_text(&tp.vibe, 13.5, TEXT_PRIMARY));
+                if window_close_dot(ui) {
+                    app.is_lyrics_open = false;
+                }
+                ui.add_space(6.0);
+                ui.label(bold_text("Cue Penyiar & Lirik", 16.0, TEXT_PRIMARY));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if tp.play_count > 0 {
                         status_pill(
@@ -45,6 +49,7 @@ pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                             STATUS_SUCCESS,
                         );
                     }
+                    status_pill(ui, &tp.vibe_badge, AMBER_PRIMARY);
                 });
             });
 

@@ -170,6 +170,72 @@ pub fn dialog_frame() -> Frame {
         })
 }
 
+/// Frameless split-pane dialog frame (0 outer margin so sidebar meets edge-to-edge).
+pub fn split_dialog_frame() -> Frame {
+    Frame::NONE
+        .fill(Color32::from_rgb(20, 20, 25))
+        .stroke(Stroke::new(1.0, Color32::from_rgb(56, 56, 68)))
+        .corner_radius(CornerRadius::same(12))
+        .inner_margin(Margin::same(0))
+        .shadow(egui::Shadow {
+            offset: [0, 10],
+            blur: 28,
+            spread: 0,
+            color: Color32::from_black_alpha(185),
+        })
+}
+
+/// Grouped setting card (`#1C1C23`, `10px` radius, subtle hairline border).
+pub fn setting_group_frame() -> Frame {
+    Frame::NONE
+        .fill(Color32::from_rgb(26, 26, 32))
+        .stroke(Stroke::new(1.0, Color32::from_rgb(40, 40, 49)))
+        .corner_radius(CornerRadius::same(10))
+        .inner_margin(Margin::symmetric(14, 10))
+}
+
+/// Smooth animated macOS/studio-style pill toggle switch.
+pub fn studio_toggle(ui: &mut egui::Ui, on: &mut bool) -> egui::Response {
+    let desired_size = egui::vec2(38.0, 20.0);
+    let (rect, mut response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+    response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
+    if response.clicked() {
+        *on = !*on;
+        response.mark_changed();
+    }
+
+    let how_on = ui.ctx().animate_bool_responsive(response.id, *on);
+    let off_bg = Color32::from_rgb(52, 52, 62);
+    let on_bg = STATUS_SUCCESS;
+    let bg = Color32::from_rgb(
+        (off_bg.r() as f32 + (on_bg.r() as f32 - off_bg.r() as f32) * how_on) as u8,
+        (off_bg.g() as f32 + (on_bg.g() as f32 - off_bg.g() as f32) * how_on) as u8,
+        (off_bg.b() as f32 + (on_bg.b() as f32 - off_bg.b() as f32) * how_on) as u8,
+    );
+
+    let radius = rect.height() * 0.5;
+    ui.painter().rect_filled(rect, radius, bg);
+    let circle_x = egui::lerp((rect.left() + radius)..=(rect.right() - radius), how_on);
+    let center = egui::pos2(circle_x, rect.center().y);
+    ui.painter()
+        .circle_filled(center, radius - 2.5, Color32::WHITE);
+
+    response
+}
+
+/// Clean red close dot button (`●`) for frameless studio dialogs.
+pub fn window_close_dot(ui: &mut egui::Ui) -> bool {
+    let (rect, resp) = ui.allocate_exact_size(egui::vec2(14.0, 14.0), egui::Sense::click());
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+    let col = if resp.hovered() {
+        Color32::from_rgb(255, 110, 105)
+    } else {
+        Color32::from_rgb(239, 83, 80)
+    };
+    ui.painter().circle_filled(rect.center(), 6.0, col);
+    resp.clicked()
+}
+
 pub fn bold_text(text: impl Into<String>, size: f32, color: Color32) -> RichText {
     RichText::new(text)
         .size(size)

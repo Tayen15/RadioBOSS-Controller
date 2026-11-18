@@ -79,6 +79,7 @@
 [14:13] - [native_rust/src/ui/theme.rs, native_rust/src/ui/modals/] - Enable free dragging (.movable(true), remove locked .anchor) and add elevated dialog_frame (drop shadow + crisp border) across all 5 modal dialogs, then recompile release RCBStudio.exe (18.67 MB) - Verified with clippy -D warnings & 11/11 tests
 [14:17] - [native_rust/src/ui/] - Add smooth state-driven motion & UX polish: 150ms widget animation_time, interpolated Now Playing & headphone progress bars, live ON-AIR breathing pulse dot, toast slide/fade-in/fade-out transitions, Esc key to close modals, and pointing-hand hover cursors - Rebuilt dist/RCBStudio.exe (18.68 MB) with clippy -D warnings & 11/11 tests passed
 [14:23] - [native_rust/src/events.rs, worker.rs, ui/modals/settings_modal.rs] - Redesign Storage tab cached files section into structured 'Lagu Tersimpan di Disk' card with unclipped rows, usage pill, play counts, and per-item DeleteCachedFile action; rebuild dist/RCBStudio.exe (18.69 MB) - Verified with clippy -D warnings & 11/11 tests passed
+[14:28] - [native_rust/src/ui/theme.rs, native_rust/src/ui/modals/] - Redesign all dialogs into frameless split-pane studio windows under antislop-ui rules (remove top title bar, add red close dot, edge-to-edge sidebar in Settings, animated pill toggle switches, grouped setting cards, and segmented controls) and rebuild dist/RCBStudio.exe (18.68 MB) - Verified with clippy -D warnings & 11/11 tests passed
 
 
 

@@ -4,7 +4,7 @@ use crate::app::RadioCasterApp;
 use crate::events::AppCommand;
 use crate::ui::theme::{
     amber_button, bold_text, dialog_frame, lcd_frame, semibold_text, slate_button, status_pill,
-    STATUS_WARNING, TEXT_PRIMARY, TEXT_SECONDARY,
+    window_close_dot, STATUS_WARNING, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
@@ -17,13 +17,23 @@ pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
         let mut keep_open = true;
         egui::Window::new("Lagu Sudah di Antrean")
             .open(&mut keep_open)
+            .title_bar(false)
             .collapsible(false)
             .resizable(false)
             .movable(true)
             .frame(dialog_frame())
             .default_width(420.0)
             .show(ctx, |ui| {
-                status_pill(ui, "Duplikat", STATUS_WARNING);
+                ui.horizontal(|ui| {
+                    if window_close_dot(ui) {
+                        app.pending_repeat = None;
+                    }
+                    ui.add_space(6.0);
+                    ui.label(bold_text("Lagu Sudah di Antrean", 15.0, TEXT_PRIMARY));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        status_pill(ui, "Duplikat", STATUS_WARNING);
+                    });
+                });
                 ui.add_space(6.0);
                 ui.label(bold_text(&pending.reason, 13.0, TEXT_PRIMARY));
                 ui.label(semibold_text(
@@ -58,12 +68,21 @@ pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
         let mut keep_open = true;
         egui::Window::new("Simpan ke Koleksi Set Playlist")
             .open(&mut keep_open)
+            .title_bar(false)
             .collapsible(false)
             .resizable(false)
             .movable(true)
             .frame(dialog_frame())
             .default_width(380.0)
             .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    if window_close_dot(ui) {
+                        app.add_to_set_picker_track = None;
+                    }
+                    ui.add_space(6.0);
+                    ui.label(bold_text("Simpan ke Set Playlist", 15.0, TEXT_PRIMARY));
+                });
+                ui.add_space(6.0);
                 ui.label(bold_text(
                     format!("{} - {}", track.artists_joined(), track.title),
                     12.5,

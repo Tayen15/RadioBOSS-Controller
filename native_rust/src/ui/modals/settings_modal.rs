@@ -1,4 +1,4 @@
-use eframe::egui::{self, CornerRadius, Stroke};
+use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, Stroke};
 
 use crate::app::{RadioCasterApp, SettingsTab};
 use crate::events::AppCommand;
@@ -6,10 +6,10 @@ use crate::models::config::{AppConfig, TitleFormatMode};
 use crate::models::APP_VERSION;
 use crate::services::system_service;
 use crate::ui::theme::{
-    amber_button, bold_text, danger_button, dialog_frame, lcd_frame, list_row_frame, mono_text,
-    semibold_text, slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR,
-    CONTROL_BG, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY,
-    TEXT_SECONDARY,
+    amber_button, bold_text, danger_button, list_row_frame, mono_text, semibold_text,
+    setting_group_frame, slate_button, split_dialog_frame, status_pill, studio_toggle,
+    window_close_dot, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED,
+    TEXT_PRIMARY, TEXT_SECONDARY,
 };
 use crate::ui::toast::ToastItem;
 
@@ -26,85 +26,123 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
     let mut is_open = app.is_settings_open;
     egui::Window::new("Pengaturan")
         .open(&mut is_open)
+        .title_bar(false)
         .collapsible(false)
         .resizable(true)
         .movable(true)
-        .frame(dialog_frame())
-        .default_width(740.0)
+        .frame(split_dialog_frame())
+        .default_width(760.0)
         .default_height(580.0)
         .show(ctx, |ui| {
+            let total_h = 560.0_f32.max(ui.available_height());
             ui.horizontal_top(|ui| {
-                // Left Sidebar Navigation (5 Tabs)
-                ui.vertical(|ui| {
-                    ui.set_width(175.0);
-                    let tabs = [
-                        (SettingsTab::Connection, "Koneksi RadioBOSS"),
-                        (SettingsTab::Broadcast, "Format & Audio"),
-                        (SettingsTab::Storage, "Penyimpanan & Disk"),
-                        (SettingsTab::CasterHub, "CasterHub Cloud"),
-                        (SettingsTab::System, "Sistem & Info"),
-                    ];
-                    for (t, label) in tabs {
-                        let active = app.settings_tab == t;
-                        if ui
-                            .add_sized(
-                                [170.0, 34.0],
-                                egui::Button::new(bold_text(
-                                    label,
-                                    12.0,
-                                    if active { AMBER_DARK_TEXT } else { TEXT_PRIMARY },
-                                ))
-                                .fill(if active { AMBER_PRIMARY } else { CONTROL_BG })
-                                .stroke(Stroke::new(
-                                    1.0,
-                                    if active { AMBER_PRIMARY } else { BORDER_COLOR },
-                                ))
-                                .corner_radius(CornerRadius::same(8)),
-                            )
-                            .clicked()
-                        {
-                            app.settings_tab = t;
-                            if t == SettingsTab::Storage {
-                                app.send_cmd(AppCommand::RefreshCacheStats);
+                ui.spacing_mut().item_spacing.x = 0.0;
+
+                // Left Recessed Sidebar (#121216)
+                Frame::NONE
+                    .fill(Color32::from_rgb(16, 16, 20))
+                    .stroke(Stroke::new(1.0, Color32::from_rgb(36, 36, 44)))
+                    .corner_radius(CornerRadius {
+                        nw: 12,
+                        sw: 12,
+                        ne: 0,
+                        se: 0,
+                    })
+                    .inner_margin(Margin::symmetric(12, 14))
+                    .show(ui, |ui| {
+                        ui.set_width(176.0);
+                        ui.set_min_height(total_h - 28.0);
+
+                        // Top-left window close dot
+                        ui.horizontal(|ui| {
+                            if window_close_dot(ui) {
+                                app.is_settings_open = false;
                             }
-                        }
-                        ui.add_space(4.0);
-                    }
-                });
-
-                ui.add_space(12.0);
-
-                // Right Content Area
-                ui.vertical(|ui| {
-                    ui.set_min_width(510.0);
-                    egui::ScrollArea::vertical()
-                        .id_salt("settings_content_scroll")
-                        .max_height(475.0)
-                        .show(ui, |ui| match app.settings_tab {
-                            SettingsTab::Connection => render_connection_tab(ui, app),
-                            SettingsTab::Broadcast => render_broadcast_tab(ui, app),
-                            SettingsTab::Storage => render_storage_tab(ui, app),
-                            SettingsTab::CasterHub => render_casterhub_tab(ctx, ui, app),
-                            SettingsTab::System => render_system_tab(ui, app),
                         });
+                        ui.add_space(14.0);
 
-                    ui.add_space(10.0);
-                    ui.separator();
-                    ui.add_space(6.0);
+                        let tabs = [
+                            (SettingsTab::Connection, "Koneksi RadioBOSS"),
+                            (SettingsTab::Broadcast, "Format & Audio"),
+                            (SettingsTab::Storage, "Penyimpanan & Disk"),
+                            (SettingsTab::CasterHub, "CasterHub Cloud"),
+                            (SettingsTab::System, "Sistem & Info"),
+                        ];
 
-                    ui.horizontal(|ui| {
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if amber_button(ui, "Simpan Pengaturan").clicked() {
-                                let cfg = app.draft_config.clone();
-                                app.send_cmd(AppCommand::SaveSettings(cfg));
-                                app.is_settings_open = false;
+                        for (t, label) in tabs {
+                            let active = app.settings_tab == t;
+                            let fill = if active {
+                                Color32::from_rgb(38, 38, 46)
+                            } else {
+                                Color32::TRANSPARENT
+                            };
+                            let text_col = if active { TEXT_PRIMARY } else { TEXT_SECONDARY };
+                            let resp = ui
+                                .add_sized(
+                                    [174.0, 34.0],
+                                    egui::Button::new(semibold_text(label, 12.5, text_col))
+                                        .fill(fill)
+                                        .stroke(Stroke::NONE)
+                                        .corner_radius(CornerRadius::same(8)),
+                                )
+                                .on_hover_cursor(egui::CursorIcon::PointingHand);
+                            if resp.clicked() {
+                                app.settings_tab = t;
+                                if t == SettingsTab::Storage {
+                                    app.send_cmd(AppCommand::RefreshCacheStats);
+                                }
                             }
-                            if slate_button(ui, "Batal").clicked() {
-                                app.is_settings_open = false;
-                            }
+                            ui.add_space(3.0);
+                        }
+                    });
+
+                // Right Content Pane
+                Frame::NONE
+                    .fill(Color32::TRANSPARENT)
+                    .inner_margin(Margin::symmetric(22, 18))
+                    .show(ui, |ui| {
+                        let pane_w = (ui.available_width()).max(490.0);
+                        ui.set_width(pane_w);
+
+                        // Section Title matching active tab
+                        let heading = match app.settings_tab {
+                            SettingsTab::Connection => "Koneksi RadioBOSS",
+                            SettingsTab::Broadcast => "Format & Audio",
+                            SettingsTab::Storage => "Penyimpanan & Disk",
+                            SettingsTab::CasterHub => "CasterHub Cloud",
+                            SettingsTab::System => "Sistem & Info",
+                        };
+                        ui.label(bold_text(heading, 18.0, TEXT_PRIMARY));
+                        ui.add_space(12.0);
+
+                        egui::ScrollArea::vertical()
+                            .id_salt("settings_content_scroll")
+                            .max_height(445.0)
+                            .show(ui, |ui| match app.settings_tab {
+                                SettingsTab::Connection => render_connection_tab(ui, app),
+                                SettingsTab::Broadcast => render_broadcast_tab(ui, app),
+                                SettingsTab::Storage => render_storage_tab(ui, app),
+                                SettingsTab::CasterHub => render_casterhub_tab(ctx, ui, app),
+                                SettingsTab::System => render_system_tab(ui, app),
+                            });
+
+                        ui.add_space(10.0);
+                        ui.horizontal(|ui| {
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if amber_button(ui, "Simpan Pengaturan").clicked() {
+                                        let cfg = app.draft_config.clone();
+                                        app.send_cmd(AppCommand::SaveSettings(cfg));
+                                        app.is_settings_open = false;
+                                    }
+                                    if slate_button(ui, "Batal").clicked() {
+                                        app.is_settings_open = false;
+                                    }
+                                },
+                            );
                         });
                     });
-                });
             });
         });
 
@@ -113,29 +151,48 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
     }
 }
 
-fn render_connection_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
-    ui.label(bold_text("Koneksi Web Remote API RadioBOSS", 13.5, TEXT_PRIMARY));
-    ui.label(semibold_text(
-        "Pastikan opsi Remote Control aktif di RadioBOSS (Options -> Settings -> Remote Control).",
-        11.5,
-        TEXT_SECONDARY,
-    ));
-    ui.add_space(8.0);
+fn section_label(ui: &mut egui::Ui, text: &str) {
+    ui.label(semibold_text(text, 11.5, TEXT_MUTED));
+    ui.add_space(4.0);
+}
 
-    lcd_frame().show(ui, |ui| {
-        ui.label(semibold_text("Host / IP Address RadioBOSS", 11.5, TEXT_SECONDARY));
+fn toggle_row(
+    ui: &mut egui::Ui,
+    title: &str,
+    subtitle: &str,
+    value: &mut bool,
+) {
+    ui.horizontal(|ui| {
+        ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing.y = 1.0;
+            ui.set_max_width((ui.available_width() - 56.0).max(180.0));
+            ui.label(semibold_text(title, 12.5, TEXT_PRIMARY));
+            if !subtitle.is_empty() {
+                ui.label(semibold_text(subtitle, 11.0, TEXT_SECONDARY));
+            }
+        });
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            studio_toggle(ui, value);
+        });
+    });
+}
+
+fn render_connection_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
+    section_label(ui, "Server Web Remote API");
+    setting_group_frame().show(ui, |ui| {
+        ui.label(semibold_text("Host / IP Address", 11.5, TEXT_SECONDARY));
         ui.add_sized(
             [ui.available_width(), 30.0],
             egui::TextEdit::singleline(&mut app.draft_config.radioboss_host),
         );
-        ui.add_space(6.0);
+        ui.add_space(8.0);
 
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
-                ui.label(semibold_text("Port Remote API", 11.5, TEXT_SECONDARY));
+                ui.label(semibold_text("Port", 11.5, TEXT_SECONDARY));
                 let mut port_str = app.draft_config.radioboss_port.to_string();
                 if ui
-                    .add_sized([120.0, 30.0], egui::TextEdit::singleline(&mut port_str))
+                    .add_sized([110.0, 30.0], egui::TextEdit::singleline(&mut port_str))
                     .changed()
                 {
                     if let Ok(p) = port_str.trim().parse::<u16>() {
@@ -145,7 +202,7 @@ fn render_connection_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             });
             ui.add_space(12.0);
             ui.vertical(|ui| {
-                ui.label(semibold_text("Password Web Remote", 11.5, TEXT_SECONDARY));
+                ui.label(semibold_text("Password Remote Control", 11.5, TEXT_SECONDARY));
                 ui.horizontal(|ui| {
                     ui.add_sized(
                         [240.0, 30.0],
@@ -163,14 +220,14 @@ fn render_connection_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 
         ui.add_space(10.0);
         ui.horizontal(|ui| {
-            if amber_button(ui, "Ping / Tes Koneksi Live").clicked() {
+            if amber_button(ui, "Tes Koneksi Live").clicked() {
                 let test_cfg = app.draft_config.clone();
                 app.send_cmd(AppCommand::PingRadioBoss(test_cfg));
             }
             if let Some((ok, ref msg)) = app.ping_result {
                 status_pill(
                     ui,
-                    if ok { "TERHUBUNG" } else { "GAGAL" },
+                    if ok { "Terhubung" } else { "Gagal" },
                     if ok { STATUS_SUCCESS } else { STATUS_ERROR },
                 );
                 ui.label(semibold_text(msg, 11.5, TEXT_PRIMARY));
@@ -178,9 +235,9 @@ fn render_connection_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
         });
     });
 
-    ui.add_space(10.0);
-    lcd_frame().show(ui, |ui| {
-        ui.label(bold_text("Target Tab Playlist Default", 12.5, TEXT_PRIMARY));
+    ui.add_space(12.0);
+    section_label(ui, "Target Tab Playlist");
+    setting_group_frame().show(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             let is_auto = app.draft_config.target_playlist_tab.is_empty();
             if ui
@@ -201,19 +258,16 @@ fn render_connection_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 }
 
 fn render_broadcast_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
-    ui.label(bold_text("Format Judul Siaran & Kualitas Audio", 13.5, TEXT_PRIMARY));
-    ui.add_space(6.0);
-
-    // Hardware Spec Auto-Detection Card
     if let Some(ref specs) = app.system_specs.clone() {
-        lcd_frame().show(ui, |ui| {
+        section_label(ui, "Rekomendasi Perangkat");
+        setting_group_frame().show(ui, |ui| {
             ui.horizontal(|ui| {
                 status_pill(
                     ui,
                     if specs.is_low_spec {
-                        "REKOMENDASI: LOW-SPEC"
+                        "Low-Spec"
                     } else {
-                        "REKOMENDASI: STUDIO HIGH"
+                        "Studio High"
                     },
                     if specs.is_low_spec {
                         AMBER_PRIMARY
@@ -222,7 +276,7 @@ fn render_broadcast_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                     },
                 );
                 ui.label(mono_text(
-                    format!("{} • {} Cores • {:.1} GB RAM", specs.os_name, specs.cpu_cores, specs.ram_gb),
+                    format!("{} • {} Core • {:.1} GB RAM", specs.os_name, specs.cpu_cores, specs.ram_gb),
                     11.0,
                     TEXT_SECONDARY,
                 ));
@@ -230,61 +284,76 @@ fn render_broadcast_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             ui.add_space(4.0);
             ui.label(semibold_text(&specs.reason, 11.5, TEXT_PRIMARY));
             ui.add_space(6.0);
-            if slate_button(ui, "Terapkan Preset Rekomendasi Hardware").clicked() {
+            if slate_button(ui, "Terapkan Preset Rekomendasi").clicked() {
                 app.draft_config.enable_loudnorm = specs.recommended_loudnorm;
                 app.draft_config.audio_quality = specs.recommended_bitrate.clone();
             }
         });
-        ui.add_space(8.0);
+        ui.add_space(12.0);
     }
 
-    // Audio Quality Selector
-    lcd_frame().show(ui, |ui| {
-        ui.label(bold_text("Kualitas Bitrate Transcode MP3", 12.5, TEXT_PRIMARY));
-        ui.add_space(4.0);
-        ui.horizontal_wrapped(|ui| {
-            let bitrates = [
-                ("320k", "320 kbps (Studio Master)"),
-                ("256k", "256 kbps (Tinggi)"),
-                ("192k", "192 kbps (Standar)"),
-                ("128k", "128 kbps (Hemat)"),
-            ];
-            for (val, lbl) in bitrates {
-                let active = app.draft_config.audio_quality == val;
-                if ui
-                    .add(
-                        egui::Button::new(semibold_text(
-                            lbl,
-                            11.5,
-                            if active { AMBER_DARK_TEXT } else { TEXT_PRIMARY },
-                        ))
-                        .fill(if active { AMBER_PRIMARY } else { CONTROL_BG })
-                        .corner_radius(CornerRadius::same(6)),
-                    )
-                    .clicked()
-                {
-                    app.draft_config.audio_quality = val.to_string();
-                }
-            }
-        });
+    section_label(ui, "Kualitas & Normalisasi Audio");
+    setting_group_frame().show(ui, |ui| {
+        ui.label(semibold_text("Bitrate Transcode MP3", 12.5, TEXT_PRIMARY));
+        ui.label(semibold_text(
+            "Menentukan kualitas audio saat menyimpan cache atau merelai stream",
+            11.0,
+            TEXT_SECONDARY,
+        ));
+        ui.add_space(6.0);
 
-        ui.add_space(8.0);
-        ui.checkbox(
+        // Segmented pill strip matching reference image
+        Frame::NONE
+            .fill(Color32::from_rgb(18, 18, 22))
+            .corner_radius(CornerRadius::same(7))
+            .inner_margin(Margin::same(3))
+            .show(ui, |ui| {
+                let bitrates = [
+                    ("320k", "320 kbps"),
+                    ("256k", "256 kbps"),
+                    ("192k", "192 kbps"),
+                    ("128k", "128 kbps"),
+                ];
+                let seg_w = ((ui.available_width() - 12.0) / 4.0).max(70.0);
+                ui.horizontal(|ui| {
+                    for (val, lbl) in bitrates {
+                        let active = app.draft_config.audio_quality == val;
+                        if ui
+                            .add_sized(
+                                [seg_w, 26.0],
+                                egui::Button::new(semibold_text(
+                                    lbl,
+                                    11.5,
+                                    if active { TEXT_PRIMARY } else { TEXT_SECONDARY },
+                                ))
+                                .fill(if active {
+                                    Color32::from_rgb(56, 56, 66)
+                                } else {
+                                    Color32::TRANSPARENT
+                                })
+                                .stroke(Stroke::NONE)
+                                .corner_radius(CornerRadius::same(5)),
+                            )
+                            .clicked()
+                        {
+                            app.draft_config.audio_quality = val.to_string();
+                        }
+                    }
+                });
+            });
+
+        ui.add_space(10.0);
+        toggle_row(
+            ui,
+            "Normalisasi Volume EBU R128 (-14 LUFS)",
+            "Menjaga level kekerasan audio tetap seragam antar lagu",
             &mut app.draft_config.enable_loudnorm,
-            semibold_text(
-                "Aktifkan Normalisasi Volume Broadcast EBU R128 (-14 LUFS)",
-                12.0,
-                TEXT_PRIMARY,
-            ),
         );
     });
 
-    ui.add_space(8.0);
-
-    // Title Format Mode
-    lcd_frame().show(ui, |ui| {
-        ui.label(bold_text("Format Judul Siaran RadioBOSS (streamingtitle)", 12.5, TEXT_PRIMARY));
-        ui.add_space(4.0);
+    ui.add_space(12.0);
+    section_label(ui, "Format Judul Siaran");
+    setting_group_frame().show(ui, |ui| {
         let modes = [
             TitleFormatMode::RadiobossNative,
             TitleFormatMode::ArtistTitle,
@@ -296,7 +365,7 @@ fn render_broadcast_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             let val_str = m.as_str();
             let active = app.draft_config.title_format_mode == val_str;
             if ui
-                .radio(active, format!("{} — Contoh: {}", m.label(), m.example()))
+                .radio(active, format!("{} — {}", m.label(), m.example()))
                 .clicked()
             {
                 app.draft_config.title_format_mode = val_str.to_string();
@@ -313,17 +382,10 @@ fn render_broadcast_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 }
 
 fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
-    ui.label(bold_text("Penyimpanan Cache Audio & Database Studio", 13.5, TEXT_PRIMARY));
-    ui.add_space(6.0);
-
-    // Cache Folder Picker
-    lcd_frame().show(ui, |ui| {
-        ui.label(bold_text("Direktori Cache Audio MP3", 12.0, TEXT_PRIMARY));
-        ui.label(mono_text(
-            format!("Aktif: {}", app.cache_stats.cache_dir),
-            10.5,
-            SIGNAL_CYAN,
-        ));
+    section_label(ui, "Lokasi Penyimpanan");
+    setting_group_frame().show(ui, |ui| {
+        ui.label(semibold_text("Folder Cache Audio MP3", 12.0, TEXT_PRIMARY));
+        ui.label(mono_text(&app.cache_stats.cache_dir, 10.5, SIGNAL_CYAN));
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.add(
@@ -331,7 +393,7 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                     .desired_width(250.0)
                     .hint_text("Default AppData / Portable"),
             );
-            if slate_button(ui, "Pilih Folder").clicked() {
+            if slate_button(ui, "Pilih").clicked() {
                 if let Some(p) =
                     system_service::pick_folder_dialog(Some(&app.draft_config.custom_cache_dir))
                 {
@@ -343,13 +405,9 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             }
         });
 
-        ui.add_space(8.0);
-        ui.label(bold_text("Direktori Database SQLite (radioboss_caster.db)", 12.0, TEXT_PRIMARY));
-        ui.label(mono_text(
-            format!("Aktif: {}", app.cache_stats.storage_dir),
-            10.5,
-            SIGNAL_CYAN,
-        ));
+        ui.add_space(10.0);
+        ui.label(semibold_text("Folder Database SQLite", 12.0, TEXT_PRIMARY));
+        ui.label(mono_text(&app.cache_stats.storage_dir, 10.5, SIGNAL_CYAN));
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             ui.add(
@@ -357,7 +415,7 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                     .desired_width(250.0)
                     .hint_text("Default AppData / Portable"),
             );
-            if slate_button(ui, "Pilih Folder").clicked() {
+            if slate_button(ui, "Pilih").clicked() {
                 if let Some(p) =
                     system_service::pick_folder_dialog(Some(&app.draft_config.custom_data_dir))
                 {
@@ -370,25 +428,24 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
         });
     });
 
-    ui.add_space(8.0);
-
-    // Cache Limit & Usage Bar
-    lcd_frame().show(ui, |ui| {
+    ui.add_space(12.0);
+    section_label(ui, "Kuota & Pembersihan Otomatis");
+    setting_group_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.label(bold_text(
+            ui.label(semibold_text(
                 format!(
-                    "Pemakaian Cache: {:.2} MB ({} file)",
+                    "Terpakai {:.2} MB ({} file)",
                     app.cache_stats.total_size_mb, app.cache_stats.total_files
                 ),
-                12.0,
+                12.5,
                 TEXT_PRIMARY,
             ));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(mono_text(
                     if app.draft_config.max_cache_size_mb == 0 {
-                        "Batas: Unlimited".to_string()
+                        "Tanpa Batas".to_string()
                     } else {
-                        format!("Batas: {} MB", app.draft_config.max_cache_size_mb)
+                        format!("Maks {} MB", app.draft_config.max_cache_size_mb)
                     },
                     11.0,
                     AMBER_PRIMARY,
@@ -398,40 +455,60 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 
         let pct = (app.cache_stats.used_percent as f32 / 100.0).clamp(0.0, 1.0);
         ui.add(egui::ProgressBar::new(pct).show_percentage());
-        ui.add_space(6.0);
+        ui.add_space(8.0);
 
-        ui.horizontal_wrapped(|ui| {
-            ui.label(semibold_text("Batas Maksimal:", 11.5, TEXT_SECONDARY));
-            for (mb, lbl) in [
-                (500u64, "500 MB"),
-                (1024, "1 GB"),
-                (2048, "2 GB"),
-                (5120, "5 GB"),
-                (10240, "10 GB"),
-                (0, "Unlimited"),
-            ] {
-                let active = app.draft_config.max_cache_size_mb == mb;
-                if ui
-                    .selectable_label(active, lbl)
-                    .clicked()
-                {
-                    app.draft_config.max_cache_size_mb = mb;
-                }
-            }
-        });
+        Frame::NONE
+            .fill(Color32::from_rgb(18, 18, 22))
+            .corner_radius(CornerRadius::same(7))
+            .inner_margin(Margin::same(3))
+            .show(ui, |ui| {
+                let limits = [
+                    (500u64, "500 MB"),
+                    (1024, "1 GB"),
+                    (2048, "2 GB"),
+                    (5120, "5 GB"),
+                    (10240, "10 GB"),
+                    (0, "Tanpa Batas"),
+                ];
+                let seg_w = ((ui.available_width() - 18.0) / 6.0).max(54.0);
+                ui.horizontal(|ui| {
+                    for (mb, lbl) in limits {
+                        let active = app.draft_config.max_cache_size_mb == mb;
+                        if ui
+                            .add_sized(
+                                [seg_w, 24.0],
+                                egui::Button::new(semibold_text(
+                                    lbl,
+                                    11.0,
+                                    if active { TEXT_PRIMARY } else { TEXT_SECONDARY },
+                                ))
+                                .fill(if active {
+                                    Color32::from_rgb(56, 56, 66)
+                                } else {
+                                    Color32::TRANSPARENT
+                                })
+                                .stroke(Stroke::NONE)
+                                .corner_radius(CornerRadius::same(5)),
+                            )
+                            .clicked()
+                        {
+                            app.draft_config.max_cache_size_mb = mb;
+                        }
+                    }
+                });
+            });
 
-        ui.checkbox(
+        ui.add_space(10.0);
+        toggle_row(
+            ui,
+            "Hapus otomatis lagu paling jarang diputar",
+            "Berjalan otomatis saat kapasitas cache melebihi batas maksimal",
             &mut app.draft_config.auto_cleanup_cache,
-            semibold_text(
-                "Hapus otomatis lagu paling jarang diputar (LRU) saat melebihi batas",
-                11.5,
-                TEXT_PRIMARY,
-            ),
         );
 
-        ui.add_space(6.0);
+        ui.add_space(8.0);
         ui.horizontal(|ui| {
-            if slate_button(ui, "Pangkas Cache Sekarang").clicked() {
+            if slate_button(ui, "Pangkas Cache").clicked() {
                 app.send_cmd(AppCommand::TrimCache);
             }
             if danger_button(ui, "Hapus Semua Cache").clicked() {
@@ -448,10 +525,15 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
         .collect();
 
     if !cached_only.is_empty() {
-        ui.add_space(8.0);
-        lcd_frame().show(ui, |ui| {
+        ui.add_space(12.0);
+        section_label(ui, "Lagu Tersimpan di Disk");
+        setting_group_frame().show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label(bold_text("Lagu Tersimpan di Disk", 12.5, TEXT_PRIMARY));
+                ui.label(semibold_text(
+                    "Diputar instan tanpa mengunduh ulang.",
+                    11.5,
+                    TEXT_SECONDARY,
+                ));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     status_pill(
                         ui,
@@ -464,11 +546,6 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                     );
                 });
             });
-            ui.label(semibold_text(
-                "Diputar instan tanpa mengunduh ulang. Hapus item tertentu jika ingin mengosongkan ruang.",
-                11.0,
-                TEXT_SECONDARY,
-            ));
             ui.add_space(6.0);
 
             for c in cached_only {
@@ -510,60 +587,67 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 }
 
 fn render_casterhub_tab(ctx: &egui::Context, ui: &mut egui::Ui, app: &mut RadioCasterApp) {
-    ui.label(bold_text("Integrasi CasterHub Cloud & Direktori Stasiun", 13.5, TEXT_PRIMARY));
-    ui.add_space(6.0);
-
-    lcd_frame().show(ui, |ui| {
-        ui.label(semibold_text("ID Stasiun Anonim (Zero-PII Station Hash)", 11.5, TEXT_SECONDARY));
+    section_label(ui, "Identitas Stasiun");
+    setting_group_frame().show(ui, |ui| {
+        ui.label(semibold_text("Station ID (Zero-PII)", 11.5, TEXT_SECONDARY));
+        ui.label(mono_text(&app.station_hash, 10.5, SIGNAL_CYAN));
+        ui.add_space(6.0);
         ui.horizontal(|ui| {
-            ui.label(mono_text(&app.station_hash, 10.5, SIGNAL_CYAN));
-        });
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            if slate_button(ui, "Salin Station ID").clicked() {
+            if slate_button(ui, "Salin ID").clicked() {
                 ctx.copy_text(app.station_hash.clone());
-                app.toasts.push(ToastItem::success("Station Hash disalin"));
+                app.toasts.push(ToastItem::success("Station ID disalin"));
             }
-            if slate_button(ui, "Buka Halaman Publik Stasiun").clicked() {
+            if slate_button(ui, "Buka Halaman Stasiun").clicked() {
                 let base = app.draft_config.casterhub_url.trim_end_matches('/');
                 system_service::open_in_system(&format!("{base}/station/{}", app.station_hash));
             }
-            if amber_button(ui, "Sinkronkan Sekarang").clicked() {
+            if amber_button(ui, "Sinkronkan").clicked() {
                 app.send_cmd(AppCommand::TriggerTelemetrySync);
             }
         });
     });
 
-    ui.add_space(8.0);
-
-    lcd_frame().show(ui, |ui| {
-        ui.checkbox(
+    ui.add_space(12.0);
+    section_label(ui, "Telemetri & Fitur Online");
+    setting_group_frame().show(ui, |ui| {
+        toggle_row(
+            ui,
+            "Telemetri Anonim & Global Charts",
+            "Berbagi statistik pemutaran lagu secara anonim ke CasterHub",
             &mut app.draft_config.enable_telemetry,
-            semibold_text("Aktifkan Telemetri Anonim & Global Radio Charts", 12.0, TEXT_PRIMARY),
         );
-        ui.checkbox(
+        ui.add_space(8.0);
+        toggle_row(
+            ui,
+            "Kotak Request Pendengar Online",
+            "Pendengar dapat mengirim request lagu melalui halaman publik stasiun",
             &mut app.draft_config.enable_online_requests,
-            semibold_text("Izinkan Kotak Request Pendengar Online", 12.0, TEXT_PRIMARY),
         );
-        ui.checkbox(
+        ui.add_space(8.0);
+        toggle_row(
+            ui,
+            "Saran Metadata Crowd-Cleaned",
+            "Menggunakan judul bersih hasil kurasi komunitas CasterHub",
             &mut app.draft_config.enable_crowd_metadata,
-            semibold_text("Gunakan Saran Metadata Crowd-Cleaned", 12.0, TEXT_PRIMARY),
         );
+    });
 
-        ui.add_space(6.0);
+    ui.add_space(12.0);
+    section_label(ui, "Profil Publik & Server");
+    setting_group_frame().show(ui, |ui| {
         ui.label(semibold_text("Nama Stasiun Publik (Opsional)", 11.5, TEXT_SECONDARY));
         ui.add_sized(
             [ui.available_width(), 28.0],
             egui::TextEdit::singleline(&mut app.draft_config.station_public_name)
-                .hint_text("Biarkan kosong untuk tampil sebagai Stasiun Anonim"),
+                .hint_text("Kosongkan untuk tampil sebagai Stasiun Anonim"),
         );
 
         ui.add_space(6.0);
-        ui.label(semibold_text("URL Audio Stream Publik (Icecast / Shoutcast - Opsional)", 11.5, TEXT_SECONDARY));
+        ui.label(semibold_text("URL Audio Stream Publik (Opsional)", 11.5, TEXT_SECONDARY));
         ui.add_sized(
             [ui.available_width(), 28.0],
             egui::TextEdit::singleline(&mut app.draft_config.public_stream_url)
-                .hint_text("Contoh: https://stream.radioanda.id/live"),
+                .hint_text("https://stream.radioanda.id/live"),
         );
 
         ui.add_space(6.0);
@@ -576,37 +660,39 @@ fn render_casterhub_tab(ctx: &egui::Context, ui: &mut egui::Ui, app: &mut RadioC
 }
 
 fn render_system_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
-    ui.label(bold_text("Informasi Sistem & Pembaruan Aplikasi", 13.5, TEXT_PRIMARY));
-    ui.add_space(6.0);
-
-    lcd_frame().show(ui, |ui| {
+    section_label(ui, "Tentang Aplikasi");
+    setting_group_frame().show(ui, |ui| {
         ui.label(bold_text(
             format!("Radio Caster Bridge Studio (RCB Studio) v{APP_VERSION}"),
-            13.0,
+            13.5,
             AMBER_PRIMARY,
         ));
         ui.label(semibold_text(
             "Copyright © 2026 Radio Caster Bridge Studio • Tayen (hi.oktaa.my.id)",
-            12.0,
-            TEXT_PRIMARY,
+            11.5,
+            TEXT_SECONDARY,
         ));
-        ui.add_space(6.0);
+    });
 
-        ui.label(semibold_text("Port Server Stream Relay Lokal / LAN (Axum)", 11.5, TEXT_SECONDARY));
+    ui.add_space(12.0);
+    section_label(ui, "Jaringan & Pembaruan");
+    setting_group_frame().show(ui, |ui| {
+        ui.label(semibold_text("Port Stream Relay Lokal / LAN", 12.0, TEXT_PRIMARY));
+        ui.label(semibold_text(
+            "Memerlukan restart aplikasi jika nomor port diubah",
+            11.0,
+            TEXT_SECONDARY,
+        ));
+        ui.add_space(4.0);
         let mut srv_port = app.draft_config.server_port.to_string();
         if ui
-            .add_sized([120.0, 28.0], egui::TextEdit::singleline(&mut srv_port))
+            .add_sized([110.0, 28.0], egui::TextEdit::singleline(&mut srv_port))
             .changed()
         {
             if let Ok(p) = srv_port.trim().parse::<u16>() {
                 app.draft_config.server_port = p;
             }
         }
-        ui.label(mono_text(
-            "Memerlukan restart aplikasi jika port server relay diubah.",
-            10.5,
-            TEXT_MUTED,
-        ));
 
         ui.add_space(10.0);
         ui.horizontal(|ui| {

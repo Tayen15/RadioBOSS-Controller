@@ -7,8 +7,8 @@ use crate::models::APP_VERSION;
 use crate::services::system_service;
 use crate::ui::theme::{
     amber_button, bold_text, dialog_frame, lcd_frame, mono_text, semibold_text, slate_button,
-    status_pill, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_PRIMARY,
-    TEXT_SECONDARY,
+    status_pill, window_close_dot, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS,
+    TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 pub fn render_update_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
@@ -24,6 +24,7 @@ pub fn render_update_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
     let mut is_open = app.is_update_open;
     egui::Window::new("Pembaruan Aplikasi")
         .open(&mut is_open)
+        .title_bar(false)
         .collapsible(false)
         .resizable(false)
         .movable(true)
@@ -31,17 +32,23 @@ pub fn render_update_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         .default_width(500.0)
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(bold_text(
-                    format!("Versi Terpasang: v{APP_VERSION}"),
-                    12.5,
-                    TEXT_PRIMARY,
-                ));
+                if window_close_dot(ui) {
+                    app.is_update_open = false;
+                }
+                ui.add_space(6.0);
+                ui.label(bold_text("Pembaruan Aplikasi", 16.0, TEXT_PRIMARY));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if slate_button(ui, "Cek Ulang").clicked() {
                         app.send_cmd(AppCommand::CheckForUpdates { manual: true });
                     }
                 });
             });
+            ui.add_space(6.0);
+            ui.label(semibold_text(
+                format!("Versi Terpasang: v{APP_VERSION}"),
+                12.0,
+                TEXT_SECONDARY,
+            ));
 
             ui.add_space(8.0);
 
