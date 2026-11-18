@@ -4,9 +4,9 @@ use crate::app::{RadioCasterApp, RecSubTab};
 use crate::events::AppCommand;
 use crate::models::track::TrackItem;
 use crate::ui::theme::{
-    amber_button, bold_text, danger_button, lcd_frame, module_frame, mono_text, semibold_text,
-    slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CONTROL_BG,
-    SIGNAL_CYAN, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    amber_button, bold_text, danger_button, lcd_frame, list_row_frame, module_frame, mono_text,
+    semibold_text, slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR,
+    CONTROL_BG, SIGNAL_CYAN, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 const MOOD_OPTIONS: &[(&str, &str, &str)] = &[
@@ -102,7 +102,7 @@ fn render_up_next_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     ui.horizontal(|ui| {
         ui.label(bold_text("Rekomendasi Serupa (Up Next)", 12.5, TEXT_PRIMARY));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if !app.recommendations.is_empty() && amber_button(ui, "⚡ Auto-Fill 3 Lagu").clicked() {
+            if !app.recommendations.is_empty() && amber_button(ui, "Tambah 3 Lagu").clicked() {
                 let batch: Vec<TrackItem> = app.recommendations.iter().take(3).cloned().collect();
                 app.send_cmd(AppCommand::AutoFillTracks {
                     tracks: batch,
@@ -146,7 +146,7 @@ fn render_artist_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             TEXT_PRIMARY,
         ));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if !app.artist_tracks.is_empty() && amber_button(ui, "⚡ Auto-Fill 3 Lagu").clicked() {
+            if !app.artist_tracks.is_empty() && amber_button(ui, "Tambah 3 Lagu").clicked() {
                 let batch: Vec<TrackItem> = app.artist_tracks.iter().take(3).cloned().collect();
                 app.send_cmd(AppCommand::AutoFillTracks {
                     tracks: batch,
@@ -428,7 +428,7 @@ fn render_dj_rotation_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     ui.horizontal(|ui| {
         ui.label(bold_text("Rotasi Cerdas & Afiliasi Selera DJ", 12.5, TEXT_PRIMARY));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if !app.dj_rotation_ready.is_empty() && amber_button(ui, "⚡ Auto-Fill Rotasi").clicked() {
+            if !app.dj_rotation_ready.is_empty() && amber_button(ui, "Isi Rotasi").clicked() {
                 let batch: Vec<TrackItem> = app
                     .dj_rotation_ready
                     .iter()
@@ -489,7 +489,7 @@ fn render_mood_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     ui.horizontal(|ui| {
         ui.label(bold_text("Kurasi Mood & Suasana Siaran", 12.5, TEXT_PRIMARY));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if !app.mood_tracks.is_empty() && amber_button(ui, "⚡ Auto-Fill Mood").clicked() {
+            if !app.mood_tracks.is_empty() && amber_button(ui, "Isi Mood").clicked() {
                 let batch: Vec<TrackItem> = app.mood_tracks.iter().take(3).cloned().collect();
                 app.send_cmd(AppCommand::AutoFillTracks {
                     tracks: batch,
@@ -544,7 +544,12 @@ fn render_rec_track_list(
         .auto_shrink([false, true])
         .show(ui, |ui| {
             for (i, t) in tracks.iter().enumerate() {
-                let row = lcd_frame().inner_margin(Margin::symmetric(10, 6)).show(ui, |ui| {
+                let is_sel = app
+                    .selected_track
+                    .as_ref()
+                    .map(|s| s.video_id == t.video_id)
+                    .unwrap_or(false);
+                let row = list_row_frame(is_sel).show(ui, |ui| {
                     ui.horizontal(|ui| {
                         ui.label(mono_text(format!("{:02}", i + 1), 11.5, TEXT_MUTED));
                         ui.vertical(|ui| {

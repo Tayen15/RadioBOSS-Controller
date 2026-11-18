@@ -18,7 +18,7 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
     }
 
     let mut is_open = app.is_settings_open;
-    egui::Window::new("Studio Rack Master Settings")
+    egui::Window::new("Pengaturan")
         .open(&mut is_open)
         .collapsible(false)
         .resizable(true)

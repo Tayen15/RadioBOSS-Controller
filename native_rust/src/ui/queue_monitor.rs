@@ -20,7 +20,7 @@ pub fn render_queue_monitor(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             let half_w = (ui.available_width() - 6.0) / 2.0;
             ui.horizontal(|ui| {
                 let pl_active = app.queue_tab == QueueMonitorTab::Playlist;
-                let pl_lbl = format!("Antrean RadioBOSS ({})", app.playlist_tracks.len());
+                let pl_lbl = format!("Antrean ({})", app.playlist_tracks.len());
                 if ui
                     .add_sized(
                         [half_w, 30.0],
@@ -47,7 +47,7 @@ pub fn render_queue_monitor(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 }
 
                 let hist_active = app.queue_tab == QueueMonitorTab::History;
-                let hist_lbl = format!("Log Pengiriman ({})", app.history.len());
+                let hist_lbl = format!("Riwayat ({})", app.history.len());
                 if ui
                     .add_sized(
                         [half_w, 30.0],
@@ -86,7 +86,7 @@ pub fn render_queue_monitor(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 fn render_live_playlist(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     module_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.label(bold_text("INSPEKTOR ANTREAN RADIOBOSS", 12.5, TEXT_PRIMARY));
+            ui.label(bold_text("Antrean Aktif", 13.0, TEXT_PRIMARY));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if slate_button(ui, "Segarkan").clicked() {
                     app.send_cmd(AppCommand::SyncPlaylist {
@@ -239,7 +239,7 @@ fn render_live_playlist(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 fn render_dispatch_history(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     module_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.label(bold_text("LOG PENGIRIMAN STUDIO", 12.5, TEXT_PRIMARY));
+            ui.label(bold_text("Riwayat Kirim", 13.0, TEXT_PRIMARY));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if !app.history.is_empty() && danger_button(ui, "Bersihkan Log").clicked() {
                     app.send_cmd(AppCommand::ClearHistory);

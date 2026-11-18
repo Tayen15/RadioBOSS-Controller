@@ -16,7 +16,7 @@ pub fn render_update_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
     }
 
     let mut is_open = app.is_update_open;
-    egui::Window::new("Pembaruan Aplikasi (Auto-Update)")
+    egui::Window::new("Pembaruan Aplikasi")
         .open(&mut is_open)
         .collapsible(false)
         .resizable(false)

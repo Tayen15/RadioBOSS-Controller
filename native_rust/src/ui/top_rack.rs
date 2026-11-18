@@ -6,25 +6,24 @@ use crate::models::radioboss::PlaybackAction;
 use crate::services::title_cleaner::clean_broadcast_title;
 use crate::services::ytmusic_service::parse_duration_str;
 use crate::ui::theme::{
-    amber_button, bold_text, danger_button, lcd_frame, module_frame, mono_text, semibold_text,
-    slate_button, status_pill, AMBER_PRIMARY, CONTROL_BG, SIGNAL_CYAN, STATUS_ERROR,
-    STATUS_SUCCESS, STATUS_WARNING, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    amber_button, bold_text, danger_button, module_frame, mono_text, semibold_text, slate_button,
+    status_pill, AMBER_PRIMARY, CONTROL_BG, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS,
+    STATUS_WARNING, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
-    // Row 1: Studio Navbar Strip
+    // Row 1: Minimal Studio Header
     ui.horizontal(|ui| {
         if let Some(ref tex) = app.logo_texture {
             ui.add(
                 egui::Image::new(tex)
-                    .fit_to_exact_size(egui::vec2(26.0, 26.0))
+                    .fit_to_exact_size(egui::vec2(24.0, 24.0))
                     .corner_radius(CornerRadius::same(6)),
             );
         }
-        ui.label(bold_text("RADIO CASTER BRIDGE STUDIO", 15.0, TEXT_PRIMARY));
+        ui.label(bold_text("Radio Caster Bridge Studio", 15.0, TEXT_PRIMARY));
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Settings Button
             if slate_button(ui, "Pengaturan").clicked() {
                 app.draft_config = app.config.clone();
                 app.ping_result = None;
@@ -32,7 +31,6 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 app.send_cmd(AppCommand::RefreshCacheStats);
             }
 
-            // Update Notification Badge if newer version available
             if let Some(ref upd) = app.update_check {
                 if upd.update_available
                     && amber_button(ui, &format!("Update v{}", upd.latest_version)).clicked()
@@ -41,11 +39,10 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 }
             }
 
-            // Live RadioBOSS Connectivity Pill
             if app.rb_status.connected {
-                status_pill(ui, "RADIOBOSS TERHUBUNG", STATUS_SUCCESS);
+                ui.label(semibold_text("● RadioBOSS Terhubung", 11.5, STATUS_SUCCESS));
             } else {
-                status_pill(ui, "RADIOBOSS TERPUTUS", STATUS_ERROR);
+                ui.label(semibold_text("○ RadioBOSS Terputus", 11.5, STATUS_ERROR));
             }
         });
     });
@@ -56,16 +53,16 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     if !app.rb_status.connected {
         if let Some(ref err_msg) = app.rb_status.error {
             Frame::NONE
-                .fill(Color32::from_rgba_unmultiplied(248, 113, 113, 20))
+                .fill(Color32::from_rgba_unmultiplied(248, 113, 113, 18))
                 .stroke(Stroke::new(1.0, STATUS_ERROR))
                 .corner_radius(CornerRadius::same(8))
                 .inner_margin(Margin::symmetric(12, 6))
                 .show(ui, |ui| {
                     ui.horizontal_wrapped(|ui| {
-                        ui.label(bold_text("PERINGATAN KONEKSI:", 11.5, STATUS_ERROR));
+                        ui.label(bold_text("Koneksi terputus:", 11.5, STATUS_ERROR));
                         ui.label(semibold_text(err_msg, 11.5, TEXT_PRIMARY));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if slate_button(ui, "Buka Pengaturan Koneksi").clicked() {
+                            if slate_button(ui, "Cek Koneksi").clicked() {
                                 app.draft_config = app.config.clone();
                                 app.settings_tab = crate::app::SettingsTab::Connection;
                                 app.is_settings_open = true;
@@ -86,15 +83,15 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
         .unwrap_or(false);
     if app.rb_status.connected && is_playing && app.playlist_tracks.len() <= 1 {
         Frame::NONE
-            .fill(Color32::from_rgba_unmultiplied(251, 191, 36, 20))
+            .fill(Color32::from_rgba_unmultiplied(251, 191, 36, 18))
             .stroke(Stroke::new(1.0, STATUS_WARNING))
             .corner_radius(CornerRadius::same(8))
             .inner_margin(Margin::symmetric(12, 6))
             .show(ui, |ui| {
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(bold_text("DEAD-AIR GUARD:", 11.5, STATUS_WARNING));
+                    ui.label(bold_text("Antrean menipis:", 11.5, STATUS_WARNING));
                     ui.label(semibold_text(
-                        "Antrean RadioBOSS hampir habis! Segera tambahkan lagu atau gunakan Auto-Fill.",
+                        "Sisa antrean RadioBOSS <= 1 lagu. Tambahkan lagu agar siaran tidak terputus.",
                         11.5,
                         TEXT_PRIMARY,
                     ));
@@ -103,9 +100,9 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
         ui.add_space(6.0);
     }
 
-    // Row 2: Live On-Air LCD Readout & Transport Deck (Responsive non-overlapping split)
+    // Row 2: Clean Single-Surface Now Playing Bar + Transport Deck
     module_frame()
-        .inner_margin(Margin::symmetric(12, 10))
+        .inner_margin(Margin::symmetric(14, 10))
         .show(ui, |ui| {
             let np = app.rb_status.now_playing.clone();
             let status_str = np
@@ -117,159 +114,151 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 ("OFFLINE", STATUS_ERROR)
             } else {
                 match status_str {
-                    "playing" => ("LIVE ON-AIR", STATUS_ERROR),
-                    "paused" => ("JEDA SIARAN", STATUS_WARNING),
+                    "playing" => ("ON-AIR", STATUS_ERROR),
+                    "paused" => ("JEDA", STATUS_WARNING),
                     _ => ("STANDBY", TEXT_SECONDARY),
                 }
             };
 
             let avail_w = ui.available_width();
             let transport_w = 290.0_f32;
-            let lcd_w = (avail_w - transport_w - 12.0).max(240.0);
+            let lcd_w = (avail_w - transport_w - 14.0).max(240.0);
 
             ui.horizontal(|ui| {
-                // Left: LCD Display Frame strictly bounded to `lcd_w`
                 ui.allocate_ui_with_layout(
-                    egui::vec2(lcd_w, 56.0),
+                    egui::vec2(lcd_w, 46.0),
                     egui::Layout::top_down(egui::Align::Min),
                     |ui| {
-                        lcd_frame()
-                            .inner_margin(Margin::symmetric(12, 8))
-                            .show(ui, |ui| {
-                                ui.set_width((lcd_w - 26.0).max(180.0));
-                                ui.horizontal(|ui| {
-                                    status_pill(ui, badge_txt, badge_color);
+                        ui.horizontal(|ui| {
+                            status_pill(ui, badge_txt, badge_color);
 
-                                    if let Some(listeners) = np.as_ref().and_then(|n| n.listeners) {
-                                        if listeners > 0 {
-                                            ui.label(mono_text(
-                                                format!("{listeners} Pendengar"),
-                                                11.0,
-                                                SIGNAL_CYAN,
-                                            ));
-                                        }
-                                    }
-
-                                    ui.add_space(4.0);
-
-                                    if app.is_editing_cast_title {
-                                        ui.add(
-                                            egui::TextEdit::singleline(&mut app.cast_title_input)
-                                                .desired_width(210.0)
-                                                .hint_text("Judul siaran live..."),
-                                        );
-                                        if slate_button(ui, "Magic Clean").clicked() {
-                                            app.cast_title_input =
-                                                clean_broadcast_title(&app.cast_title_input);
-                                        }
-                                        if amber_button(ui, "Simpan").clicked() {
-                                            let val = app.cast_title_input.trim().to_string();
-                                            if !val.is_empty() {
-                                                app.send_cmd(AppCommand::SetLiveCastTitle(val));
-                                            }
-                                            app.is_editing_cast_title = false;
-                                        }
-                                        if slate_button(ui, "Batal").clicked() {
-                                            app.is_editing_cast_title = false;
-                                        }
-                                    } else {
-                                        let edit_btn_reserve =
-                                            if app.rb_status.connected { 115.0 } else { 8.0 };
-                                        let title_txt = np
-                                            .as_ref()
-                                            .map(|n| n.title.as_str())
-                                            .unwrap_or("RadioBOSS tidak terhubung");
-                                        ui.allocate_ui_with_layout(
-                                            egui::vec2(
-                                                (ui.available_width() - edit_btn_reserve).max(80.0),
-                                                22.0,
-                                            ),
-                                            egui::Layout::left_to_right(egui::Align::Center),
-                                            |ui| {
-                                                ui.add(
-                                                    egui::Label::new(bold_text(
-                                                        title_txt,
-                                                        13.5,
-                                                        TEXT_PRIMARY,
-                                                    ))
-                                                    .truncate(),
-                                                );
-                                            },
-                                        );
-
-                                        if app.rb_status.connected {
-                                            ui.with_layout(
-                                                egui::Layout::right_to_left(egui::Align::Center),
-                                                |ui| {
-                                                    if ui
-                                                        .add(
-                                                            egui::Button::new(semibold_text(
-                                                                "Edit Cast Title",
-                                                                11.0,
-                                                                TEXT_SECONDARY,
-                                                            ))
-                                                            .fill(CONTROL_BG)
-                                                            .corner_radius(CornerRadius::same(6)),
-                                                        )
-                                                        .clicked()
-                                                    {
-                                                        app.cast_title_input = np
-                                                            .as_ref()
-                                                            .map(|n| n.title.clone())
-                                                            .unwrap_or_default();
-                                                        app.is_editing_cast_title = true;
-                                                    }
-                                                },
-                                            );
-                                        }
-                                    }
-                                });
-
-                                // Timecode & Progress Bar
-                                if let Some(ref info) = np {
-                                    let pos_s = info.position.as_deref().unwrap_or("00:00");
-                                    let dur_s = info.duration.as_deref().unwrap_or("00:00");
-                                    let pos_sec = parse_duration_str(pos_s) as f32;
-                                    let dur_sec = parse_duration_str(dur_s).max(1) as f32;
-                                    let ratio = (pos_sec / dur_sec).clamp(0.0, 1.0);
-
-                                    ui.add_space(4.0);
-                                    ui.horizontal(|ui| {
-                                        ui.label(mono_text(
-                                            format!("{pos_s} / {dur_s}"),
-                                            11.5,
-                                            AMBER_PRIMARY,
-                                        ));
-                                        let bar_w = ui.available_width().max(60.0);
-                                        let (rect, _) = ui.allocate_exact_size(
-                                            egui::vec2(bar_w, 5.0),
-                                            egui::Sense::hover(),
-                                        );
-                                        ui.painter().rect_filled(
-                                            rect,
-                                            CornerRadius::same(3),
-                                            CONTROL_BG,
-                                        );
-                                        let mut fill_rect = rect;
-                                        fill_rect.set_width(rect.width() * ratio);
-                                        ui.painter().rect_filled(
-                                            fill_rect,
-                                            CornerRadius::same(3),
-                                            if info.status == "playing" {
-                                                AMBER_PRIMARY
-                                            } else {
-                                                TEXT_MUTED
-                                            },
-                                        );
-                                    });
+                            if let Some(listeners) = np.as_ref().and_then(|n| n.listeners) {
+                                if listeners > 0 {
+                                    ui.label(mono_text(
+                                        format!("{listeners} pendengar"),
+                                        11.0,
+                                        SIGNAL_CYAN,
+                                    ));
                                 }
+                            }
+
+                            ui.add_space(4.0);
+
+                            if app.is_editing_cast_title {
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut app.cast_title_input)
+                                        .desired_width(210.0)
+                                        .hint_text("Judul siaran..."),
+                                );
+                                if slate_button(ui, "Rapikan").clicked() {
+                                    app.cast_title_input =
+                                        clean_broadcast_title(&app.cast_title_input);
+                                }
+                                if amber_button(ui, "Simpan").clicked() {
+                                    let val = app.cast_title_input.trim().to_string();
+                                    if !val.is_empty() {
+                                        app.send_cmd(AppCommand::SetLiveCastTitle(val));
+                                    }
+                                    app.is_editing_cast_title = false;
+                                }
+                                if slate_button(ui, "Batal").clicked() {
+                                    app.is_editing_cast_title = false;
+                                }
+                            } else {
+                                let edit_btn_reserve =
+                                    if app.rb_status.connected { 92.0 } else { 8.0 };
+                                let title_txt = np
+                                    .as_ref()
+                                    .map(|n| n.title.as_str())
+                                    .unwrap_or("RadioBOSS belum terhubung");
+                                ui.allocate_ui_with_layout(
+                                    egui::vec2(
+                                        (ui.available_width() - edit_btn_reserve).max(80.0),
+                                        22.0,
+                                    ),
+                                    egui::Layout::left_to_right(egui::Align::Center),
+                                    |ui| {
+                                        ui.add(
+                                            egui::Label::new(bold_text(
+                                                title_txt,
+                                                14.0,
+                                                TEXT_PRIMARY,
+                                            ))
+                                            .truncate(),
+                                        );
+                                    },
+                                );
+
+                                if app.rb_status.connected {
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            if ui
+                                                .add(
+                                                    egui::Button::new(semibold_text(
+                                                        "Ubah Judul",
+                                                        11.0,
+                                                        TEXT_SECONDARY,
+                                                    ))
+                                                    .fill(CONTROL_BG)
+                                                    .corner_radius(CornerRadius::same(6)),
+                                                )
+                                                .clicked()
+                                            {
+                                                app.cast_title_input = np
+                                                    .as_ref()
+                                                    .map(|n| n.title.clone())
+                                                    .unwrap_or_default();
+                                                app.is_editing_cast_title = true;
+                                            }
+                                        },
+                                    );
+                                }
+                            }
+                        });
+
+                        if let Some(ref info) = np {
+                            let pos_s = info.position.as_deref().unwrap_or("00:00");
+                            let dur_s = info.duration.as_deref().unwrap_or("00:00");
+                            let pos_sec = parse_duration_str(pos_s) as f32;
+                            let dur_sec = parse_duration_str(dur_s).max(1) as f32;
+                            let ratio = (pos_sec / dur_sec).clamp(0.0, 1.0);
+
+                            ui.add_space(5.0);
+                            ui.horizontal(|ui| {
+                                ui.label(mono_text(
+                                    format!("{pos_s} / {dur_s}"),
+                                    11.5,
+                                    AMBER_PRIMARY,
+                                ));
+                                let bar_w = ui.available_width().max(60.0);
+                                let (rect, _) = ui.allocate_exact_size(
+                                    egui::vec2(bar_w, 4.0),
+                                    egui::Sense::hover(),
+                                );
+                                ui.painter().rect_filled(
+                                    rect,
+                                    CornerRadius::same(2),
+                                    CONTROL_BG,
+                                );
+                                let mut fill_rect = rect;
+                                fill_rect.set_width(rect.width() * ratio);
+                                ui.painter().rect_filled(
+                                    fill_rect,
+                                    CornerRadius::same(2),
+                                    if info.status == "playing" {
+                                        AMBER_PRIMARY
+                                    } else {
+                                        TEXT_MUTED
+                                    },
+                                );
                             });
+                        }
                     },
                 );
 
-                ui.add_space(8.0);
+                ui.add_space(10.0);
 
-                // Right: Physical RadioBOSS Transport Keys (strictly inside remaining space)
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.add_enabled_ui(app.rb_status.connected, |ui| {
                         if danger_button(ui, "■ Stop").clicked() {

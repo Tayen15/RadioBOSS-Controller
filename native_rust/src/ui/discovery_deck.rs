@@ -4,16 +4,16 @@ use crate::app::{CatalogMainTab, RadioCasterApp};
 use crate::events::AppCommand;
 use crate::models::track::TrackItem;
 use crate::ui::theme::{
-    amber_button, bold_text, lcd_frame, module_frame, mono_text, semibold_text, slate_button,
-    status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CHASSIS_BG, CONTROL_BG, SIGNAL_CYAN,
-    STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    amber_button, bold_text, lcd_frame, list_row_frame, module_frame, mono_text, semibold_text,
+    slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CONTROL_BG,
+    SIGNAL_CYAN, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 pub fn render_discovery_deck(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     // 1. Smart Omnibox & Search Tracklist
     module_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.label(bold_text("SMART OMNIBOX & KATALOG MUSIK", 13.0, TEXT_PRIMARY));
+            ui.label(bold_text("Cari Lagu", 13.5, TEXT_PRIMARY));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if !app.search_results.is_empty() {
                     status_pill(
@@ -24,28 +24,23 @@ pub fn render_discovery_deck(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 }
             });
         });
-        ui.label(semibold_text(
-            "Ketik judul/artis untuk mencari lagu studio YouTube Music, atau tempel tautan URL YouTube.",
-            11.5,
-            TEXT_SECONDARY,
-        ));
         ui.add_space(6.0);
 
         let is_busy = app.is_loading("search") || app.is_loading("resolve");
 
         ui.horizontal(|ui| {
-            let input_w = (ui.available_width() - 120.0).max(160.0);
+            let input_w = (ui.available_width() - 110.0).max(160.0);
             let edit_resp = ui.add_sized(
                 [input_w, 34.0],
                 egui::TextEdit::singleline(&mut app.omnibox_input)
-                    .hint_text("Cari lagu resmi (misal: Sheila On 7 - Dan) atau tempel URL..."),
+                    .hint_text("Cari lagu atau tempel tautan YouTube..."),
             );
 
             let submitted = (edit_resp.lost_focus()
                 && ui.input(|i| i.key_pressed(egui::Key::Enter)))
                 || amber_button(
                     ui,
-                    if is_busy { "Memproses..." } else { "Cari / Muat" },
+                    if is_busy { "Memproses..." } else { "Cari" },
                 )
                 .clicked();
 
@@ -94,7 +89,7 @@ pub fn render_discovery_deck(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                     .add_sized(
                         [half_w, 30.0],
                         egui::Button::new(bold_text(
-                            "Rekomendasi & Rotasi DJ",
+                            "Rekomendasi",
                             12.0,
                             if rec_active {
                                 AMBER_DARK_TEXT
@@ -120,7 +115,7 @@ pub fn render_discovery_deck(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                     .add_sized(
                         [half_w, 30.0],
                         egui::Button::new(bold_text(
-                            "Koleksi Set Playlist",
+                            "Set Playlist",
                             12.0,
                             if sets_active {
                                 AMBER_DARK_TEXT
@@ -161,22 +156,7 @@ pub fn render_tracklist_row(
     let is_previewing = audio_st.active_video_id.as_deref() == Some(&track.video_id)
         && (audio_st.is_playing || audio_st.is_loading);
 
-    let bg = if is_selected {
-        Color32::from_rgba_unmultiplied(245, 158, 11, 22)
-    } else {
-        CHASSIS_BG
-    };
-    let border = if is_selected {
-        AMBER_PRIMARY
-    } else {
-        BORDER_COLOR
-    };
-
-    let row_resp = Frame::NONE
-        .fill(bg)
-        .stroke(Stroke::new(1.0, border))
-        .corner_radius(CornerRadius::same(8))
-        .inner_margin(Margin::symmetric(10, 7))
+    let row_resp = list_row_frame(is_selected)
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 // 2-Digit Monospace Index

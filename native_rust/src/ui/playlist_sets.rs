@@ -13,7 +13,7 @@ use crate::ui::theme::{
 pub fn render_playlist_sets(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     module_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.label(bold_text("KOLEKSI SET PLAYLIST STUDIO", 13.0, TEXT_PRIMARY));
+            ui.label(bold_text("Set Playlist", 13.5, TEXT_PRIMARY));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if amber_button(
                     ui,

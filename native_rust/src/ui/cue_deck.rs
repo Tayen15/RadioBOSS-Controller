@@ -17,12 +17,12 @@ pub fn render_cue_deck(
 ) {
     module_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.label(bold_text("STUDIO CUE & DISPATCH DECK", 13.0, TEXT_PRIMARY));
+            ui.label(bold_text("Deck Persiapan", 13.5, TEXT_PRIMARY));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if app.selected_track.is_some() {
-                    status_pill(ui, "SIAP SIAR", AMBER_PRIMARY);
+                    status_pill(ui, "Siap", AMBER_PRIMARY);
                 } else {
-                    status_pill(ui, "STANDBY", TEXT_SECONDARY);
+                    status_pill(ui, "Standby", TEXT_SECONDARY);
                 }
             });
         });
@@ -31,13 +31,13 @@ pub fn render_cue_deck(
         let Some(mut track) = app.selected_track.clone() else {
             lcd_frame().show(ui, |ui| {
                 ui.label(semibold_text(
-                    "Klik lagu dari hasil pencarian atau daftar rekomendasi di sebelah kiri untuk memuat pratinjau headphone, lembar cue penyiar, dan tombol kirim ke RadioBOSS.",
+                    "Pilih lagu dari daftar di sebelah kiri untuk pratinjau, lihat lirik, atau kirim ke antrean.",
                     12.0,
                     TEXT_SECONDARY,
                 ));
                 if let Some(first) = app.search_results.first().cloned() {
                     ui.add_space(6.0);
-                    if slate_button(ui, "▶ Muat Hasil #01").clicked() {
+                    if slate_button(ui, "▶ Muat Lagu #01").clicked() {
                         app.select_track(first);
                     }
                 }
@@ -117,20 +117,20 @@ pub fn render_cue_deck(
 
         ui.add_space(8.0);
 
-        // Pre-Queue Metadata Editor + Magic Clean
+        // Pre-Queue Metadata Editor + Rapikan Judul
         ui.horizontal(|ui| {
-            ui.label(semibold_text("Editor Metadata RadioBOSS", 11.5, TEXT_SECONDARY));
+            ui.label(semibold_text("Metadata Siaran", 11.5, TEXT_SECONDARY));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if slate_button(ui, "Magic Clean").clicked() {
+                if slate_button(ui, "Rapikan Judul").clicked() {
                     app.edit_title = clean_broadcast_title(&app.edit_title);
                 }
                 let lyrics_busy = app.is_loading("lyrics");
                 if slate_button(
                     ui,
                     if lyrics_busy {
-                        "Memuat Cue..."
+                        "Memuat..."
                     } else {
-                        "Lirik & Cue Sheet"
+                        "Cue & Lirik"
                     },
                 )
                 .clicked()
@@ -239,7 +239,7 @@ pub fn render_cue_deck(
         ui.checkbox(
             &mut app.use_studio_cache,
             semibold_text(
-                "Simpan di Studio Master Cache (MP3 320k + ID3v2 + Cover Art .jpg)",
+                "Simpan MP3 ke disk (ID3v2 + Sampul)",
                 11.5,
                 TEXT_PRIMARY,
             ),
@@ -344,7 +344,7 @@ pub fn render_cue_deck(
                     .add_sized(
                         [btn_w, 38.0],
                         egui::Button::new(bold_text(
-                            "+ Antrean Bawah",
+                            "Tambah ke Antrean",
                             12.5,
                             TEXT_PRIMARY,
                         ))

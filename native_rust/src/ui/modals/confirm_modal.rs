@@ -11,14 +11,14 @@ pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
     // 1. Anti-Repeat Safety Guard Confirmation
     if let Some(pending) = app.pending_repeat.clone() {
         let mut keep_open = true;
-        egui::Window::new("Anti-Repeat Safety Guard")
+        egui::Window::new("Lagu Sudah di Antrean")
             .open(&mut keep_open)
             .collapsible(false)
             .resizable(false)
             .default_width(420.0)
             .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
             .show(ctx, |ui| {
-                status_pill(ui, "PERINGATAN DUPLIKASI", STATUS_WARNING);
+                status_pill(ui, "Duplikat", STATUS_WARNING);
                 ui.add_space(6.0);
                 ui.label(bold_text(&pending.reason, 13.0, TEXT_PRIMARY));
                 ui.label(semibold_text(

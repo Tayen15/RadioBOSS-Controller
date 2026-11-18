@@ -135,6 +135,25 @@ pub fn lcd_frame() -> Frame {
         .inner_margin(Margin::same(10))
 }
 
+/// Borderless minimalist row frame (only highlights when selected).
+pub fn list_row_frame(selected: bool) -> Frame {
+    let fill = if selected {
+        Color32::from_rgba_unmultiplied(245, 158, 11, 20)
+    } else {
+        Color32::from_rgb(14, 14, 18)
+    };
+    let stroke = if selected {
+        Stroke::new(1.0, AMBER_PRIMARY)
+    } else {
+        Stroke::NONE
+    };
+    Frame::NONE
+        .fill(fill)
+        .stroke(stroke)
+        .corner_radius(CornerRadius::same(7))
+        .inner_margin(Margin::symmetric(10, 7))
+}
+
 pub fn bold_text(text: impl Into<String>, size: f32, color: Color32) -> RichText {
     RichText::new(text)
         .size(size)
