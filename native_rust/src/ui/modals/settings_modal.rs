@@ -6,9 +6,9 @@ use crate::models::config::{AppConfig, TitleFormatMode};
 use crate::models::APP_VERSION;
 use crate::services::system_service;
 use crate::ui::theme::{
-    amber_button, bold_text, danger_button, lcd_frame, mono_text, semibold_text, slate_button,
-    status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CONTROL_BG, SIGNAL_CYAN,
-    STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    amber_button, bold_text, danger_button, dialog_frame, lcd_frame, mono_text, semibold_text,
+    slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CONTROL_BG,
+    SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 use crate::ui::toast::ToastItem;
 
@@ -22,9 +22,10 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         .open(&mut is_open)
         .collapsible(false)
         .resizable(true)
+        .movable(true)
+        .frame(dialog_frame())
         .default_width(740.0)
         .default_height(540.0)
-        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
         .show(ctx, |ui| {
             ui.horizontal_top(|ui| {
                 // Left Sidebar Navigation (5 Tabs)

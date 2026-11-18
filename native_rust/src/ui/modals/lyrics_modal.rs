@@ -2,8 +2,9 @@ use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, Stroke};
 
 use crate::app::{LyricsModalTab, RadioCasterApp};
 use crate::ui::theme::{
-    bold_text, lcd_frame, semibold_text, slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY,
-    BORDER_COLOR, DECK_BG, SIGNAL_CYAN, STATUS_SUCCESS, TEXT_PRIMARY, TEXT_SECONDARY,
+    bold_text, dialog_frame, lcd_frame, semibold_text, slate_button, status_pill, AMBER_DARK_TEXT,
+    AMBER_PRIMARY, BORDER_COLOR, DECK_BG, SIGNAL_CYAN, STATUS_SUCCESS, TEXT_PRIMARY,
+    TEXT_SECONDARY,
 };
 use crate::ui::toast::ToastItem;
 
@@ -22,9 +23,10 @@ pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         .open(&mut is_open)
         .collapsible(false)
         .resizable(true)
+        .movable(true)
+        .frame(dialog_frame())
         .default_width(700.0)
         .default_height(520.0)
-        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
         .show(ctx, |ui| {
             let tp = &data.talking_points;
             ui.horizontal(|ui| {

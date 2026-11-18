@@ -154,6 +154,21 @@ pub fn list_row_frame(selected: bool) -> Frame {
         .inner_margin(Margin::symmetric(10, 7))
 }
 
+/// Elevated studio dialog frame with crisp border & subtle drop shadow.
+pub fn dialog_frame() -> Frame {
+    Frame::NONE
+        .fill(DECK_BG)
+        .stroke(Stroke::new(1.0, Color32::from_rgb(56, 56, 68)))
+        .corner_radius(CornerRadius::same(12))
+        .inner_margin(Margin::same(14))
+        .shadow(egui::Shadow {
+            offset: [0, 8],
+            blur: 24,
+            spread: 0,
+            color: Color32::from_black_alpha(170),
+        })
+}
+
 pub fn bold_text(text: impl Into<String>, size: f32, color: Color32) -> RichText {
     RichText::new(text)
         .size(size)

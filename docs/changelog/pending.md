@@ -76,6 +76,7 @@
 [13:45] - [native_rust/src/] - Resolve all 12 Clippy lints (add Default impls, hoist Lazy regexes out of .prf discovery loop, collapse nested conditions) and pass strict cargo clippy --all-targets -- -D warnings, 11/11 tests, and release build (dist/RCBStudio.exe 18.67 MB)
 [13:59] - [native_rust/src/] - Refine UI per live user review: remove RCB STUDIO badge & subtitle, remove Auto-Sync toggle button (permanent auto-sync), fix responsive Zone 1 LCD + Transport layout without overlap, replace unsupported Unicode glyphs, rename Omnibox badge to 'N Lagu', remove 'TAB TERSINKRON 1:1' badge, and split Lyrics & Cue Sheet modal into 2 tabs ('Cue Penyiar & Naskah' and 'Lirik Lagu') - Verified with clippy -D warnings & 11/11 tests
 [14:04] - [native_rust/src/ui/] - Minimalist studio UI & copywriting redesign under antislop rules: introduce borderless list_row_frame for song lists, remove double-nested LCD borders on Now Playing bar, replace ALL-CAPS/buzzword labels with calm studio Indonesian ('Cari Lagu', 'Rekomendasi', 'Set Playlist', 'Deck Persiapan', 'Antrean', 'Riwayat', 'Rapikan Judul', 'Tambah 3 Lagu') - Verified with clippy -D warnings & 11/11 tests
+[14:13] - [native_rust/src/ui/theme.rs, native_rust/src/ui/modals/] - Enable free dragging (.movable(true), remove locked .anchor) and add elevated dialog_frame (drop shadow + crisp border) across all 5 modal dialogs, then recompile release RCBStudio.exe (18.67 MB) - Verified with clippy -D warnings & 11/11 tests
 
 
 

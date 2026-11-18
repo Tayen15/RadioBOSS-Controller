@@ -6,8 +6,9 @@ use crate::models::system::UpdateDownloadState;
 use crate::models::APP_VERSION;
 use crate::services::system_service;
 use crate::ui::theme::{
-    amber_button, bold_text, lcd_frame, mono_text, semibold_text, slate_button, status_pill,
-    AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_PRIMARY, TEXT_SECONDARY,
+    amber_button, bold_text, dialog_frame, lcd_frame, mono_text, semibold_text, slate_button,
+    status_pill, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_PRIMARY,
+    TEXT_SECONDARY,
 };
 
 pub fn render_update_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
@@ -20,8 +21,9 @@ pub fn render_update_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         .open(&mut is_open)
         .collapsible(false)
         .resizable(false)
+        .movable(true)
+        .frame(dialog_frame())
         .default_width(500.0)
-        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label(bold_text(

@@ -3,8 +3,8 @@ use eframe::egui;
 use crate::app::RadioCasterApp;
 use crate::events::AppCommand;
 use crate::ui::theme::{
-    amber_button, bold_text, lcd_frame, semibold_text, slate_button, status_pill, STATUS_WARNING,
-    TEXT_PRIMARY, TEXT_SECONDARY,
+    amber_button, bold_text, dialog_frame, lcd_frame, semibold_text, slate_button, status_pill,
+    STATUS_WARNING, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
@@ -15,8 +15,9 @@ pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
             .open(&mut keep_open)
             .collapsible(false)
             .resizable(false)
+            .movable(true)
+            .frame(dialog_frame())
             .default_width(420.0)
-            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
             .show(ctx, |ui| {
                 status_pill(ui, "Duplikat", STATUS_WARNING);
                 ui.add_space(6.0);
@@ -55,8 +56,9 @@ pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
             .open(&mut keep_open)
             .collapsible(false)
             .resizable(false)
+            .movable(true)
+            .frame(dialog_frame())
             .default_width(380.0)
-            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
             .show(ctx, |ui| {
                 ui.label(bold_text(
                     format!("{} - {}", track.artists_joined(), track.title),
