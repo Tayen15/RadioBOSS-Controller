@@ -156,7 +156,7 @@ fn render_connection_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 
         ui.add_space(10.0);
         ui.horizontal(|ui| {
-            if amber_button(ui, "⚡ Ping / Tes Koneksi Live").clicked() {
+            if amber_button(ui, "Ping / Tes Koneksi Live").clicked() {
                 let test_cfg = app.draft_config.clone();
                 app.send_cmd(AppCommand::PingRadioBoss(test_cfg));
             }
@@ -424,10 +424,10 @@ fn render_storage_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            if slate_button(ui, "✂ Pangkas Cache Sekarang").clicked() {
+            if slate_button(ui, "Pangkas Cache Sekarang").clicked() {
                 app.send_cmd(AppCommand::TrimCache);
             }
-            if danger_button(ui, "🗑 Hapus Semua Cache").clicked() {
+            if danger_button(ui, "Hapus Semua Cache").clicked() {
                 app.send_cmd(AppCommand::ClearCache);
             }
         });
@@ -477,7 +477,7 @@ fn render_casterhub_tab(ctx: &egui::Context, ui: &mut egui::Ui, app: &mut RadioC
                 let base = app.draft_config.casterhub_url.trim_end_matches('/');
                 system_service::open_in_system(&format!("{base}/station/{}", app.station_hash));
             }
-            if amber_button(ui, "↻ Sinkronkan Sekarang").clicked() {
+            if amber_button(ui, "Sinkronkan Sekarang").clicked() {
                 app.send_cmd(AppCommand::TriggerTelemetrySync);
             }
         });

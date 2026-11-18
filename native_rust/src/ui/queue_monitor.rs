@@ -6,7 +6,7 @@ use crate::models::track::TrackItem;
 use crate::ui::theme::{
     bold_text, danger_button, lcd_frame, module_frame, mono_text, semibold_text, slate_button,
     status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CHASSIS_BG, CONTROL_BG, DECK_BG,
-    SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    SIGNAL_CYAN, STATUS_ERROR, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 pub fn render_queue_monitor(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
@@ -88,7 +88,7 @@ fn render_live_playlist(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
         ui.horizontal(|ui| {
             ui.label(bold_text("INSPEKTOR ANTREAN RADIOBOSS", 12.5, TEXT_PRIMARY));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if slate_button(ui, "↻ Segarkan").clicked() {
+                if slate_button(ui, "Segarkan").clicked() {
                     app.send_cmd(AppCommand::SyncPlaylist {
                         manual: true,
                         override_tab: None,
@@ -96,9 +96,6 @@ fn render_live_playlist(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 }
                 if slate_button(ui, "Sync Tab").clicked() {
                     app.send_cmd(AppCommand::SyncTabs { notify: true });
-                }
-                if app.is_tabs_synced {
-                    status_pill(ui, "TAB TERSINKRON 1:1", STATUS_SUCCESS);
                 }
             });
         });
@@ -295,7 +292,7 @@ fn render_dispatch_history(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                                 );
                             });
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                if slate_button(ui, "↻ Kirim Lagi").clicked() {
+                                if slate_button(ui, "Kirim Lagi").clicked() {
                                     let t = TrackItem {
                                         video_id: h.video_id.clone(),
                                         title: h.title.clone(),

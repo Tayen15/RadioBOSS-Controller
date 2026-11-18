@@ -179,7 +179,7 @@ fn render_casterhub_charts_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     ui.horizontal(|ui| {
         ui.label(bold_text("CasterHub Global Charts (Live Network)", 12.5, TEXT_PRIMARY));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if slate_button(ui, "↻ Segarkan").clicked() {
+            if slate_button(ui, "Segarkan").clicked() {
                 app.send_cmd(AppCommand::LoadCasterHubCharts(
                     app.casterhub_category.clone(),
                 ));
@@ -274,7 +274,7 @@ fn render_listener_inbox_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     ui.horizontal(|ui| {
         ui.label(bold_text("Kotak Request Pendengar Online (CasterHub)", 12.5, TEXT_PRIMARY));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if slate_button(ui, "↻ Cek Inbox").clicked() {
+            if slate_button(ui, "Cek Inbox").clicked() {
                 app.send_cmd(AppCommand::LoadListenerRequests);
             }
         });
@@ -365,7 +365,7 @@ fn render_dj_chart_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     ui.horizontal(|ui| {
         ui.label(bold_text("DJ Top Chart Lokal (Database Studio)", 12.5, TEXT_PRIMARY));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if slate_button(ui, "↻ Segarkan").clicked() {
+            if slate_button(ui, "Segarkan").clicked() {
                 app.send_cmd(AppCommand::LoadDjLocalStats);
             }
         });
@@ -622,7 +622,7 @@ fn render_quick_row_actions(ui: &mut egui::Ui, app: &mut RadioCasterApp, track: 
     if ui
         .add(
             egui::Button::new(semibold_text(
-                if is_prev { "❚❚" } else { "🎧" },
+                if is_prev { "||" } else { "▶" },
                 11.0,
                 if is_prev { AMBER_PRIMARY } else { TEXT_PRIMARY },
             ))

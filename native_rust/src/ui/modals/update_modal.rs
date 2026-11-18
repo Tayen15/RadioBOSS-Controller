@@ -30,7 +30,7 @@ pub fn render_update_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                     TEXT_PRIMARY,
                 ));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if slate_button(ui, "↻ Cek Ulang").clicked() {
+                    if slate_button(ui, "Cek Ulang").clicked() {
                         app.send_cmd(AppCommand::CheckForUpdates { manual: true });
                     }
                 });

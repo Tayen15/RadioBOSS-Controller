@@ -74,6 +74,7 @@
 [13:37] - [native_rust/src/ui/queue_monitor.rs, modals/update_modal.rs, services/system_service.rs] - Complete Fase 6 verification & polish: optimize Zone 3 Live Queue title width, auto-create directories when opening Explorer, and add retry download recovery in UpdateModal - Verified release build RCBStudio.exe (11/11 tests passed)
 [13:41] - [native_rust/src/main.rs, native_rust/build_release.ps1, installer/setup.iss] - Complete Fase 7 release verification & packaging: fix Tokio runtime ownership in main.rs so Axum :8000 stream relay & background workers stay alive across app lifecycle, add build_release.ps1 staging dist/RCBStudio.exe (18.67 MB), update Inno Setup script for RCB Studio, and verify live runtime (1 process, 62.59 MB private RAM, Axum 200 OK)
 [13:45] - [native_rust/src/] - Resolve all 12 Clippy lints (add Default impls, hoist Lazy regexes out of .prf discovery loop, collapse nested conditions) and pass strict cargo clippy --all-targets -- -D warnings, 11/11 tests, and release build (dist/RCBStudio.exe 18.67 MB)
+[13:59] - [native_rust/src/] - Refine UI per live user review: remove RCB STUDIO badge & subtitle, remove Auto-Sync toggle button (permanent auto-sync), fix responsive Zone 1 LCD + Transport layout without overlap, replace unsupported Unicode glyphs, rename Omnibox badge to 'N Lagu', remove 'TAB TERSINKRON 1:1' badge, and split Lyrics & Cue Sheet modal into 2 tabs ('Cue Penyiar & Naskah' and 'Lirik Lagu') - Verified with clippy -D warnings & 11/11 tests
 
 
 

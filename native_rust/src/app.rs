@@ -55,6 +55,12 @@ pub enum SettingsTab {
     System,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LyricsModalTab {
+    CueSheet,
+    Lyrics,
+}
+
 #[derive(Debug, Clone)]
 pub struct PendingConfirmRepeat {
     pub track: TrackItem,
@@ -72,7 +78,6 @@ pub struct RadioCasterApp {
     pub config: AppConfig,
     pub draft_config: AppConfig,
     pub rb_status: RadioBossStatus,
-    pub auto_refresh: bool,
     pub playlist_tracks: Vec<PlaylistItem>,
     pub available_tabs: Vec<String>,
     pub active_tab: String,
@@ -135,6 +140,7 @@ pub struct RadioCasterApp {
     pub settings_tab: SettingsTab,
     pub show_rb_password: bool,
     pub is_lyrics_open: bool,
+    pub lyrics_modal_tab: LyricsModalTab,
     pub lyrics_data: Option<LyricsResponse>,
     pub is_update_open: bool,
     pub update_check: Option<UpdateCheckResult>,
@@ -172,7 +178,6 @@ impl RadioCasterApp {
             config: AppConfig::default(),
             draft_config: AppConfig::default(),
             rb_status: RadioBossStatus::default(),
-            auto_refresh: true,
             playlist_tracks: Vec::new(),
             available_tabs: vec!["Playlist 1".to_string()],
             active_tab: String::new(),
@@ -221,6 +226,7 @@ impl RadioCasterApp {
             settings_tab: SettingsTab::Connection,
             show_rb_password: false,
             is_lyrics_open: false,
+            lyrics_modal_tab: LyricsModalTab::CueSheet,
             lyrics_data: None,
             is_update_open: false,
             update_check: None,

@@ -121,7 +121,7 @@ pub fn render_cue_deck(
         ui.horizontal(|ui| {
             ui.label(semibold_text("Editor Metadata RadioBOSS", 11.5, TEXT_SECONDARY));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if slate_button(ui, "✨ Magic Clean").clicked() {
+                if slate_button(ui, "Magic Clean").clicked() {
                     app.edit_title = clean_broadcast_title(&app.edit_title);
                 }
                 let lyrics_busy = app.is_loading("lyrics");
@@ -165,7 +165,7 @@ pub fn render_cue_deck(
                 if is_this_track && audio_st.is_loading {
                     ui.label(semibold_text("Memuat audio headphone...", 11.5, AMBER_PRIMARY));
                 } else if is_this_track && audio_st.is_playing {
-                    if amber_button(ui, "❚❚ Jeda Headphone").clicked() {
+                    if amber_button(ui, "|| Jeda Headphone").clicked() {
                         app.audio.toggle_pause();
                     }
                     if slate_button(ui, "■ Stop").clicked() {
@@ -178,7 +178,7 @@ pub fn render_cue_deck(
                     if slate_button(ui, "■ Stop").clicked() {
                         app.audio.stop();
                     }
-                } else if slate_button(ui, "🎧 Pratinjau Headphone").clicked() {
+                } else if slate_button(ui, "▶ Pratinjau Headphone").clicked() {
                     app.send_cmd(AppCommand::StartAudioPreview(track.clone()));
                 }
 
@@ -320,7 +320,7 @@ pub fn render_cue_deck(
                             if is_queueing {
                                 "Mengirim..."
                             } else {
-                                "⚡ Putar Berikutnya"
+                                "Putar Berikutnya"
                             },
                             12.5,
                             AMBER_DARK_TEXT,

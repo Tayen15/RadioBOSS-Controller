@@ -18,7 +18,7 @@ pub fn render_discovery_deck(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 if !app.search_results.is_empty() {
                     status_pill(
                         ui,
-                        &format!("{} LAGU RESMI", app.search_results.len()),
+                        &format!("{} Lagu", app.search_results.len()),
                         SIGNAL_CYAN,
                     );
                 }
@@ -237,7 +237,7 @@ pub fn render_tracklist_row(
                     }
 
                     // Headphone Preview Trigger
-                    let prev_lbl = if is_previewing { "❚❚" } else { "🎧" };
+                    let prev_lbl = if is_previewing { "||" } else { "▶" };
                     if ui
                         .add(
                             egui::Button::new(semibold_text(
