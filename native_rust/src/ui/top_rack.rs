@@ -214,7 +214,10 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                                     .as_ref()
                                     .map(|n| n.title.as_str())
                                     .unwrap_or("RadioBOSS tidak terhubung");
-                                ui.label(bold_text(title_txt, 14.0, TEXT_PRIMARY));
+                                ui.add(
+                                    egui::Label::new(bold_text(title_txt, 14.0, TEXT_PRIMARY))
+                                        .truncate(),
+                                );
 
                                 if app.rb_status.connected {
                                     if ui

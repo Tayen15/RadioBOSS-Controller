@@ -35,17 +35,20 @@ pub fn render_playlist_sets(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             ui.add_space(6.0);
             lcd_frame().show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.add(
+                    let name_resp = ui.add(
                         egui::TextEdit::singleline(&mut app.new_set_name)
                             .desired_width(180.0)
                             .hint_text("Nama Set (misal: Siaran Pagi)..."),
                     );
-                    ui.add(
+                    let desc_resp = ui.add(
                         egui::TextEdit::singleline(&mut app.new_set_desc)
                             .desired_width(180.0)
                             .hint_text("Deskripsi singkat..."),
                     );
-                    if amber_button(ui, "Simpan Set").clicked() && !app.new_set_name.trim().is_empty()
+                    let enter_pressed = (name_resp.lost_focus() || desc_resp.lost_focus())
+                        && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                    if (amber_button(ui, "Simpan Set").clicked() || enter_pressed)
+                        && !app.new_set_name.trim().is_empty()
                     {
                         app.send_cmd(AppCommand::CreatePlaylistSet {
                             name: app.new_set_name.clone(),

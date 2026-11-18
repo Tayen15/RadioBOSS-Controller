@@ -208,7 +208,8 @@ pub fn render_tracklist_row(
                 // Title & Artist/Album Info
                 ui.vertical(|ui| {
                     ui.spacing_mut().item_spacing.y = 1.0;
-                    ui.set_max_width((ui.available_width() - 165.0).max(120.0));
+                    let right_reserve = if is_cached { 225.0 } else { 175.0 };
+                    ui.set_max_width((ui.available_width() - right_reserve).max(110.0));
                     ui.add(
                         egui::Label::new(semibold_text(&track.title, 13.0, TEXT_PRIMARY))
                             .truncate(),
