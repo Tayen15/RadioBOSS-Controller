@@ -254,6 +254,9 @@ impl RadioCasterApp {
         let vid = track.video_id.clone();
         let artist = track.primary_artist().to_string();
 
+        if self.audio.get_state().active_video_id.as_deref() != Some(&vid) {
+            self.audio.stop();
+        }
         self.selected_track = Some(track.clone());
 
         if self.last_seed_video_id.as_deref() != Some(&vid) {

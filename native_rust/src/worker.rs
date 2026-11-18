@@ -312,6 +312,13 @@ async fn handle_command(
                 .await
             {
                 Ok(_) => {
+                    if matches!(
+                        action,
+                        crate::models::radioboss::PlaybackAction::Play
+                            | crate::models::radioboss::PlaybackAction::Next
+                    ) {
+                        services.audio.stop();
+                    }
                     let status = services.radioboss.check_status(&cfg).await;
                     emit(AppEvent::StatusUpdated { status });
                 }
@@ -655,6 +662,7 @@ async fn handle_command(
             target_tab,
             skip_repeat_check,
         } => {
+            services.audio.stop();
             emit(AppEvent::LoadingState {
                 key: "queue",
                 active: true,
