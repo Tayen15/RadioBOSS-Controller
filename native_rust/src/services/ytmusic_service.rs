@@ -698,15 +698,25 @@ impl YtMusicService {
             Value::Object(map) => {
                 if let Some(renderer) = map.get("musicDescriptionShelfRenderer") {
                     let text = renderer
-                        .pointer("/description/runs/0/text")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
+                        .pointer("/description/runs")
+                        .and_then(|v| v.as_array())
+                        .map(|runs| {
+                            runs.iter()
+                                .filter_map(|r| r.get("text").and_then(|t| t.as_str()))
+                                .collect::<String>()
+                        })
+                        .unwrap_or_default()
                         .trim()
                         .to_string();
                     let source = renderer
-                        .pointer("/footer/runs/0/text")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
+                        .pointer("/footer/runs")
+                        .and_then(|v| v.as_array())
+                        .map(|runs| {
+                            runs.iter()
+                                .filter_map(|r| r.get("text").and_then(|t| t.as_str()))
+                                .collect::<String>()
+                        })
+                        .unwrap_or_default()
                         .trim()
                         .to_string();
                     if !text.is_empty() {
@@ -882,4 +892,86 @@ fn extract_key_lyric_quote(lyrics: Option<&str>) -> Option<String> {
         }
     }
     cleaned.into_iter().next()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_duration_parsing_and_formatting() {
+        assert_eq!(parse_duration_str("04:49"), 289);
+        assert_eq!(parse_duration_str("01:02:03"), 3723);
+        assert_eq!(format_seconds(289), "04:49");
+        assert_eq!(format_seconds(3723), "01:02:03");
+    }
+
+    #[test]
+    fn test_innertube_responsive_item_parsing_and_cue_sheet() {
+        let sample = json!({
+            "playlistItemData": { "videoId": "abcXYZ123" },
+            "flexColumns": [
+                {
+                    "musicResponsiveListItemFlexColumnRenderer": {
+                        "text": { "runs": [{ "text": "Hati-Hati di Jalan" }] }
+                    }
+                },
+                {
+                    "musicResponsiveListItemFlexColumnRenderer": {
+                        "text": {
+                            "runs": [
+                                {
+                                    "text": "Tulus",
+                                    "navigationEndpoint": {
+                                        "browseEndpoint": {
+                                            "browseEndpointContextSupportedConfigs": {
+                                                "browseEndpointContextMusicConfig": {
+                                                    "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                { "text": " • " },
+                                {
+                                    "text": "Manusia",
+                                    "navigationEndpoint": {
+                                        "browseEndpoint": {
+                                            "browseEndpointContextSupportedConfigs": {
+                                                "browseEndpointContextMusicConfig": {
+                                                    "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                { "text": " • " },
+                                { "text": "04:02" }
+                            ]
+                        }
+                    }
+                }
+            ]
+        });
+
+        let track = YtMusicService::parse_responsive_list_item(&sample, "Pop").unwrap();
+        assert_eq!(track.video_id, "abcXYZ123");
+        assert_eq!(track.title, "Hati-Hati di Jalan");
+        assert_eq!(track.artists, vec!["Tulus".to_string()]);
+        assert_eq!(track.album.as_deref(), Some("Manusia"));
+        assert_eq!(track.duration_seconds, Some(242));
+
+        let tp = YtMusicService::build_talking_points(
+            &track.title,
+            "Tulus",
+            "Manusia",
+            "2022",
+            "04:02",
+            3,
+            Some("Ku kira kita akan bersama selamanya\nNamun air mata dan luka menyisakan perih"),
+        );
+        assert_eq!(tp.vibe_category, "sad");
+        assert!(tp.intro_script.contains("Tulus"));
+        assert!(tp.broadcaster_tips.iter().any(|t| t.contains("3 kali")));
+    }
 }

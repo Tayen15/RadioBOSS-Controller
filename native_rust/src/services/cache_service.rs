@@ -482,6 +482,7 @@ impl CacheService {
         }
         if let Some(cp) = cover_path {
             if let Ok(img_bytes) = fs::read(cp) {
+                tag.remove_all_pictures();
                 tag.add_frame(Picture {
                     mime_type: "image/jpeg".to_string(),
                     picture_type: PictureType::CoverFront,

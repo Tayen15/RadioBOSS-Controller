@@ -526,12 +526,21 @@ impl RadioBossService {
                         }
                         if prf_path.is_none() {
                             if let Ok(p_entries) = fs::read_dir(&profile_dir) {
-                                for pe in p_entries.flatten() {
-                                    if pe.path().extension().and_then(|s| s.to_str()) == Some("prf") {
-                                        prf_path = Some(pe.path());
-                                        break;
-                                    }
-                                }
+                                let mut prfs: Vec<(PathBuf, std::time::SystemTime)> = p_entries
+                                    .flatten()
+                                    .filter(|pe| {
+                                        pe.path().extension().and_then(|s| s.to_str()) == Some("prf")
+                                    })
+                                    .map(|pe| {
+                                        let mtime = pe
+                                            .metadata()
+                                            .and_then(|m| m.modified())
+                                            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                                        (pe.path(), mtime)
+                                    })
+                                    .collect();
+                                prfs.sort_by(|a, b| b.1.cmp(&a.1));
+                                prf_path = prfs.into_iter().next().map(|x| x.0);
                             }
                         }
                         if let Some(prf) = prf_path {

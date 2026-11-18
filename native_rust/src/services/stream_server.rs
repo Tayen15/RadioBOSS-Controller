@@ -64,9 +64,15 @@ async fn stream_mp3_handler(
     // 1. Serve directly from disk cache if already transcoded
     if let Some(cached_path) = state.cache.get_cached_file_by_id(&cfg, &clean_id) {
         if let Ok(file) = File::open(&cached_path).await {
+            let file_len = file.metadata().await.map(|m| m.len()).ok();
             let stream = ReaderStream::new(file);
             let mut headers = HeaderMap::new();
             headers.insert(header::CONTENT_TYPE, "audio/mpeg".parse().unwrap());
+            if let Some(len) = file_len {
+                if let Ok(val) = len.to_string().parse() {
+                    headers.insert(header::CONTENT_LENGTH, val);
+                }
+            }
             return (StatusCode::OK, headers, Body::from_stream(stream)).into_response();
         }
     }
