@@ -70,5 +70,11 @@ pub fn pick_folder_dialog(initial_dir: Option<&str>) -> Option<String> {
 
 /// Opens a local folder or URL in the system file manager / default browser.
 pub fn open_in_system(target: &str) {
+    if !target.starts_with("http://") && !target.starts_with("https://") {
+        let p = Path::new(target);
+        if !p.exists() {
+            let _ = std::fs::create_dir_all(p);
+        }
+    }
     let _ = open::that(target);
 }

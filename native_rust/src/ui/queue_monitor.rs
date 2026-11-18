@@ -204,7 +204,7 @@ fn render_live_playlist(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                                     status_pill(ui, "ON-AIR", STATUS_ERROR);
                                 }
                                 ui.vertical(|ui| {
-                                    ui.set_max_width((ui.available_width() - 105.0).max(90.0));
+                                    ui.set_max_width((ui.available_width() - 65.0).max(90.0));
                                     ui.add(
                                         egui::Label::new(semibold_text(
                                             &item.display_title,

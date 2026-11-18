@@ -71,6 +71,7 @@
 [13:29] - [native_rust/src/services/ytmusic_service.rs, radioboss_service.rs, cache_service.rs, stream_server.rs] - Complete Fase 3 hardening: multi-run InnerTube lyrics extraction, mtime-sorted RadioBOSS .prf tab discovery, ID3v2 APIC picture deduplication, Content-Length header on cached MP3 relay, and Fase 3 unit tests (9/9 passed) - Verified release build RCBStudio.exe
 [13:32] - [native_rust/src/services/telemetry_service.rs, update_service.rs, worker.rs] - Complete Fase 4 verification: add initial 3s CasterHub startup sync, deterministic station_hash & SemVer/asset unit tests (11/11 passed), and verified release build RCBStudio.exe
 [13:34] - [native_rust/src/ui/top_rack.rs, discovery_deck.rs, playlist_sets.rs] - Complete Fase 5 UI verification & polish: truncate long Now Playing titles in Zone 1 LCD, adjust dynamic title width for DISK badge in Zone 2 tracklist, and support Enter submission in Playlist Set creation form - Verified release build RCBStudio.exe
+[13:37] - [native_rust/src/ui/queue_monitor.rs, modals/update_modal.rs, services/system_service.rs] - Complete Fase 6 verification & polish: optimize Zone 3 Live Queue title width, auto-create directories when opening Explorer, and add retry download recovery in UpdateModal - Verified release build RCBStudio.exe (11/11 tests passed)
 
 
 

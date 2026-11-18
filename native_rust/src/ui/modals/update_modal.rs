@@ -134,6 +134,17 @@ pub fn render_update_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                         12.0,
                         STATUS_ERROR,
                     ));
+                    ui.add_space(6.0);
+                    ui.horizontal(|ui| {
+                        if let Some(ref asset) = upd.asset {
+                            if amber_button(ui, "Coba Unduh Ulang").clicked() {
+                                app.send_cmd(AppCommand::DownloadUpdate(asset.clone()));
+                            }
+                        }
+                        if slate_button(ui, "Buka GitHub Releases").clicked() {
+                            system_service::open_in_system(&upd.html_url);
+                        }
+                    });
                 }
             }
         });
