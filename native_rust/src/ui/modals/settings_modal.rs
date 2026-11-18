@@ -25,16 +25,16 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
 
     let mut is_open = app.is_settings_open;
     egui::Window::new("Pengaturan")
+        .id(egui::Id::unique("rcb_settings_dialog_v2"))
         .open(&mut is_open)
         .title_bar(false)
         .collapsible(false)
-        .resizable(true)
+        .resizable(false)
         .movable(true)
         .frame(split_dialog_frame())
-        .default_width(760.0)
-        .default_height(580.0)
+        .fixed_size(egui::vec2(760.0, 560.0))
         .show(ctx, |ui| {
-            let total_h = 560.0_f32.max(ui.available_height());
+            let total_h = 560.0_f32;
             ui.horizontal_top(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
 
@@ -95,8 +95,9 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                     .fill(Color32::TRANSPARENT)
                     .inner_margin(Margin::symmetric(22, 18))
                     .show(ui, |ui| {
-                        let pane_w = (ui.available_width()).max(490.0);
+                        let pane_w = 516.0_f32;
                         ui.set_width(pane_w);
+                        ui.set_min_height(total_h - 36.0);
 
                         // Section Title matching active tab
                         let heading = match app.settings_tab {
@@ -106,46 +107,52 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                             SettingsTab::CasterHub => "CasterHub Cloud",
                             SettingsTab::System => "Sistem & Info",
                         };
-                        ui.horizontal(|ui| {
-                            ui.label(bold_text(heading, 18.0, TEXT_PRIMARY));
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    if window_close_x(ui) {
-                                        app.is_settings_open = false;
-                                    }
-                                },
-                            );
-                        });
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(pane_w, 28.0),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                ui.label(bold_text(heading, 18.0, TEXT_PRIMARY));
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if window_close_x(ui) {
+                                            app.is_settings_open = false;
+                                        }
+                                    },
+                                );
+                            },
+                        );
                         ui.add_space(12.0);
 
                         egui::ScrollArea::vertical()
                             .id_salt("settings_content_scroll")
-                            .max_height(445.0)
-                            .show(ui, |ui| match app.settings_tab {
-                                SettingsTab::Connection => render_connection_tab(ui, app),
-                                SettingsTab::Broadcast => render_broadcast_tab(ui, app),
-                                SettingsTab::Storage => render_storage_tab(ui, app),
-                                SettingsTab::CasterHub => render_casterhub_tab(ctx, ui, app),
-                                SettingsTab::System => render_system_tab(ui, app),
+                            .max_height(430.0)
+                            .show(ui, |ui| {
+                                ui.set_width(pane_w);
+                                match app.settings_tab {
+                                    SettingsTab::Connection => render_connection_tab(ui, app),
+                                    SettingsTab::Broadcast => render_broadcast_tab(ui, app),
+                                    SettingsTab::Storage => render_storage_tab(ui, app),
+                                    SettingsTab::CasterHub => render_casterhub_tab(ctx, ui, app),
+                                    SettingsTab::System => render_system_tab(ui, app),
+                                }
                             });
 
                         ui.add_space(10.0);
-                        ui.horizontal(|ui| {
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    if amber_button(ui, "Simpan Pengaturan").clicked() {
-                                        let cfg = app.draft_config.clone();
-                                        app.send_cmd(AppCommand::SaveSettings(cfg));
-                                        app.is_settings_open = false;
-                                    }
-                                    if slate_button(ui, "Batal").clicked() {
-                                        app.is_settings_open = false;
-                                    }
-                                },
-                            );
-                        });
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(pane_w, 32.0),
+                            egui::Layout::right_to_left(egui::Align::Center),
+                            |ui| {
+                                if amber_button(ui, "Simpan Pengaturan").clicked() {
+                                    let cfg = app.draft_config.clone();
+                                    app.send_cmd(AppCommand::SaveSettings(cfg));
+                                    app.is_settings_open = false;
+                                }
+                                if slate_button(ui, "Batal").clicked() {
+                                    app.is_settings_open = false;
+                                }
+                            },
+                        );
                     });
             });
         });
