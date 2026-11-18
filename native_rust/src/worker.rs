@@ -728,7 +728,7 @@ async fn handle_command(
                 return;
             }
 
-            // 2. Otherwise stream audio via localhost Axum relay (or direct yt-dlp URL bytes)
+            // 2. Otherwise stream audio via localhost Axum relay
             let port = if cfg.server_port == 0 { 8000 } else { cfg.server_port };
             let relay_url = format!("http://127.0.0.1:{port}/api/stream/{vid}.mp3");
             match reqwest::get(&relay_url).await {
@@ -740,9 +740,21 @@ async fn handle_command(
                     }
                     Err(e) => services.audio.set_error(format!("Stream error: {e}")),
                 },
-                _ => services
+                Ok(resp) => {
+                    let status = resp.status();
+                    let body = resp.text().await.unwrap_or_default();
+                    let detail = if body.trim().is_empty() {
+                        format!("HTTP {status}")
+                    } else {
+                        format!("HTTP {status}: {}", body.trim())
+                    };
+                    services
+                        .audio
+                        .set_error(format!("Gagal memuat pratinjau ({detail})"));
+                }
+                Err(e) => services
                     .audio
-                    .set_error("Gagal memuat stream pratinjau audio.".to_string()),
+                    .set_error(format!("Gagal terhubung ke relay lokal: {e}")),
             }
         }
 

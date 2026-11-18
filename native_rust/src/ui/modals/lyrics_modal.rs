@@ -294,8 +294,18 @@ pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                                             ) {
                                                 ctx.copy_text(data.lyrics.clone());
                                             }
+                                            let src_label = if data
+                                                .source
+                                                .trim_start()
+                                                .to_lowercase()
+                                                .starts_with("sumber:")
+                                            {
+                                                data.source.clone()
+                                            } else {
+                                                format!("Sumber: {}", data.source)
+                                            };
                                             ui.label(semibold_text(
-                                                format!("Sumber: {}", data.source),
+                                                src_label,
                                                 11.0,
                                                 TEXT_SECONDARY,
                                             ));

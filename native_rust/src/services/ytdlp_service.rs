@@ -59,8 +59,10 @@ impl YtDlpService {
         if let Ok(cwd) = std::env::current_dir() {
             candidates.push(cwd.join(bin_name));
             candidates.push(cwd.join("dist").join(bin_name));
+            candidates.push(cwd.join("backend").join(".venv").join("Scripts").join(bin_name));
             if let Some(parent) = cwd.parent() {
                 candidates.push(parent.join("dist").join(bin_name));
+                candidates.push(parent.join("backend").join(".venv").join("Scripts").join(bin_name));
             }
         }
 
