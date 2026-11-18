@@ -122,7 +122,8 @@ impl AudioPlayerService {
                 let dur = source
                     .total_duration()
                     .map(|d| d.as_secs_f32())
-                    .unwrap_or(fallback_dur);
+                    .filter(|&s| s > 1.0)
+                    .unwrap_or(if fallback_dur > 1.0 { fallback_dur } else { 0.0 });
                 player.append(source);
                 guard._sink_handle = Some(sink_handle);
                 guard.player = Some(player);

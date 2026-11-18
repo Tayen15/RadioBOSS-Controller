@@ -206,55 +206,74 @@ pub fn render_cue_deck(
                 if let Some(ref err) = audio_st.error {
                     ui.add_space(4.0);
                     ui.label(semibold_text(err, 11.0, STATUS_ERROR));
-                } else if audio_st.total_secs > 0.0 {
+                } else if !audio_st.is_loading
+                    && (audio_st.is_playing || audio_st.elapsed_secs > 0.0 || audio_st.total_secs > 0.0)
+                {
                     ui.add_space(6.0);
+                    let total = audio_st.total_secs;
+                    let has_dur = total > 0.0;
                     let drag_id = egui::Id::unique("headphone_seek_drag");
                     let mut drag_pct = ui.ctx().data(|d| d.get_temp::<Option<f32>>(drag_id).flatten());
-                    let actual_pct = (audio_st.elapsed_secs / audio_st.total_secs).clamp(0.0, 1.0);
+                    let actual_pct = if has_dur {
+                        (audio_st.elapsed_secs / total).clamp(0.0, 1.0)
+                    } else {
+                        0.0
+                    };
                     let display_pct = drag_pct.unwrap_or(actual_pct);
-                    let display_secs = display_pct * audio_st.total_secs;
+                    let display_secs = if has_dur {
+                        display_pct * total
+                    } else {
+                        audio_st.elapsed_secs
+                    };
 
                     ui.horizontal(|ui| {
+                        let total_str = if has_dur {
+                            format_float_time(total)
+                        } else {
+                            "--:--".to_string()
+                        };
                         ui.label(mono_text(
-                            format!(
-                                "{} / {}",
-                                format_float_time(display_secs),
-                                format_float_time(audio_st.total_secs)
-                            ),
+                            format!("{} / {}", format_float_time(display_secs), total_str),
                             11.0,
                             AMBER_PRIMARY,
                         ));
                         let bw = ui.available_width().max(80.0);
-                        let (hit_rect, resp) = ui.allocate_exact_size(
-                            egui::vec2(bw, 16.0),
-                            egui::Sense::click_and_drag(),
-                        );
-                        let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+                        let sense = if has_dur {
+                            egui::Sense::click_and_drag()
+                        } else {
+                            egui::Sense::hover()
+                        };
+                        let (hit_rect, resp) = ui.allocate_exact_size(egui::vec2(bw, 16.0), sense);
+                        let resp = if has_dur {
+                            resp.on_hover_cursor(egui::CursorIcon::PointingHand)
+                        } else {
+                            resp
+                        };
 
-                        if let Some(pos) = resp.interact_pointer_pos() {
-                            let new_pct =
-                                ((pos.x - hit_rect.left()) / hit_rect.width()).clamp(0.0, 1.0);
-                            if resp.dragged() {
-                                drag_pct = Some(new_pct);
-                                ui.ctx().data_mut(|d| d.insert_temp(drag_id, Some(new_pct)));
-                            } else if resp.clicked() {
-                                app.audio.seek(new_pct * audio_st.total_secs);
+                        if has_dur {
+                            if let Some(pos) = resp.interact_pointer_pos() {
+                                let new_pct =
+                                    ((pos.x - hit_rect.left()) / hit_rect.width()).clamp(0.0, 1.0);
+                                if resp.dragged() {
+                                    drag_pct = Some(new_pct);
+                                    ui.ctx().data_mut(|d| d.insert_temp(drag_id, Some(new_pct)));
+                                } else if resp.clicked() {
+                                    app.audio.seek(new_pct * total);
+                                }
                             }
-                        }
-                        if resp.drag_stopped() {
-                            if let Some(pct) = drag_pct.take() {
-                                app.audio.seek(pct * audio_st.total_secs);
+                            if resp.drag_stopped() {
+                                if let Some(pct) = drag_pct.take() {
+                                    app.audio.seek(pct * total);
+                                }
+                                ui.ctx().data_mut(|d| d.remove::<Option<f32>>(drag_id));
                             }
-                            ui.ctx().data_mut(|d| d.remove::<Option<f32>>(drag_id));
-                        }
 
-                        if resp.hovered() {
-                            if let Some(hpos) = ui.ctx().input(|i| i.pointer.hover_pos()) {
-                                let hpct =
-                                    ((hpos.x - hit_rect.left()) / hit_rect.width()).clamp(0.0, 1.0);
-                                resp.clone().on_hover_text(format_float_time(
-                                    hpct * audio_st.total_secs,
-                                ));
+                            if resp.hovered() {
+                                if let Some(hpos) = ui.ctx().input(|i| i.pointer.hover_pos()) {
+                                    let hpct = ((hpos.x - hit_rect.left()) / hit_rect.width())
+                                        .clamp(0.0, 1.0);
+                                    resp.clone().on_hover_text(format_float_time(hpct * total));
+                                }
                             }
                         }
 
@@ -264,23 +283,24 @@ pub fn render_cue_deck(
                         );
                         ui.painter()
                             .rect_filled(bar_rect, CornerRadius::same(3), CONTROL_BG);
-                        let mut fill_rect = bar_rect;
-                        fill_rect.set_width((bar_rect.width() * display_pct).max(0.0));
-                        ui.painter()
-                            .rect_filled(fill_rect, CornerRadius::same(3), AMBER_PRIMARY);
+                        if has_dur {
+                            let mut fill_rect = bar_rect;
+                            fill_rect.set_width((bar_rect.width() * display_pct).max(0.0));
+                            ui.painter()
+                                .rect_filled(fill_rect, CornerRadius::same(3), AMBER_PRIMARY);
 
-                        // Interactive seek thumb
-                        let thumb_r = if resp.hovered() || resp.dragged() {
-                            5.5
-                        } else {
-                            3.5
-                        };
-                        let thumb_x = bar_rect.left() + bar_rect.width() * display_pct;
-                        ui.painter().circle_filled(
-                            egui::pos2(thumb_x, bar_rect.center().y),
-                            thumb_r,
-                            Color32::WHITE,
-                        );
+                            let thumb_r = if resp.hovered() || resp.dragged() {
+                                5.5
+                            } else {
+                                3.5
+                            };
+                            let thumb_x = bar_rect.left() + bar_rect.width() * display_pct;
+                            ui.painter().circle_filled(
+                                egui::pos2(thumb_x, bar_rect.center().y),
+                                thumb_r,
+                                Color32::WHITE,
+                            );
+                        }
                     });
                 }
             }
