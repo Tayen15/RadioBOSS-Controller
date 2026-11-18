@@ -454,6 +454,9 @@ pub fn status_pill(ui: &mut egui::Ui, text: &str, accent: Color32) {
         .corner_radius(CornerRadius::same(6))
         .inner_margin(Margin::symmetric(8, 3))
         .show(ui, |ui| {
-            ui.label(bold_text(text, 11.0, accent));
+            ui.add(
+                egui::Label::new(bold_text(text, 11.0, accent))
+                    .wrap_mode(egui::TextWrapMode::Extend),
+            );
         });
 }
