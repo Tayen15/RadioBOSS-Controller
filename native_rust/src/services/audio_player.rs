@@ -5,6 +5,15 @@ use std::time::Instant;
 
 use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, Source};
 
+#[derive(Clone)]
+struct SharedBytes(Arc<Vec<u8>>);
+
+impl AsRef<[u8]> for SharedBytes {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct AudioPreviewState {
     pub active_video_id: Option<String>,
@@ -26,6 +35,7 @@ pub struct AudioPlayerService {
 struct AudioInner {
     _sink_handle: Option<MixerDeviceSink>,
     player: Option<Player>,
+    active_bytes: Option<Arc<Vec<u8>>>,
     state: AudioPreviewState,
     started_at: Option<Instant>,
     paused_offset: f32,
@@ -45,6 +55,7 @@ impl AudioPlayerService {
             inner: Arc::new(Mutex::new(AudioInner {
                 _sink_handle: None,
                 player: None,
+                active_bytes: None,
                 state: AudioPreviewState {
                     volume: 0.85,
                     ..Default::default()
@@ -81,6 +92,7 @@ impl AudioPlayerService {
         }
         guard.state.active_video_id = Some(video_id.to_string());
         guard.state.active_title = title.to_string();
+        guard.active_bytes = None;
         guard.state.is_loading = true;
         guard.state.is_playing = false;
         guard.state.error = None;
@@ -118,8 +130,9 @@ impl AudioPlayerService {
         player.set_volume(guard.state.volume);
 
         let estimated_mp3_dur = estimate_mp3_duration_secs(&bytes);
+        let shared_bytes = Arc::new(bytes);
 
-        match Decoder::new(Cursor::new(bytes)) {
+        match Decoder::new(Cursor::new(SharedBytes(Arc::clone(&shared_bytes)))) {
             Ok(source) => {
                 let dur = source
                     .total_duration()
@@ -135,6 +148,7 @@ impl AudioPlayerService {
                 player.append(source);
                 guard._sink_handle = Some(sink_handle);
                 guard.player = Some(player);
+                guard.active_bytes = Some(shared_bytes);
                 guard.state.active_title = title.to_string();
                 guard.state.is_loading = false;
                 guard.state.is_playing = true;
@@ -183,6 +197,7 @@ impl AudioPlayerService {
             player.stop();
         }
         guard._sink_handle = None;
+        guard.active_bytes = None;
         guard.state.is_playing = false;
         guard.state.is_loading = false;
         guard.state.active_video_id = None;
@@ -199,23 +214,55 @@ impl AudioPlayerService {
         }
     }
 
-    /// Seeks the active preview track to `target_secs` using `rodio::Player::try_seek`.
+    /// Seeks the active preview track forward or backward to `target_secs`.
     pub fn seek(&self, target_secs: f32) {
         let mut guard = self.inner.lock().unwrap();
         let max_dur = guard.state.total_secs.max(0.0);
         let clamped = target_secs.clamp(0.0, max_dur);
         let is_playing = guard.state.is_playing;
-        if let Some(ref player) = guard.player {
-            if player
-                .try_seek(std::time::Duration::from_secs_f32(clamped))
-                .is_ok()
-            {
-                guard.paused_offset = clamped;
-                guard.state.elapsed_secs = clamped;
-                if is_playing {
-                    guard.started_at = Some(Instant::now());
-                }
+        let target_dur = std::time::Duration::from_secs_f32(clamped);
+
+        let fast_seek_ok = guard
+            .player
+            .as_ref()
+            .map(|p| p.try_seek(target_dur).is_ok())
+            .unwrap_or(false);
+
+        if fast_seek_ok {
+            guard.paused_offset = clamped;
+            guard.state.elapsed_secs = clamped;
+            if is_playing {
+                guard.started_at = Some(Instant::now());
             }
+            return;
+        }
+
+        // Fallback for streams without a seek index (e.g. backward seek on piped MP3):
+        // recreate decoder from in-memory bytes and skip_duration to `clamped`.
+        let Some(bytes_arc) = guard.active_bytes.clone() else {
+            return;
+        };
+        if let Some(old_player) = guard.player.take() {
+            old_player.stop();
+        }
+        let Some(ref sink_handle) = guard._sink_handle else {
+            return;
+        };
+        let new_player = Player::connect_new(sink_handle.mixer());
+        new_player.set_volume(guard.state.volume);
+        if let Ok(source) = Decoder::new(Cursor::new(SharedBytes(bytes_arc))) {
+            new_player.append(source.skip_duration(target_dur));
+            if !is_playing {
+                new_player.pause();
+            }
+            guard.player = Some(new_player);
+            guard.paused_offset = clamped;
+            guard.state.elapsed_secs = clamped;
+            guard.started_at = if is_playing {
+                Some(Instant::now())
+            } else {
+                None
+            };
         }
     }
 }
