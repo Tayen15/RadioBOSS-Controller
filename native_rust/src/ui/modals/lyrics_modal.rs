@@ -2,7 +2,7 @@ use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, Stroke};
 
 use crate::app::{LyricsModalTab, RadioCasterApp};
 use crate::ui::theme::{
-    bold_text, dialog_frame, lcd_frame, semibold_text, slate_button, status_pill, window_close_dot,
+    bold_text, dialog_frame, lcd_frame, semibold_text, slate_button, status_pill, window_close_x,
     AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, DECK_BG, SIGNAL_CYAN, STATUS_SUCCESS,
     TEXT_PRIMARY, TEXT_SECONDARY,
 };
@@ -36,12 +36,11 @@ pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         .show(ctx, |ui| {
             let tp = &data.talking_points;
             ui.horizontal(|ui| {
-                if window_close_dot(ui) {
-                    app.is_lyrics_open = false;
-                }
-                ui.add_space(6.0);
                 ui.label(bold_text("Cue Penyiar & Lirik", 16.0, TEXT_PRIMARY));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if window_close_x(ui) {
+                        app.is_lyrics_open = false;
+                    }
                     if tp.play_count > 0 {
                         status_pill(
                             ui,

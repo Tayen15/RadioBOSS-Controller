@@ -4,7 +4,7 @@ use crate::app::RadioCasterApp;
 use crate::events::AppCommand;
 use crate::ui::theme::{
     amber_button, bold_text, dialog_frame, lcd_frame, semibold_text, slate_button, status_pill,
-    window_close_dot, STATUS_WARNING, TEXT_PRIMARY, TEXT_SECONDARY,
+    window_close_x, STATUS_WARNING, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
@@ -25,12 +25,11 @@ pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
             .default_width(420.0)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    if window_close_dot(ui) {
-                        app.pending_repeat = None;
-                    }
-                    ui.add_space(6.0);
                     ui.label(bold_text("Lagu Sudah di Antrean", 15.0, TEXT_PRIMARY));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if window_close_x(ui) {
+                            app.pending_repeat = None;
+                        }
                         status_pill(ui, "Duplikat", STATUS_WARNING);
                     });
                 });
@@ -76,11 +75,12 @@ pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
             .default_width(380.0)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    if window_close_dot(ui) {
-                        app.add_to_set_picker_track = None;
-                    }
-                    ui.add_space(6.0);
                     ui.label(bold_text("Simpan ke Set Playlist", 15.0, TEXT_PRIMARY));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if window_close_x(ui) {
+                            app.add_to_set_picker_track = None;
+                        }
+                    });
                 });
                 ui.add_space(6.0);
                 ui.label(bold_text(

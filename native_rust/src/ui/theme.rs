@@ -223,16 +223,26 @@ pub fn studio_toggle(ui: &mut egui::Ui, on: &mut bool) -> egui::Response {
     response
 }
 
-/// Clean red close dot button (`●`) for frameless studio dialogs.
-pub fn window_close_dot(ui: &mut egui::Ui) -> bool {
-    let (rect, resp) = ui.allocate_exact_size(egui::vec2(14.0, 14.0), egui::Sense::click());
+/// Clean flat `✕` close button for frameless studio dialogs.
+pub fn window_close_x(ui: &mut egui::Ui) -> bool {
+    let (rect, resp) = ui.allocate_exact_size(egui::vec2(26.0, 26.0), egui::Sense::click());
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+    if resp.hovered() {
+        ui.painter()
+            .rect_filled(rect, CornerRadius::same(6), CONTROL_BG);
+    }
     let col = if resp.hovered() {
-        Color32::from_rgb(255, 110, 105)
+        TEXT_PRIMARY
     } else {
-        Color32::from_rgb(239, 83, 80)
+        TEXT_SECONDARY
     };
-    ui.painter().circle_filled(rect.center(), 6.0, col);
+    ui.painter().text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        "✕",
+        egui::FontId::proportional(14.0),
+        col,
+    );
     resp.clicked()
 }
 

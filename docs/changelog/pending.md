@@ -100,3 +100,4 @@
 
 
 
+[14:30] - [native_rust/src/ui/theme.rs, native_rust/src/ui/modals/*] - Replace red close dot with clean top-right `✕` close button (`window_close_x`) across all frameless studio dialogs per user preference

@@ -8,7 +8,7 @@ use crate::services::system_service;
 use crate::ui::theme::{
     amber_button, bold_text, danger_button, list_row_frame, mono_text, semibold_text,
     setting_group_frame, slate_button, split_dialog_frame, status_pill, studio_toggle,
-    window_close_dot, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED,
+    window_close_x, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED,
     TEXT_PRIMARY, TEXT_SECONDARY,
 };
 use crate::ui::toast::ToastItem;
@@ -53,13 +53,7 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                         ui.set_width(176.0);
                         ui.set_min_height(total_h - 28.0);
 
-                        // Top-left window close dot
-                        ui.horizontal(|ui| {
-                            if window_close_dot(ui) {
-                                app.is_settings_open = false;
-                            }
-                        });
-                        ui.add_space(14.0);
+                        ui.add_space(6.0);
 
                         let tabs = [
                             (SettingsTab::Connection, "Koneksi RadioBOSS"),
@@ -112,7 +106,17 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                             SettingsTab::CasterHub => "CasterHub Cloud",
                             SettingsTab::System => "Sistem & Info",
                         };
-                        ui.label(bold_text(heading, 18.0, TEXT_PRIMARY));
+                        ui.horizontal(|ui| {
+                            ui.label(bold_text(heading, 18.0, TEXT_PRIMARY));
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if window_close_x(ui) {
+                                        app.is_settings_open = false;
+                                    }
+                                },
+                            );
+                        });
                         ui.add_space(12.0);
 
                         egui::ScrollArea::vertical()

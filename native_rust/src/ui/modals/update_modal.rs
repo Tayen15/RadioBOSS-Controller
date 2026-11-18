@@ -7,7 +7,7 @@ use crate::models::APP_VERSION;
 use crate::services::system_service;
 use crate::ui::theme::{
     amber_button, bold_text, dialog_frame, lcd_frame, mono_text, semibold_text, slate_button,
-    status_pill, window_close_dot, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS,
+    status_pill, window_close_x, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS,
     TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
@@ -32,12 +32,11 @@ pub fn render_update_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         .default_width(500.0)
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-                if window_close_dot(ui) {
-                    app.is_update_open = false;
-                }
-                ui.add_space(6.0);
                 ui.label(bold_text("Pembaruan Aplikasi", 16.0, TEXT_PRIMARY));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if window_close_x(ui) {
+                        app.is_update_open = false;
+                    }
                     if slate_button(ui, "Cek Ulang").clicked() {
                         app.send_cmd(AppCommand::CheckForUpdates { manual: true });
                     }
