@@ -130,6 +130,25 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                     egui::Layout::top_down(egui::Align::Min),
                     |ui| {
                         ui.horizontal(|ui| {
+                            // State-driven live ON-AIR pulse indicator (0% CPU when idle)
+                            if status_str == "playing" && app.rb_status.connected {
+                                let t = ui.ctx().input(|i| i.time);
+                                let pulse = ((t * 3.5).sin() * 0.5 + 0.5) as f32;
+                                let dot_alpha = (110.0 + pulse * 145.0) as u8;
+                                let dot_col = Color32::from_rgba_unmultiplied(
+                                    STATUS_ERROR.r(),
+                                    STATUS_ERROR.g(),
+                                    STATUS_ERROR.b(),
+                                    dot_alpha,
+                                );
+                                let (dot_rect, _) = ui.allocate_exact_size(
+                                    egui::vec2(8.0, 8.0),
+                                    egui::Sense::hover(),
+                                );
+                                ui.painter().circle_filled(dot_rect.center(), 4.0, dot_col);
+                                ui.ctx()
+                                    .request_repaint_after(std::time::Duration::from_millis(33));
+                            }
                             status_pill(ui, badge_txt, badge_color);
 
                             if let Some(listeners) = np.as_ref().and_then(|n| n.listeners) {
@@ -223,6 +242,11 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                             let pos_sec = parse_duration_str(pos_s) as f32;
                             let dur_sec = parse_duration_str(dur_s).max(1) as f32;
                             let ratio = (pos_sec / dur_sec).clamp(0.0, 1.0);
+                            let smooth_ratio = ui.ctx().animate_value_with_time(
+                                egui::Id::NULL.with("now_playing_progress"),
+                                ratio,
+                                0.22,
+                            );
 
                             ui.add_space(5.0);
                             ui.horizontal(|ui| {
@@ -242,7 +266,7 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                                     CONTROL_BG,
                                 );
                                 let mut fill_rect = rect;
-                                fill_rect.set_width(rect.width() * ratio);
+                                fill_rect.set_width(rect.width() * smooth_ratio);
                                 ui.painter().rect_filled(
                                     fill_rect,
                                     CornerRadius::same(2),

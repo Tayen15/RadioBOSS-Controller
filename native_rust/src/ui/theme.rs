@@ -111,6 +111,7 @@ pub fn configure_studio_theme(ctx: &egui::Context) {
     ctx.set_visuals(visuals);
 
     ctx.global_style_mut(|style| {
+        style.animation_time = 0.15;
         style.spacing.item_spacing = egui::vec2(8.0, 8.0);
         style.spacing.button_padding = egui::vec2(10.0, 6.0);
         style.spacing.scroll.bar_width = 6.0;

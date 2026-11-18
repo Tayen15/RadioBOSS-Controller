@@ -13,6 +13,11 @@ pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         return;
     }
 
+    if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+        app.is_lyrics_open = false;
+        return;
+    }
+
     let Some(data) = app.lyrics_data.clone() else {
         app.is_lyrics_open = false;
         return;

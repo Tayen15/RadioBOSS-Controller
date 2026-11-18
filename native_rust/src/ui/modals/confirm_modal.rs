@@ -10,6 +10,10 @@ use crate::ui::theme::{
 pub fn render_confirm_modals(ctx: &egui::Context, app: &mut RadioCasterApp) {
     // 1. Anti-Repeat Safety Guard Confirmation
     if let Some(pending) = app.pending_repeat.clone() {
+        if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+            app.pending_repeat = None;
+            return;
+        }
         let mut keep_open = true;
         egui::Window::new("Lagu Sudah di Antrean")
             .open(&mut keep_open)

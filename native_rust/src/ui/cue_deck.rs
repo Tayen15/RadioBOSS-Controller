@@ -209,6 +209,11 @@ pub fn render_cue_deck(
                 } else if audio_st.total_secs > 0.0 {
                     ui.add_space(4.0);
                     let pct = (audio_st.elapsed_secs / audio_st.total_secs).clamp(0.0, 1.0);
+                    let smooth_pct = ui.ctx().animate_value_with_time(
+                        egui::Id::NULL.with("headphone_progress"),
+                        pct,
+                        0.15,
+                    );
                     ui.horizontal(|ui| {
                         ui.label(mono_text(
                             format!(
@@ -225,7 +230,7 @@ pub fn render_cue_deck(
                         ui.painter()
                             .rect_filled(rect, CornerRadius::same(3), CONTROL_BG);
                         let mut fr = rect;
-                        fr.set_width(rect.width() * pct);
+                        fr.set_width(rect.width() * smooth_pct);
                         ui.painter()
                             .rect_filled(fr, CornerRadius::same(3), AMBER_PRIMARY);
                     });

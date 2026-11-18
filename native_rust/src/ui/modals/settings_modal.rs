@@ -17,6 +17,11 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         return;
     }
 
+    if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+        app.is_settings_open = false;
+        return;
+    }
+
     let mut is_open = app.is_settings_open;
     egui::Window::new("Pengaturan")
         .open(&mut is_open)

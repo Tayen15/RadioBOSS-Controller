@@ -258,7 +258,11 @@ pub fn render_tracklist_row(
         })
         .response;
 
-    if row_resp.interact(egui::Sense::click()).clicked() {
+    if row_resp
+        .interact(egui::Sense::click())
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .clicked()
+    {
         app.select_track(track.clone());
     }
 }
