@@ -156,11 +156,17 @@ pub fn spawn_backend_workers(
         });
     }
 
-    // 60-second Telemetry & Airtime heartbeat loop
+    // Initial + 60-second Telemetry & Airtime heartbeat loop
     {
         let services = ctx_services.clone();
         let emit_tel = emit.clone();
         tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(3)).await;
+            let _ = services.telemetry.sync_outbox_to_casterhub().await;
+            emit_tel(AppEvent::SessionStatsUpdated {
+                stats: services.telemetry.get_session_stats(),
+                station_hash: services.telemetry.station_hash.clone(),
+            });
             loop {
                 tokio::time::sleep(Duration::from_secs(60)).await;
                 let _ = services.telemetry.sync_outbox_to_casterhub().await;

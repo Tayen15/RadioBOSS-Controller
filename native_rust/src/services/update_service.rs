@@ -266,3 +266,34 @@ fn parse_semver(ver: &str) -> (u32, u32, u32) {
         parts.next().unwrap_or(0),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_semver_comparison_and_asset_selection() {
+        assert!(parse_semver("v0.9.5") > parse_semver("0.9.4"));
+        assert!(parse_semver("1.0.0") > parse_semver("v0.9.9"));
+        assert_eq!(parse_semver("v0.9.4-beta"), (0, 9, 4));
+
+        let assets = vec![
+            serde_json::json!({
+                "name": "RadioBOSSCaster-Portable-Linux-x64.tar.gz",
+                "size": 1000,
+                "browser_download_url": "https://example.com/linux.tar.gz"
+            }),
+            serde_json::json!({
+                "name": "RadioBOSSCaster-Setup-x64.exe",
+                "size": 2000,
+                "browser_download_url": "https://example.com/setup.exe"
+            }),
+        ];
+        let picked = UpdateService::select_asset(Some(&assets)).unwrap();
+        if cfg!(target_os = "windows") {
+            assert_eq!(picked.name, "RadioBOSSCaster-Setup-x64.exe");
+        } else {
+            assert_eq!(picked.name, "RadioBOSSCaster-Portable-Linux-x64.tar.gz");
+        }
+    }
+}

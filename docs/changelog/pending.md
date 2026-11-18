@@ -69,6 +69,7 @@
 [13:22] - [native_rust/Cargo.toml, native_rust/build.rs, native_rust/src/, run_native.bat] - Standardize official project identity to 'Radio Caster Bridge Studio' ('RCB Studio') across binary (RCBStudio.exe), Windows VersionInfo / Task Manager process metadata, window title, header, footer, and copyright notices (removing all 'Native'/'Rust' labels from UI) - Clean unified studio branding
 [13:26] - [native_rust/src/services/db_service.rs, native_rust/src/services/settings_service.rs] - Harden Fase 2 SQLite & Config persistence with explicit null-value stripping, legacy telemetry_outbox ALTER TABLE migration, raw string fallback for settings/artists, and unit test verification (7/7 passed) - Guarantees seamless zero-loss migration from existing v0.9.4 databases
 [13:29] - [native_rust/src/services/ytmusic_service.rs, radioboss_service.rs, cache_service.rs, stream_server.rs] - Complete Fase 3 hardening: multi-run InnerTube lyrics extraction, mtime-sorted RadioBOSS .prf tab discovery, ID3v2 APIC picture deduplication, Content-Length header on cached MP3 relay, and Fase 3 unit tests (9/9 passed) - Verified release build RCBStudio.exe
+[13:32] - [native_rust/src/services/telemetry_service.rs, update_service.rs, worker.rs] - Complete Fase 4 verification: add initial 3s CasterHub startup sync, deterministic station_hash & SemVer/asset unit tests (11/11 passed), and verified release build RCBStudio.exe
 
 
 

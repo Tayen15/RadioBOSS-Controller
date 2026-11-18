@@ -428,3 +428,18 @@ impl TelemetryService {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_machine_hash_deterministic_and_time_belt() {
+        let h1 = compute_machine_hash();
+        let h2 = compute_machine_hash();
+        assert_eq!(h1.len(), 64);
+        assert_eq!(h1, h2);
+        let belt = TelemetryService::get_time_belt();
+        assert!(["morning", "afternoon", "night"].contains(&belt));
+    }
+}
