@@ -10,6 +10,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use crate::events::{AppCommand, AppEvent};
 use crate::models::config::AppConfig;
 use crate::models::radioboss::PlaylistItem;
+use crate::models::system::UpdateDownloadState;
 use crate::models::track::{HistoryItem, TrackItem};
 use crate::services::audio_player::AudioPlayerService;
 use crate::services::cache_service::CacheService;
@@ -91,11 +92,19 @@ pub fn spawn_backend_workers(
                 notify: false,
             });
 
-            let upd = services.update.check_for_updates().await;
-            emit_boot(AppEvent::UpdateChecked {
-                result: upd,
-                manual: false,
-            });
+            check_and_auto_download_update(&services.update, &emit_boot, false).await;
+        });
+    }
+
+    // Periodic 60-minute silent auto-update check (1 tiny HTTPS GET per hour)
+    {
+        let update_svc = ctx_services.update.clone();
+        let emit_upd = emit.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(3600)).await;
+                check_and_auto_download_update(&update_svc, &emit_upd, false).await;
+            }
         });
     }
 
@@ -768,20 +777,12 @@ async fn handle_command(
             Ok(saved) => {
                 emit(AppEvent::ConfigUpdated(saved.clone()));
                 let st = services.radioboss.check_status(&saved).await;
-                emit(AppEvent::StatusUpdated { status: st.clone() });
+                emit(AppEvent::StatusUpdated { status: st });
                 let cstats = services.cache.get_cache_stats(&saved);
                 let clist = services.db.get_all_cached_tracks(200);
                 emit(AppEvent::CacheStatsUpdated {
                     stats: cstats,
                     cached_tracks: clist,
-                });
-                emit(AppEvent::Toast {
-                    is_error: false,
-                    text: if st.connected {
-                        "Pengaturan disimpan & terhubung ke RadioBOSS".to_string()
-                    } else {
-                        "Pengaturan disimpan (RadioBOSS belum terhubung)".to_string()
-                    },
                 });
             }
             Err(e) => emit(AppEvent::Toast {
@@ -882,11 +883,7 @@ async fn handle_command(
                 key: "update_check",
                 active: true,
             });
-            let res = services.update.check_for_updates().await;
-            emit(AppEvent::UpdateChecked {
-                result: res,
-                manual,
-            });
+            check_and_auto_download_update(&services.update, &emit, manual).await;
             emit(AppEvent::LoadingState {
                 key: "update_check",
                 active: false,
@@ -894,26 +891,7 @@ async fn handle_command(
         }
 
         AppCommand::DownloadUpdate(asset) => {
-            let upd = services.update.clone();
-            let emit_dl = emit.clone();
-            let updater_poller = services.update.clone();
-            let done_flag = Arc::new(AtomicBool::new(false));
-            let done_clone = done_flag.clone();
-
-            tokio::spawn(async move {
-                while !done_clone.load(Ordering::Relaxed) {
-                    emit_dl(AppEvent::UpdateDownloadProgress(
-                        updater_poller.get_download_status(),
-                    ));
-                    tokio::time::sleep(Duration::from_millis(200)).await;
-                }
-                emit_dl(AppEvent::UpdateDownloadProgress(
-                    updater_poller.get_download_status(),
-                ));
-            });
-
-            upd.start_download(asset).await;
-            done_flag.store(true, Ordering::Relaxed);
+            spawn_update_download(services.update.clone(), emit.clone(), asset);
         }
 
         AppCommand::InstallUpdate => {
@@ -1108,4 +1086,60 @@ async fn execute_queue(
             false
         }
     }
+}
+
+async fn check_and_auto_download_update(
+    update: &UpdateService,
+    emit: &(impl Fn(AppEvent) + Send + Sync + Clone + 'static),
+    manual: bool,
+) {
+    let res = update.check_for_updates().await;
+    let should_download = res.update_available
+        && !matches!(
+            update.get_download_status().state,
+            UpdateDownloadState::Downloading | UpdateDownloadState::Downloaded
+        );
+    let asset_opt = if should_download {
+        res.asset.clone()
+    } else {
+        None
+    };
+
+    emit(AppEvent::UpdateChecked {
+        result: res,
+        manual,
+    });
+
+    if let Some(asset) = asset_opt {
+        spawn_update_download(update.clone(), emit.clone(), asset);
+    }
+}
+
+fn spawn_update_download(
+    upd: UpdateService,
+    emit_dl: impl Fn(AppEvent) + Send + Sync + 'static,
+    asset: crate::models::system::UpdateAsset,
+) {
+    tokio::spawn(async move {
+        let updater_poller = upd.clone();
+        let emit_poll = emit_dl;
+        let done_flag = Arc::new(AtomicBool::new(false));
+        let done_clone = done_flag.clone();
+
+        let poller = tokio::spawn(async move {
+            while !done_clone.load(Ordering::Relaxed) {
+                emit_poll(AppEvent::UpdateDownloadProgress(
+                    updater_poller.get_download_status(),
+                ));
+                tokio::time::sleep(Duration::from_millis(250)).await;
+            }
+            emit_poll(AppEvent::UpdateDownloadProgress(
+                updater_poller.get_download_status(),
+            ));
+        });
+
+        upd.start_download(asset).await;
+        done_flag.store(true, Ordering::Relaxed);
+        let _ = poller.await;
+    });
 }

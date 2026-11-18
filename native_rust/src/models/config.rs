@@ -56,7 +56,7 @@ impl TitleFormatMode {
 }
 
 /// Persistent application configuration stored in SQLite and mirrored to config.json.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
     pub radioboss_host: String,

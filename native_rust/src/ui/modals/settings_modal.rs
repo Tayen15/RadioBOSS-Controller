@@ -3,6 +3,7 @@ use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, Stroke};
 use crate::app::{RadioCasterApp, SettingsTab};
 use crate::events::AppCommand;
 use crate::models::config::{AppConfig, TitleFormatMode};
+use crate::models::system::UpdateDownloadState;
 use crate::models::APP_VERSION;
 use crate::services::system_service;
 use crate::ui::theme::{
@@ -124,9 +125,11 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                             );
                             ui.add_space(12.0);
 
+                            let prev_cfg = app.draft_config.clone();
+
                             egui::ScrollArea::vertical()
                                 .id_salt("settings_content_scroll")
-                                .max_height(424.0)
+                                .max_height(472.0)
                                 .show(ui, |ui| {
                                     ui.set_width(pane_w);
                                     match app.settings_tab {
@@ -140,53 +143,35 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                                     }
                                 });
 
-                            ui.add_space(12.0);
-                            ui.allocate_ui_with_layout(
-                                egui::vec2(pane_w, 34.0),
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    ui.spacing_mut().item_spacing.x = 10.0;
-                                    if ui
-                                        .add_sized(
-                                            [144.0, 32.0],
-                                            egui::Button::new(bold_text(
-                                                "Simpan Pengaturan",
-                                                12.5,
-                                                Color32::from_rgb(18, 14, 8),
-                                            ))
-                                            .fill(AMBER_PRIMARY)
-                                            .stroke(Stroke::NONE)
-                                            .corner_radius(CornerRadius::same(7)),
-                                        )
-                                        .on_hover_cursor(egui::CursorIcon::PointingHand)
-                                        .clicked()
-                                    {
-                                        let cfg = app.draft_config.clone();
-                                        app.send_cmd(AppCommand::SaveSettings(cfg));
-                                        app.is_settings_open = false;
-                                    }
-                                    if ui
-                                        .add_sized(
-                                            [88.0, 32.0],
-                                            egui::Button::new(semibold_text(
-                                                "Batal",
-                                                12.5,
-                                                TEXT_PRIMARY,
-                                            ))
-                                            .fill(Color32::from_rgb(42, 42, 52))
-                                            .stroke(Stroke::new(
-                                                1.0,
-                                                Color32::from_rgb(60, 60, 72),
-                                            ))
-                                            .corner_radius(CornerRadius::same(7)),
-                                        )
-                                        .on_hover_cursor(egui::CursorIcon::PointingHand)
-                                        .clicked()
-                                    {
-                                        app.is_settings_open = false;
-                                    }
-                                },
-                            );
+                            let pending_id = egui::Id::unique("rcb_settings_autosave_pending");
+                            let changed = app.draft_config != prev_cfg;
+                            let typing = ctx.egui_wants_keyboard_input();
+
+                            if changed {
+                                if !typing {
+                                    app.config = app.draft_config.clone();
+                                    app.send_cmd(AppCommand::SaveSettings(app.draft_config.clone()));
+                                    ctx.data_mut(|d| {
+                                        d.remove::<std::time::Instant>(pending_id);
+                                    });
+                                } else {
+                                    ctx.data_mut(|d| {
+                                        d.insert_temp(pending_id, std::time::Instant::now());
+                                    });
+                                }
+                            } else if let Some(at) =
+                                ctx.data(|d| d.get_temp::<std::time::Instant>(pending_id))
+                            {
+                                if !typing || at.elapsed().as_millis() >= 450 {
+                                    app.config = app.draft_config.clone();
+                                    app.send_cmd(AppCommand::SaveSettings(app.draft_config.clone()));
+                                    ctx.data_mut(|d| {
+                                        d.remove::<std::time::Instant>(pending_id);
+                                    });
+                                } else {
+                                    ctx.request_repaint_after(std::time::Duration::from_millis(120));
+                                }
+                            }
                         });
                     });
             });
@@ -196,6 +181,17 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
         app.is_settings_open = false;
     }
     if !app.is_settings_open {
+        let pending_id = egui::Id::unique("rcb_settings_autosave_pending");
+        if ctx
+            .data(|d| d.get_temp::<std::time::Instant>(pending_id))
+            .is_some()
+        {
+            app.config = app.draft_config.clone();
+            app.send_cmd(AppCommand::SaveSettings(app.draft_config.clone()));
+            ctx.data_mut(|d| {
+                d.remove::<std::time::Instant>(pending_id);
+            });
+        }
         ctx.data_mut(|d| d.insert_temp(just_opened_id, false));
     }
 }
@@ -873,20 +869,93 @@ fn render_casterhub_tab(ctx: &egui::Context, ui: &mut egui::Ui, app: &mut RadioC
 fn render_system_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     section_label(ui, "Tentang Aplikasi");
     setting_group_frame().show(ui, |ui| {
-        ui.label(bold_text(
-            format!("Radio Caster Bridge Studio (RCB Studio) v{APP_VERSION}"),
-            13.5,
-            AMBER_PRIMARY,
-        ));
-        ui.label(semibold_text(
-            "Copyright © 2026 Radio Caster Bridge Studio • Tayen (hi.oktaa.my.id)",
-            11.5,
-            TEXT_SECONDARY,
-        ));
+        ui.horizontal(|ui| {
+            if let Some(ref tex) = app.logo_texture {
+                ui.add(
+                    egui::Image::new(tex)
+                        .fit_to_exact_size(egui::vec2(38.0, 38.0))
+                        .corner_radius(CornerRadius::same(8)),
+                );
+            }
+            ui.vertical(|ui| {
+                ui.spacing_mut().item_spacing.y = 2.0;
+                ui.horizontal(|ui| {
+                    ui.label(bold_text("Radio Caster Bridge Studio", 14.0, TEXT_PRIMARY));
+                    status_pill(ui, &format!("v{APP_VERSION}"), AMBER_PRIMARY);
+                });
+                ui.label(semibold_text(
+                    "Copyright © 2026 RCB Studio • Tayen",
+                    11.5,
+                    TEXT_SECONDARY,
+                ));
+            });
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                match app.update_dl_status.state {
+                    UpdateDownloadState::Downloaded => {
+                        status_pill(ui, "Siap Restart", STATUS_SUCCESS);
+                    }
+                    UpdateDownloadState::Downloading => {
+                        status_pill(
+                            ui,
+                            &format!(
+                                "Mengunduh {:.0}%",
+                                (app.update_dl_status.progress * 100.0).clamp(0.0, 100.0)
+                            ),
+                            SIGNAL_CYAN,
+                        );
+                    }
+                    _ => {
+                        if let Some(ref upd) = app.update_check {
+                            if upd.update_available {
+                                status_pill(ui, &format!("v{} Tersedia", upd.latest_version), AMBER_PRIMARY);
+                            } else if upd.error.is_none() {
+                                status_pill(ui, "Versi Terbaru", STATUS_SUCCESS);
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+        if app.update_dl_status.state == UpdateDownloadState::Downloading {
+            ui.add_space(8.0);
+            let pct = app.update_dl_status.progress.clamp(0.0, 1.0);
+            ui.add(egui::ProgressBar::new(pct).show_percentage());
+        }
+
+        ui.add_space(8.0);
+        ui.separator();
+        ui.add_space(6.0);
+        ui.horizontal(|ui| {
+            if ui
+                .link(semibold_text("hi.oktaa.my.id", 11.5, SIGNAL_CYAN))
+                .clicked()
+            {
+                system_service::open_in_system("https://hi.oktaa.my.id");
+            }
+            ui.label(mono_text("•", 11.5, TEXT_MUTED));
+            if ui
+                .link(semibold_text("GitHub Releases", 11.5, TEXT_SECONDARY))
+                .clicked()
+            {
+                system_service::open_in_system(
+                    "https://github.com/Tayen15/RadioBOSS-Controller/releases",
+                );
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if app.update_dl_status.state == UpdateDownloadState::Downloaded {
+                    if amber_button(ui, "Restart to Update").clicked() {
+                        app.send_cmd(AppCommand::InstallUpdate);
+                    }
+                } else if slate_button(ui, "Cek Pembaruan").clicked() {
+                    app.send_cmd(AppCommand::CheckForUpdates { manual: true });
+                }
+            });
+        });
     });
 
     ui.add_space(12.0);
-    section_label(ui, "Jaringan & Pembaruan");
+    section_label(ui, "Jaringan & Reset");
     setting_group_frame().show(ui, |ui| {
         ui.label(semibold_text("Port Stream Relay Lokal / LAN", 12.0, TEXT_PRIMARY));
         ui.label(semibold_text(
@@ -894,26 +963,22 @@ fn render_system_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             11.0,
             TEXT_SECONDARY,
         ));
-        ui.add_space(4.0);
-        let mut srv_port = app.draft_config.server_port.to_string();
-        if ui
-            .add_sized([110.0, 28.0], egui::TextEdit::singleline(&mut srv_port))
-            .changed()
-        {
-            if let Ok(p) = srv_port.trim().parse::<u16>() {
-                app.draft_config.server_port = p;
-            }
-        }
-
-        ui.add_space(10.0);
+        ui.add_space(6.0);
         ui.horizontal(|ui| {
-            if amber_button(ui, "Cek Pembaruan Aplikasi").clicked() {
-                app.send_cmd(AppCommand::CheckForUpdates { manual: true });
-                app.is_update_open = true;
+            let mut srv_port = app.draft_config.server_port.to_string();
+            if ui
+                .add_sized([110.0, 28.0], egui::TextEdit::singleline(&mut srv_port))
+                .changed()
+            {
+                if let Ok(p) = srv_port.trim().parse::<u16>() {
+                    app.draft_config.server_port = p;
+                }
             }
-            if danger_button(ui, "Reset Pengaturan Default").clicked() {
-                app.draft_config = AppConfig::default();
-            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if danger_button(ui, "Reset Pengaturan Default").clicked() {
+                    app.draft_config = AppConfig::default();
+                }
+            });
         });
     });
 }

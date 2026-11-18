@@ -3,6 +3,7 @@ use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, Stroke};
 use crate::app::RadioCasterApp;
 use crate::events::AppCommand;
 use crate::models::radioboss::PlaybackAction;
+use crate::models::system::UpdateDownloadState;
 use crate::services::title_cleaner::clean_broadcast_title;
 use crate::services::ytmusic_service::parse_duration_str;
 use crate::ui::theme::{
@@ -92,12 +93,10 @@ pub fn render_top_rack(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             app.send_cmd(AppCommand::RefreshCacheStats);
         }
 
-        if let Some(ref upd) = app.update_check {
-            if upd.update_available
-                && amber_button(ui, &format!("Update v{}", upd.latest_version)).clicked()
-            {
-                app.is_update_open = true;
-            }
+        if app.update_dl_status.state == UpdateDownloadState::Downloaded
+            && restart_update_button(ui).clicked()
+        {
+            app.send_cmd(AppCommand::InstallUpdate);
         }
     });
 
@@ -416,5 +415,39 @@ fn titlebar_win_btn(ui: &mut egui::Ui, kind: WinBtnKind) -> egui::Response {
             p.line_segment([c + egui::vec2(d, -d), c + egui::vec2(-d, d)], stroke);
         }
     }
+    resp
+}
+
+fn restart_update_button(ui: &mut egui::Ui) -> egui::Response {
+    let label = "Restart to Update";
+    let font = egui::FontId::new(12.0, egui::FontFamily::Name("bold".into()));
+    let dark_txt = Color32::from_rgb(18, 14, 8);
+    let galley = ui.painter().layout_no_wrap(label.to_string(), font, dark_txt);
+    let desired = egui::vec2(galley.size().x + 38.0, 28.0);
+    let (rect, resp) = ui.allocate_exact_size(desired, egui::Sense::click());
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+
+    let hov_t = ui.ctx().animate_bool_responsive(resp.id, resp.hovered());
+    let fill = crate::ui::theme::lerp_color(
+        AMBER_PRIMARY,
+        Color32::from_rgb(251, 184, 52),
+        hov_t,
+    );
+    ui.painter()
+        .rect_filled(rect, CornerRadius::same(7), fill);
+
+    // Vector circular arrow / update icon on the left
+    let ic = rect.left_center() + egui::vec2(14.0, 0.0);
+    let stroke = Stroke::new(1.5, dark_txt);
+    let p = ui.painter();
+    p.circle_stroke(ic, 5.0, stroke);
+    p.line_segment([ic + egui::vec2(2.5, -4.5), ic + egui::vec2(5.5, -4.0)], stroke);
+    p.line_segment([ic + egui::vec2(5.5, -4.0), ic + egui::vec2(4.0, -1.2)], stroke);
+
+    p.galley(
+        egui::pos2(rect.left() + 26.0, rect.center().y - galley.size().y * 0.5),
+        galley,
+        dark_txt,
+    );
     resp
 }
