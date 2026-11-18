@@ -30,6 +30,7 @@ fn main() -> eframe::Result<()> {
         .build()
         .expect("Failed to create Tokio runtime");
 
+    let rt_handle = rt.handle().clone();
     let _guard = rt.enter();
 
     let db = DatabaseService::new().expect("Failed to initialize SQLite database");
@@ -78,13 +79,16 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
 
-    eframe::run_native(
+    let res = eframe::run_native(
         "Radio Caster Bridge Studio",
         native_options,
         Box::new(move |cc| {
-            let _enter = rt.enter();
+            let _enter = rt_handle.enter();
             spawn_backend_workers(backend_ctx, cmd_rx, evt_tx, cc.egui_ctx.clone());
             Ok(Box::new(RadioCasterApp::new(cc, cmd_tx, evt_rx, audio)))
         }),
-    )
+    );
+    drop(_guard);
+    drop(rt);
+    res
 }

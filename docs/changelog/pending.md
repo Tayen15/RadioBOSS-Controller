@@ -72,6 +72,7 @@
 [13:32] - [native_rust/src/services/telemetry_service.rs, update_service.rs, worker.rs] - Complete Fase 4 verification: add initial 3s CasterHub startup sync, deterministic station_hash & SemVer/asset unit tests (11/11 passed), and verified release build RCBStudio.exe
 [13:34] - [native_rust/src/ui/top_rack.rs, discovery_deck.rs, playlist_sets.rs] - Complete Fase 5 UI verification & polish: truncate long Now Playing titles in Zone 1 LCD, adjust dynamic title width for DISK badge in Zone 2 tracklist, and support Enter submission in Playlist Set creation form - Verified release build RCBStudio.exe
 [13:37] - [native_rust/src/ui/queue_monitor.rs, modals/update_modal.rs, services/system_service.rs] - Complete Fase 6 verification & polish: optimize Zone 3 Live Queue title width, auto-create directories when opening Explorer, and add retry download recovery in UpdateModal - Verified release build RCBStudio.exe (11/11 tests passed)
+[13:41] - [native_rust/src/main.rs, native_rust/build_release.ps1, installer/setup.iss] - Complete Fase 7 release verification & packaging: fix Tokio runtime ownership in main.rs so Axum :8000 stream relay & background workers stay alive across app lifecycle, add build_release.ps1 staging dist/RCBStudio.exe (18.67 MB), update Inno Setup script for RCB Studio, and verify live runtime (1 process, 62.59 MB private RAM, Axum 200 OK)
 
 
 

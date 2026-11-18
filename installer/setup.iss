@@ -1,11 +1,12 @@
-; Inno Setup Script: Radio Caster Bridge Setup Wizard
-; Creates a standard Windows installer with Welcome, Directory, Shortcut, and Finish dialogs.
+; Inno Setup Script: Radio Caster Bridge Studio (RCB Studio) Setup Wizard
+; Packages the standalone RCBStudio.exe binary + optional ffmpeg.exe / yt-dlp.exe sidecars.
 
-#define MyAppName "Radio Caster Bridge"
+#define MyAppName "Radio Caster Bridge Studio"
+#define MyAppShortName "RCB Studio"
 #define MyAppVersion "0.9.4"
 #define MyAppPublisher "oktaa"
 #define MyAppURL "https://hi.oktaa.my.id"
-#define MyAppExeName "RadioBOSSCaster.exe"
+#define MyAppExeName "RCBStudio.exe"
 
 #ifndef AppArch
 #define AppArch "x64"
@@ -28,7 +29,7 @@ DefaultDirName={autopf32}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\dist
-OutputBaseFilename=RadioBOSSCaster-Setup-{#AppArch}
+OutputBaseFilename=RCBStudio-Setup-{#AppArch}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -47,13 +48,14 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
-Source: "..\dist\RadioBOSSCaster.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\RCBStudio.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\dist\yt-dlp.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppShortName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent runasoriginaluser
