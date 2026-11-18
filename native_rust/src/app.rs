@@ -282,19 +282,13 @@ impl RadioCasterApp {
                 AppEvent::PlaylistUpdated { tracks } => {
                     self.playlist_tracks = tracks;
                 }
-                AppEvent::TabsUpdated { tabs, notify } => {
+                AppEvent::TabsUpdated { tabs, notify: _ } => {
                     if !tabs.available_tabs.is_empty() {
                         self.available_tabs = tabs.available_tabs.clone();
                     }
                     self.is_tabs_synced = tabs.is_synced;
                     if self.active_tab.is_empty() && !tabs.active_tab.is_empty() {
                         // keep auto mode or reflect synced active
-                    }
-                    if notify {
-                        self.toasts.push(ToastItem::success(format!(
-                            "Tersinkron {} tab playlist RadioBOSS",
-                            self.available_tabs.len()
-                        )));
                     }
                 }
                 AppEvent::SearchResults { results } => {

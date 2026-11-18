@@ -2,7 +2,9 @@ use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Align2, Color32, CornerRadius, Frame, Margin, Stroke};
 
-use crate::ui::theme::{semibold_text, DECK_BG, STATUS_ERROR, STATUS_SUCCESS, TEXT_PRIMARY};
+use crate::ui::theme::{
+    semibold_text, BORDER_COLOR, DECK_BG, STATUS_ERROR, STATUS_SUCCESS, TEXT_PRIMARY,
+};
 
 #[derive(Debug, Clone)]
 pub struct ToastItem {
@@ -32,33 +34,33 @@ impl ToastItem {
     }
 }
 
-/// Renders top-center floating pills with smooth slide/fade-in and fade-out transitions.
+/// Renders compact bottom-right native studio notifications (max 2, fast auto-dismiss).
 pub fn render_toasts(ctx: &egui::Context, toasts: &mut Vec<ToastItem>) {
-    let total_ttl = 3.2_f32;
-    toasts.retain(|t| t.created_at.elapsed().as_secs_f32() < total_ttl);
+    toasts.retain(|t| {
+        let ttl = if t.is_error { 3.5_f32 } else { 2.2_f32 };
+        t.created_at.elapsed().as_secs_f32() < ttl
+    });
     if toasts.is_empty() {
         return;
     }
 
     let mut dismiss_id: Option<String> = None;
+    let visible: Vec<_> = toasts.iter().rev().take(2).cloned().collect();
 
-    egui::Area::new(egui::Id::NULL.with("studio_toast_overlay"))
-        .anchor(Align2::CENTER_TOP, egui::vec2(0.0, 14.0))
+    egui::Area::new(egui::Id::unique("studio_toast_overlay"))
+        .anchor(Align2::RIGHT_BOTTOM, egui::vec2(-16.0, -16.0))
         .order(egui::Order::Foreground)
         .show(ctx, |ui| {
-            ui.vertical_centered(|ui| {
-                for toast in toasts.iter().take(3) {
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::Max), |ui| {
+                for toast in visible.iter() {
+                    let ttl = if toast.is_error { 3.5_f32 } else { 2.2_f32 };
                     let age = toast.created_at.elapsed().as_secs_f32();
-                    let fade_in = (age / 0.18).clamp(0.0, 1.0);
-                    let fade_out = ((total_ttl - age) / 0.35).clamp(0.0, 1.0);
+                    let fade_in = (age / 0.16).clamp(0.0, 1.0);
+                    let fade_out = ((ttl - age) / 0.28).clamp(0.0, 1.0);
                     let alpha = (fade_in * fade_out).clamp(0.0, 1.0);
-                    let slide_y = (1.0 - fade_in) * -6.0;
-                    if slide_y.abs() > 0.1 {
-                        ui.add_space(slide_y.max(0.0));
-                    }
 
                     let a_u8 = (alpha * 255.0) as u8;
-                    let bg_a = (alpha * 245.0) as u8;
+                    let bg_a = (alpha * 246.0) as u8;
                     let base_accent = if toast.is_error {
                         STATUS_ERROR
                     } else {
@@ -68,6 +70,12 @@ pub fn render_toasts(ctx: &egui::Context, toasts: &mut Vec<ToastItem>) {
                         base_accent.r(),
                         base_accent.g(),
                         base_accent.b(),
+                        a_u8,
+                    );
+                    let border = Color32::from_rgba_unmultiplied(
+                        BORDER_COLOR.r(),
+                        BORDER_COLOR.g(),
+                        BORDER_COLOR.b(),
                         a_u8,
                     );
                     let text_col = Color32::from_rgba_unmultiplied(
@@ -85,14 +93,50 @@ pub fn render_toasts(ctx: &egui::Context, toasts: &mut Vec<ToastItem>) {
 
                     let resp = Frame::NONE
                         .fill(bg)
-                        .stroke(Stroke::new(1.0, accent))
-                        .corner_radius(CornerRadius::same(10))
-                        .inner_margin(Margin::symmetric(14, 8))
+                        .stroke(Stroke::new(1.0, if toast.is_error { accent } else { border }))
+                        .corner_radius(CornerRadius::same(8))
+                        .inner_margin(Margin::symmetric(12, 8))
                         .show(ui, |ui| {
+                            ui.set_max_width(340.0);
                             ui.horizontal(|ui| {
-                                let icon = if toast.is_error { "!" } else { "✓" };
-                                ui.label(semibold_text(icon, 13.0, accent));
-                                ui.label(semibold_text(&toast.text, 12.5, text_col));
+                                ui.spacing_mut().item_spacing.x = 8.0;
+                                // Vector status dot/check so we never depend on font glyphs
+                                let (icon_r, _) = ui.allocate_exact_size(
+                                    egui::vec2(14.0, 14.0),
+                                    egui::Sense::hover(),
+                                );
+                                let c = icon_r.center();
+                                let p = ui.painter();
+                                p.circle_filled(
+                                    c,
+                                    7.0,
+                                    Color32::from_rgba_unmultiplied(
+                                        base_accent.r(),
+                                        base_accent.g(),
+                                        base_accent.b(),
+                                        (alpha * 42.0) as u8,
+                                    ),
+                                );
+                                if toast.is_error {
+                                    p.line_segment(
+                                        [c - egui::vec2(0.0, 3.5), c + egui::vec2(0.0, 1.0)],
+                                        Stroke::new(1.6, accent),
+                                    );
+                                    p.circle_filled(c + egui::vec2(0.0, 3.2), 1.0, accent);
+                                } else {
+                                    p.line_segment(
+                                        [c + egui::vec2(-3.2, 0.2), c + egui::vec2(-0.8, 2.6)],
+                                        Stroke::new(1.6, accent),
+                                    );
+                                    p.line_segment(
+                                        [c + egui::vec2(-0.8, 2.6), c + egui::vec2(3.5, -2.5)],
+                                        Stroke::new(1.6, accent),
+                                    );
+                                }
+                                ui.add(
+                                    egui::Label::new(semibold_text(&toast.text, 12.0, text_col))
+                                        .wrap(),
+                                );
                             });
                         })
                         .response
@@ -102,7 +146,7 @@ pub fn render_toasts(ctx: &egui::Context, toasts: &mut Vec<ToastItem>) {
                     if resp.clicked() {
                         dismiss_id = Some(toast.id.clone());
                     }
-                    ui.add_space(4.0);
+                    ui.add_space(6.0);
                 }
             });
         });

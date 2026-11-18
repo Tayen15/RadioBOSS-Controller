@@ -287,17 +287,6 @@ async fn handle_command(
                     if let Ok(pl) = services.radioboss.get_playlist(&cfg, 50).await {
                         emit(AppEvent::PlaylistUpdated { tracks: pl });
                     }
-                    emit(AppEvent::Toast {
-                        is_error: false,
-                        text: format!(
-                            "Target tab: {}",
-                            if tab_name.is_empty() {
-                                "Auto (Tab Aktif)"
-                            } else {
-                                &tab_name
-                            }
-                        ),
-                    });
                 }
                 Err(e) => emit(AppEvent::Toast {
                     is_error: true,
@@ -313,11 +302,7 @@ async fn handle_command(
                 .send_playback_command(&cfg, action.as_cmd())
                 .await
             {
-                Ok(msg) => {
-                    emit(AppEvent::Toast {
-                        is_error: false,
-                        text: msg,
-                    });
+                Ok(_) => {
                     let status = services.radioboss.check_status(&cfg).await;
                     emit(AppEvent::StatusUpdated { status });
                 }
@@ -331,11 +316,7 @@ async fn handle_command(
         AppCommand::SetLiveCastTitle(title) => {
             let cfg = services.settings.get_config();
             match services.radioboss.set_cast_title(&cfg, &title).await {
-                Ok(msg) => {
-                    emit(AppEvent::Toast {
-                        is_error: false,
-                        text: msg,
-                    });
+                Ok(_) => {
                     let status = services.radioboss.check_status(&cfg).await;
                     emit(AppEvent::StatusUpdated { status });
                 }
@@ -578,10 +559,6 @@ async fn handle_command(
         AppCommand::DeletePlaylistSet(set_id) => {
             if services.db.delete_playlist_set(&set_id).is_ok() {
                 emit(AppEvent::PlaylistSetsLoaded(services.db.get_playlist_sets()));
-                emit(AppEvent::Toast {
-                    is_error: false,
-                    text: "Set playlist dihapus".to_string(),
-                });
             }
         }
 
@@ -596,10 +573,6 @@ async fn handle_command(
                 emit(AppEvent::PlaylistSetItemsLoaded {
                     set_id: set_id.clone(),
                     items: services.db.get_playlist_set_items(&set_id),
-                });
-                emit(AppEvent::Toast {
-                    is_error: false,
-                    text: format!("'{}' disimpan ke set playlist", track.title),
                 });
             }
         }
@@ -902,10 +875,6 @@ async fn handle_command(
                 stats,
                 cached_tracks: cached_list,
             });
-            emit(AppEvent::Toast {
-                is_error: false,
-                text: "File cache dihapus dari disk".to_string(),
-            });
         }
 
         AppCommand::CheckForUpdates { manual } => {
@@ -959,10 +928,6 @@ async fn handle_command(
         AppCommand::ClearHistory => {
             services.db.clear_history();
             emit(AppEvent::HistoryLoaded(Vec::new()));
-            emit(AppEvent::Toast {
-                is_error: false,
-                text: "Log pengiriman dibersihkan".to_string(),
-            });
         }
 
         AppCommand::TriggerTelemetrySync => {

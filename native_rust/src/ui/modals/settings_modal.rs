@@ -6,12 +6,11 @@ use crate::models::config::{AppConfig, TitleFormatMode};
 use crate::models::APP_VERSION;
 use crate::services::system_service;
 use crate::ui::theme::{
-    amber_button, bold_text, danger_button, list_row_frame, mono_text, semibold_text,
-    setting_group_frame, slate_button, split_dialog_frame, status_pill, studio_toggle,
-    window_close_x, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED,
-    TEXT_PRIMARY, TEXT_SECONDARY,
+    amber_button, bold_text, copy_feedback_button, danger_button, list_row_frame, mono_text,
+    semibold_text, setting_group_frame, slate_button, split_dialog_frame, status_pill,
+    studio_toggle, window_close_x, AMBER_PRIMARY, SIGNAL_CYAN, STATUS_ERROR, STATUS_SUCCESS,
+    TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
 };
-use crate::ui::toast::ToastItem;
 
 pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
     let just_opened_id = egui::Id::unique("rcb_settings_just_opened");
@@ -802,9 +801,8 @@ fn render_casterhub_tab(ctx: &egui::Context, ui: &mut egui::Ui, app: &mut RadioC
         ui.label(mono_text(&app.station_hash, 10.5, SIGNAL_CYAN));
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            if slate_button(ui, "Salin ID").clicked() {
+            if copy_feedback_button(ui, "copy_station_id_btn", "Salin ID", "Tersalin!") {
                 ctx.copy_text(app.station_hash.clone());
-                app.toasts.push(ToastItem::success("Station ID disalin"));
             }
             if slate_button(ui, "Buka Halaman Stasiun").clicked() {
                 let base = app.draft_config.casterhub_url.trim_end_matches('/');

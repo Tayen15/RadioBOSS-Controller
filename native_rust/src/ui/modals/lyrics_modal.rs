@@ -2,11 +2,10 @@ use eframe::egui::{self, Color32, CornerRadius, Frame, Margin, Stroke};
 
 use crate::app::{LyricsModalTab, RadioCasterApp};
 use crate::ui::theme::{
-    bold_text, dialog_frame, lcd_frame, semibold_text, slate_button, status_pill, window_close_x,
-    AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, DECK_BG, SIGNAL_CYAN, STATUS_SUCCESS,
-    TEXT_PRIMARY, TEXT_SECONDARY,
+    bold_text, copy_feedback_button, dialog_frame, lcd_frame, semibold_text, status_pill,
+    window_close_x, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, DECK_BG, SIGNAL_CYAN,
+    STATUS_SUCCESS, TEXT_PRIMARY, TEXT_SECONDARY,
 };
-use crate::ui::toast::ToastItem;
 
 pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
     if !app.is_lyrics_open {
@@ -166,11 +165,13 @@ pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                                     ui.with_layout(
                                         egui::Layout::right_to_left(egui::Align::Center),
                                         |ui| {
-                                            if slate_button(ui, "Salin Intro").clicked() {
+                                            if copy_feedback_button(
+                                                ui,
+                                                "copy_intro_btn",
+                                                "Salin Intro",
+                                                "Tersalin!",
+                                            ) {
                                                 ctx.copy_text(tp.intro_script.clone());
-                                                app.toasts.push(ToastItem::success(
-                                                    "Naskah intro disalin ke clipboard",
-                                                ));
                                             }
                                         },
                                     );
@@ -188,11 +189,13 @@ pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                                     ui.with_layout(
                                         egui::Layout::right_to_left(egui::Align::Center),
                                         |ui| {
-                                            if slate_button(ui, "Salin Outro").clicked() {
+                                            if copy_feedback_button(
+                                                ui,
+                                                "copy_outro_btn",
+                                                "Salin Outro",
+                                                "Tersalin!",
+                                            ) {
                                                 ctx.copy_text(tp.outro_script.clone());
-                                                app.toasts.push(ToastItem::success(
-                                                    "Naskah outro disalin ke clipboard",
-                                                ));
                                             }
                                         },
                                     );
@@ -244,11 +247,13 @@ pub fn render_lyrics_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                                     ui.with_layout(
                                         egui::Layout::right_to_left(egui::Align::Center),
                                         |ui| {
-                                            if slate_button(ui, "Salin Lirik").clicked() {
+                                            if copy_feedback_button(
+                                                ui,
+                                                "copy_lyrics_btn",
+                                                "Salin Lirik",
+                                                "Tersalin!",
+                                            ) {
                                                 ctx.copy_text(data.lyrics.clone());
-                                                app.toasts.push(ToastItem::success(
-                                                    "Lirik disalin ke clipboard",
-                                                ));
                                             }
                                             ui.label(semibold_text(
                                                 format!("Sumber: {}", data.source),

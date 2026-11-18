@@ -246,6 +246,32 @@ pub fn window_close_x(ui: &mut egui::Ui) -> bool {
     resp.clicked()
 }
 
+/// Slate button that temporarily shows `copied_label` for 1.5s after click without spawning a toast.
+pub fn copy_feedback_button(
+    ui: &mut egui::Ui,
+    id_key: &str,
+    label: &str,
+    copied_label: &str,
+) -> bool {
+    let id = egui::Id::unique(id_key);
+    let copied_at = ui.ctx().data(|d| d.get_temp::<std::time::Instant>(id));
+    let is_copied = copied_at
+        .map(|t| t.elapsed().as_secs_f32() < 1.5)
+        .unwrap_or(false);
+    if is_copied {
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_millis(100));
+    }
+    let resp = slate_button(ui, if is_copied { copied_label } else { label });
+    if resp.clicked() {
+        ui.ctx()
+            .data_mut(|d| d.insert_temp(id, std::time::Instant::now()));
+        true
+    } else {
+        false
+    }
+}
+
 pub fn bold_text(text: impl Into<String>, size: f32, color: Color32) -> RichText {
     RichText::new(text)
         .size(size)
