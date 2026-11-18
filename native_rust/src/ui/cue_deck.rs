@@ -70,21 +70,26 @@ pub fn render_cue_deck(
                         }
                         status_pill(ui, track.display_duration(), AMBER_PRIMARY);
                     });
-                    ui.label(bold_text(&app.edit_title, 15.0, TEXT_PRIMARY));
-                    ui.label(semibold_text(
-                        format!(
-                            "{}{}",
-                            app.edit_artist,
-                            track
-                                .album
-                                .as_deref()
-                                .filter(|a| !a.is_empty())
-                                .map(|a| format!(" • {a}"))
-                                .unwrap_or_default()
-                        ),
-                        12.0,
-                        TEXT_SECONDARY,
-                    ));
+                    ui.add(
+                        egui::Label::new(bold_text(&app.edit_title, 15.0, TEXT_PRIMARY)).wrap(),
+                    );
+                    ui.add(
+                        egui::Label::new(semibold_text(
+                            format!(
+                                "{}{}",
+                                app.edit_artist,
+                                track
+                                    .album
+                                    .as_deref()
+                                    .filter(|a| !a.is_empty())
+                                    .map(|a| format!(" • {a}"))
+                                    .unwrap_or_default()
+                            ),
+                            12.0,
+                            TEXT_SECONDARY,
+                        ))
+                        .wrap(),
+                    );
                 });
             });
 
@@ -100,15 +105,20 @@ pub fn render_cue_deck(
                             &format!("CROWD-CLEANED ({} votes)", cm.votes_count),
                             SIGNAL_CYAN,
                         );
-                        ui.label(semibold_text(
-                            format!("{} - {}", cm.clean_artist, cm.clean_title),
-                            11.5,
-                            TEXT_PRIMARY,
-                        ));
-                        if slate_button(ui, "Terapkan").clicked() {
-                            app.edit_title = cm.clean_title.clone();
-                            app.edit_artist = cm.clean_artist.clone();
-                        }
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if slate_button(ui, "Terapkan").clicked() {
+                                app.edit_title = cm.clean_title.clone();
+                                app.edit_artist = cm.clean_artist.clone();
+                            }
+                            ui.add(
+                                egui::Label::new(semibold_text(
+                                    format!("{} - {}", cm.clean_artist, cm.clean_title),
+                                    11.5,
+                                    TEXT_PRIMARY,
+                                ))
+                                .truncate(),
+                            );
+                        });
                     });
                 }
             }

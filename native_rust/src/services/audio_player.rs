@@ -117,13 +117,21 @@ impl AudioPlayerService {
         let player = Player::connect_new(sink_handle.mixer());
         player.set_volume(guard.state.volume);
 
+        let estimated_mp3_dur = estimate_mp3_duration_secs(&bytes);
+
         match Decoder::new(Cursor::new(bytes)) {
             Ok(source) => {
                 let dur = source
                     .total_duration()
                     .map(|d| d.as_secs_f32())
                     .filter(|&s| s > 1.0)
-                    .unwrap_or(if fallback_dur > 1.0 { fallback_dur } else { 0.0 });
+                    .or(if fallback_dur > 1.0 {
+                        Some(fallback_dur)
+                    } else {
+                        None
+                    })
+                    .or(estimated_mp3_dur)
+                    .unwrap_or(0.0);
                 player.append(source);
                 guard._sink_handle = Some(sink_handle);
                 guard.player = Some(player);
@@ -210,4 +218,39 @@ impl AudioPlayerService {
             }
         }
     }
+}
+
+/// Estimates CBR MP3 duration from audio payload size and the first MPEG-1 Layer III frame bitrate.
+fn estimate_mp3_duration_secs(bytes: &[u8]) -> Option<f32> {
+    if bytes.len() < 16 {
+        return None;
+    }
+    let mut offset = 0usize;
+    if bytes.starts_with(b"ID3") && bytes.len() >= 10 {
+        let sz = ((bytes[6] as usize & 0x7F) << 21)
+            | ((bytes[7] as usize & 0x7F) << 14)
+            | ((bytes[8] as usize & 0x7F) << 7)
+            | (bytes[9] as usize & 0x7F);
+        offset = (10 + sz).min(bytes.len());
+    }
+
+    const BITRATES_KBPS: [u32; 16] = [
+        0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0,
+    ];
+    let scan_end = (offset + 8192).min(bytes.len().saturating_sub(4));
+    for i in offset..scan_end {
+        if bytes[i] == 0xFF
+            && (bytes[i + 1] & 0xE0) == 0xE0
+            && (bytes[i + 1] & 0x18) == 0x18
+            && (bytes[i + 1] & 0x06) == 0x02
+        {
+            let br_idx = ((bytes[i + 2] >> 4) & 0x0F) as usize;
+            let kbps = BITRATES_KBPS[br_idx];
+            if kbps > 0 {
+                let audio_bytes = bytes.len().saturating_sub(offset) as f32;
+                return Some((audio_bytes * 8.0) / (kbps as f32 * 1000.0));
+            }
+        }
+    }
+    None
 }
