@@ -50,44 +50,46 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                     })
                     .inner_margin(Margin::symmetric(12, 14))
                     .show(ui, |ui| {
-                        ui.set_width(176.0);
-                        ui.set_min_height(total_h - 28.0);
+                        ui.vertical(|ui| {
+                            ui.set_width(176.0);
+                            ui.set_min_height(total_h - 28.0);
 
-                        ui.add_space(6.0);
+                            ui.add_space(6.0);
 
-                        let tabs = [
-                            (SettingsTab::Connection, "Koneksi RadioBOSS"),
-                            (SettingsTab::Broadcast, "Format & Audio"),
-                            (SettingsTab::Storage, "Penyimpanan & Disk"),
-                            (SettingsTab::CasterHub, "CasterHub Cloud"),
-                            (SettingsTab::System, "Sistem & Info"),
-                        ];
+                            let tabs = [
+                                (SettingsTab::Connection, "Koneksi RadioBOSS"),
+                                (SettingsTab::Broadcast, "Format & Audio"),
+                                (SettingsTab::Storage, "Penyimpanan & Disk"),
+                                (SettingsTab::CasterHub, "CasterHub Cloud"),
+                                (SettingsTab::System, "Sistem & Info"),
+                            ];
 
-                        for (t, label) in tabs {
-                            let active = app.settings_tab == t;
-                            let fill = if active {
-                                Color32::from_rgb(38, 38, 46)
-                            } else {
-                                Color32::TRANSPARENT
-                            };
-                            let text_col = if active { TEXT_PRIMARY } else { TEXT_SECONDARY };
-                            let resp = ui
-                                .add_sized(
-                                    [174.0, 34.0],
-                                    egui::Button::new(semibold_text(label, 12.5, text_col))
-                                        .fill(fill)
-                                        .stroke(Stroke::NONE)
-                                        .corner_radius(CornerRadius::same(8)),
-                                )
-                                .on_hover_cursor(egui::CursorIcon::PointingHand);
-                            if resp.clicked() {
-                                app.settings_tab = t;
-                                if t == SettingsTab::Storage {
-                                    app.send_cmd(AppCommand::RefreshCacheStats);
+                            for (t, label) in tabs {
+                                let active = app.settings_tab == t;
+                                let fill = if active {
+                                    Color32::from_rgb(38, 38, 46)
+                                } else {
+                                    Color32::TRANSPARENT
+                                };
+                                let text_col = if active { TEXT_PRIMARY } else { TEXT_SECONDARY };
+                                let resp = ui
+                                    .add_sized(
+                                        [174.0, 34.0],
+                                        egui::Button::new(semibold_text(label, 12.5, text_col))
+                                            .fill(fill)
+                                            .stroke(Stroke::NONE)
+                                            .corner_radius(CornerRadius::same(8)),
+                                    )
+                                    .on_hover_cursor(egui::CursorIcon::PointingHand);
+                                if resp.clicked() {
+                                    app.settings_tab = t;
+                                    if t == SettingsTab::Storage {
+                                        app.send_cmd(AppCommand::RefreshCacheStats);
+                                    }
                                 }
+                                ui.add_space(3.0);
                             }
-                            ui.add_space(3.0);
-                        }
+                        });
                     });
 
                 // Right Content Pane
@@ -95,64 +97,68 @@ pub fn render_settings_modal(ctx: &egui::Context, app: &mut RadioCasterApp) {
                     .fill(Color32::TRANSPARENT)
                     .inner_margin(Margin::symmetric(22, 18))
                     .show(ui, |ui| {
-                        let pane_w = 516.0_f32;
-                        ui.set_width(pane_w);
-                        ui.set_min_height(total_h - 36.0);
+                        ui.vertical(|ui| {
+                            let pane_w = 516.0_f32;
+                            ui.set_width(pane_w);
+                            ui.set_min_height(total_h - 36.0);
 
-                        // Section Title matching active tab
-                        let heading = match app.settings_tab {
-                            SettingsTab::Connection => "Koneksi RadioBOSS",
-                            SettingsTab::Broadcast => "Format & Audio",
-                            SettingsTab::Storage => "Penyimpanan & Disk",
-                            SettingsTab::CasterHub => "CasterHub Cloud",
-                            SettingsTab::System => "Sistem & Info",
-                        };
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(pane_w, 28.0),
-                            egui::Layout::left_to_right(egui::Align::Center),
-                            |ui| {
-                                ui.label(bold_text(heading, 18.0, TEXT_PRIMARY));
-                                ui.with_layout(
-                                    egui::Layout::right_to_left(egui::Align::Center),
-                                    |ui| {
-                                        if window_close_x(ui) {
-                                            app.is_settings_open = false;
+                            // Section Title matching active tab
+                            let heading = match app.settings_tab {
+                                SettingsTab::Connection => "Koneksi RadioBOSS",
+                                SettingsTab::Broadcast => "Format & Audio",
+                                SettingsTab::Storage => "Penyimpanan & Disk",
+                                SettingsTab::CasterHub => "CasterHub Cloud",
+                                SettingsTab::System => "Sistem & Info",
+                            };
+                            ui.allocate_ui_with_layout(
+                                egui::vec2(pane_w, 28.0),
+                                egui::Layout::left_to_right(egui::Align::Center),
+                                |ui| {
+                                    ui.label(bold_text(heading, 18.0, TEXT_PRIMARY));
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            if window_close_x(ui) {
+                                                app.is_settings_open = false;
+                                            }
+                                        },
+                                    );
+                                },
+                            );
+                            ui.add_space(12.0);
+
+                            egui::ScrollArea::vertical()
+                                .id_salt("settings_content_scroll")
+                                .max_height(430.0)
+                                .show(ui, |ui| {
+                                    ui.set_width(pane_w);
+                                    match app.settings_tab {
+                                        SettingsTab::Connection => render_connection_tab(ui, app),
+                                        SettingsTab::Broadcast => render_broadcast_tab(ui, app),
+                                        SettingsTab::Storage => render_storage_tab(ui, app),
+                                        SettingsTab::CasterHub => {
+                                            render_casterhub_tab(ctx, ui, app)
                                         }
-                                    },
-                                );
-                            },
-                        );
-                        ui.add_space(12.0);
+                                        SettingsTab::System => render_system_tab(ui, app),
+                                    }
+                                });
 
-                        egui::ScrollArea::vertical()
-                            .id_salt("settings_content_scroll")
-                            .max_height(430.0)
-                            .show(ui, |ui| {
-                                ui.set_width(pane_w);
-                                match app.settings_tab {
-                                    SettingsTab::Connection => render_connection_tab(ui, app),
-                                    SettingsTab::Broadcast => render_broadcast_tab(ui, app),
-                                    SettingsTab::Storage => render_storage_tab(ui, app),
-                                    SettingsTab::CasterHub => render_casterhub_tab(ctx, ui, app),
-                                    SettingsTab::System => render_system_tab(ui, app),
-                                }
-                            });
-
-                        ui.add_space(10.0);
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(pane_w, 32.0),
-                            egui::Layout::right_to_left(egui::Align::Center),
-                            |ui| {
-                                if amber_button(ui, "Simpan Pengaturan").clicked() {
-                                    let cfg = app.draft_config.clone();
-                                    app.send_cmd(AppCommand::SaveSettings(cfg));
-                                    app.is_settings_open = false;
-                                }
-                                if slate_button(ui, "Batal").clicked() {
-                                    app.is_settings_open = false;
-                                }
-                            },
-                        );
+                            ui.add_space(10.0);
+                            ui.allocate_ui_with_layout(
+                                egui::vec2(pane_w, 32.0),
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if amber_button(ui, "Simpan Pengaturan").clicked() {
+                                        let cfg = app.draft_config.clone();
+                                        app.send_cmd(AppCommand::SaveSettings(cfg));
+                                        app.is_settings_open = false;
+                                    }
+                                    if slate_button(ui, "Batal").clicked() {
+                                        app.is_settings_open = false;
+                                    }
+                                },
+                            );
+                        });
                     });
             });
         });
