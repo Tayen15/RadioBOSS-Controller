@@ -189,4 +189,24 @@ impl AudioPlayerService {
             player.set_volume(clamped);
         }
     }
+
+    /// Seeks the active preview track to `target_secs` using `rodio::Player::try_seek`.
+    pub fn seek(&self, target_secs: f32) {
+        let mut guard = self.inner.lock().unwrap();
+        let max_dur = guard.state.total_secs.max(0.0);
+        let clamped = target_secs.clamp(0.0, max_dur);
+        let is_playing = guard.state.is_playing;
+        if let Some(ref player) = guard.player {
+            if player
+                .try_seek(std::time::Duration::from_secs_f32(clamped))
+                .is_ok()
+            {
+                guard.paused_offset = clamped;
+                guard.state.elapsed_secs = clamped;
+                if is_playing {
+                    guard.started_at = Some(Instant::now());
+                }
+            }
+        }
+    }
 }

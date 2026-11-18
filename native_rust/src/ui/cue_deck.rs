@@ -5,9 +5,8 @@ use crate::events::AppCommand;
 use crate::services::audio_player::AudioPreviewState;
 use crate::services::title_cleaner::clean_broadcast_title;
 use crate::ui::theme::{
-    amber_button, bold_text, lcd_frame, module_frame, mono_text, semibold_text, slate_button,
-    status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CONTROL_BG, SIGNAL_CYAN,
-    STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    bold_text, lcd_frame, lerp_color, module_frame, mono_text, semibold_text, slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CONTROL_BG,
+    SIGNAL_CYAN, SLATE_BTN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 pub fn render_cue_deck(
@@ -162,23 +161,24 @@ pub fn render_cue_deck(
         let is_this_track = audio_st.active_video_id.as_deref() == Some(&track.video_id);
         lcd_frame().show(ui, |ui| {
             ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 6.0;
                 if is_this_track && audio_st.is_loading {
                     ui.label(semibold_text("Memuat audio headphone...", 11.5, AMBER_PRIMARY));
                 } else if is_this_track && audio_st.is_playing {
-                    if amber_button(ui, "|| Jeda Headphone").clicked() {
+                    if preview_btn(ui, "|| Jeda", true).clicked() {
                         app.audio.toggle_pause();
                     }
-                    if slate_button(ui, "■ Stop").clicked() {
+                    if preview_btn(ui, "■ Stop", false).clicked() {
                         app.audio.stop();
                     }
                 } else if is_this_track && audio_st.elapsed_secs > 0.0 {
-                    if amber_button(ui, "▶ Lanjutkan").clicked() {
+                    if preview_btn(ui, "▶ Lanjutkan", true).clicked() {
                         app.audio.toggle_pause();
                     }
-                    if slate_button(ui, "■ Stop").clicked() {
+                    if preview_btn(ui, "■ Stop", false).clicked() {
                         app.audio.stop();
                     }
-                } else if slate_button(ui, "▶ Pratinjau Headphone").clicked() {
+                } else if preview_btn(ui, "▶ Pratinjau Headphone", false).clicked() {
                     app.send_cmd(AppCommand::StartAudioPreview(track.clone()));
                 }
 
@@ -207,32 +207,80 @@ pub fn render_cue_deck(
                     ui.add_space(4.0);
                     ui.label(semibold_text(err, 11.0, STATUS_ERROR));
                 } else if audio_st.total_secs > 0.0 {
-                    ui.add_space(4.0);
-                    let pct = (audio_st.elapsed_secs / audio_st.total_secs).clamp(0.0, 1.0);
-                    let smooth_pct = ui.ctx().animate_value_with_time(
-                        egui::Id::NULL.with("headphone_progress"),
-                        pct,
-                        0.15,
-                    );
+                    ui.add_space(6.0);
+                    let drag_id = egui::Id::unique("headphone_seek_drag");
+                    let mut drag_pct = ui.ctx().data(|d| d.get_temp::<Option<f32>>(drag_id).flatten());
+                    let actual_pct = (audio_st.elapsed_secs / audio_st.total_secs).clamp(0.0, 1.0);
+                    let display_pct = drag_pct.unwrap_or(actual_pct);
+                    let display_secs = display_pct * audio_st.total_secs;
+
                     ui.horizontal(|ui| {
                         ui.label(mono_text(
                             format!(
                                 "{} / {}",
-                                format_float_time(audio_st.elapsed_secs),
+                                format_float_time(display_secs),
                                 format_float_time(audio_st.total_secs)
                             ),
                             11.0,
                             AMBER_PRIMARY,
                         ));
-                        let bw = ui.available_width().max(60.0);
-                        let (rect, _) =
-                            ui.allocate_exact_size(egui::vec2(bw, 5.0), egui::Sense::hover());
+                        let bw = ui.available_width().max(80.0);
+                        let (hit_rect, resp) = ui.allocate_exact_size(
+                            egui::vec2(bw, 16.0),
+                            egui::Sense::click_and_drag(),
+                        );
+                        let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+
+                        if let Some(pos) = resp.interact_pointer_pos() {
+                            let new_pct =
+                                ((pos.x - hit_rect.left()) / hit_rect.width()).clamp(0.0, 1.0);
+                            if resp.dragged() {
+                                drag_pct = Some(new_pct);
+                                ui.ctx().data_mut(|d| d.insert_temp(drag_id, Some(new_pct)));
+                            } else if resp.clicked() {
+                                app.audio.seek(new_pct * audio_st.total_secs);
+                            }
+                        }
+                        if resp.drag_stopped() {
+                            if let Some(pct) = drag_pct.take() {
+                                app.audio.seek(pct * audio_st.total_secs);
+                            }
+                            ui.ctx().data_mut(|d| d.remove::<Option<f32>>(drag_id));
+                        }
+
+                        if resp.hovered() {
+                            if let Some(hpos) = ui.ctx().input(|i| i.pointer.hover_pos()) {
+                                let hpct =
+                                    ((hpos.x - hit_rect.left()) / hit_rect.width()).clamp(0.0, 1.0);
+                                resp.clone().on_hover_text(format_float_time(
+                                    hpct * audio_st.total_secs,
+                                ));
+                            }
+                        }
+
+                        let bar_rect = egui::Rect::from_center_size(
+                            hit_rect.center(),
+                            egui::vec2(hit_rect.width(), 5.0),
+                        );
                         ui.painter()
-                            .rect_filled(rect, CornerRadius::same(3), CONTROL_BG);
-                        let mut fr = rect;
-                        fr.set_width(rect.width() * smooth_pct);
+                            .rect_filled(bar_rect, CornerRadius::same(3), CONTROL_BG);
+                        let mut fill_rect = bar_rect;
+                        fill_rect.set_width((bar_rect.width() * display_pct).max(0.0));
                         ui.painter()
-                            .rect_filled(fr, CornerRadius::same(3), AMBER_PRIMARY);
+                            .rect_filled(fill_rect, CornerRadius::same(3), AMBER_PRIMARY);
+
+                        // Interactive seek thumb
+                        let thumb_r = if resp.hovered() || resp.dragged() {
+                            5.5
+                        } else {
+                            3.5
+                        };
+                        let thumb_x = bar_rect.left() + bar_rect.width() * display_pct;
+                        ui.painter().circle_filled(
+                            egui::pos2(thumb_x, bar_rect.center().y),
+                            thumb_r,
+                            Color32::WHITE,
+                        );
                     });
                 }
             }
@@ -371,4 +419,54 @@ pub fn render_cue_deck(
             });
         });
     });
+}
+
+fn preview_btn(ui: &mut egui::Ui, label: &str, is_amber: bool) -> egui::Response {
+    let text_col = if is_amber { AMBER_DARK_TEXT } else { TEXT_PRIMARY };
+    let font = egui::FontId::new(
+        12.0,
+        egui::FontFamily::Name(if is_amber { "bold" } else { "semibold" }.into()),
+    );
+    let galley = ui
+        .painter()
+        .layout_no_wrap(label.to_string(), font, text_col);
+    let desired = egui::vec2(galley.size().x + 20.0, 28.0);
+    let (rect, resp) = ui.allocate_exact_size(desired, egui::Sense::click());
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+
+    let hov_t = ui.ctx().animate_bool_responsive(resp.id, resp.hovered());
+    let prs_t = ui
+        .ctx()
+        .animate_bool_responsive(resp.id.with("p"), resp.is_pointer_button_down_on());
+
+    let (base_fill, hov_fill, prs_fill, base_str, hov_str) = if is_amber {
+        (
+            AMBER_PRIMARY,
+            Color32::from_rgb(251, 184, 52),
+            Color32::from_rgb(217, 119, 6),
+            Color32::TRANSPARENT,
+            Color32::TRANSPARENT,
+        )
+    } else {
+        (
+            SLATE_BTN,
+            Color32::from_rgb(54, 54, 67),
+            Color32::from_rgb(31, 31, 39),
+            BORDER_COLOR,
+            Color32::from_rgb(84, 84, 102),
+        )
+    };
+    let fill = lerp_color(lerp_color(base_fill, hov_fill, hov_t), prs_fill, prs_t);
+    let stroke_col = lerp_color(base_str, hov_str, hov_t);
+    let stroke = if stroke_col.a() == 0 {
+        Stroke::NONE
+    } else {
+        Stroke::new(1.0, stroke_col)
+    };
+
+    ui.painter()
+        .rect(rect, CornerRadius::same(7), fill, stroke, egui::StrokeKind::Inside);
+    ui.painter()
+        .galley(rect.center() - galley.size() * 0.5, galley, text_col);
+    resp
 }
