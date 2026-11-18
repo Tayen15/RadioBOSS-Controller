@@ -99,6 +99,10 @@ struct DbInner {
 impl DatabaseService {
     pub fn new() -> Result<Self, rusqlite::Error> {
         let storage_dir = resolve_active_storage_dir();
+        Self::new_at_dir(storage_dir)
+    }
+
+    pub fn new_at_dir(storage_dir: PathBuf) -> Result<Self, rusqlite::Error> {
         let db_path = storage_dir.join("radioboss_caster.db");
         let conn = Self::open_and_init(&db_path)?;
         Ok(Self {
@@ -234,6 +238,15 @@ impl DatabaseService {
             );
             ",
         )?;
+        // Backward-compatible migrations for legacy DBs created by older versions
+        let _ = conn.execute(
+            "ALTER TABLE telemetry_outbox ADD COLUMN clean_title TEXT DEFAULT '';",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE telemetry_outbox ADD COLUMN clean_artist TEXT DEFAULT '';",
+            [],
+        );
         Ok(conn)
     }
 
@@ -292,9 +305,8 @@ impl DatabaseService {
                 Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
             }) {
                 for (k, v) in rows.flatten() {
-                    if let Ok(parsed) = serde_json::from_str::<Value>(&v) {
-                        map.insert(k, parsed);
-                    }
+                    let parsed = serde_json::from_str::<Value>(&v).unwrap_or(Value::String(v));
+                    map.insert(k, parsed);
                 }
             }
         }
@@ -332,8 +344,13 @@ impl DatabaseService {
         ) {
             if let Ok(rows) = stmt.query_map(params![limit as i64], |row| {
                 let artists_json: String = row.get::<_, Option<String>>(3)?.unwrap_or_default();
-                let artists: Vec<String> =
-                    serde_json::from_str(&artists_json).unwrap_or_default();
+                let artists: Vec<String> = serde_json::from_str(&artists_json).unwrap_or_else(|_| {
+                    if artists_json.trim().is_empty() {
+                        Vec::new()
+                    } else {
+                        vec![artists_json]
+                    }
+                });
                 Ok(HistoryItem {
                     id: row.get(0)?,
                     video_id: row.get(1)?,

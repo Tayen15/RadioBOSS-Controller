@@ -36,8 +36,9 @@ impl SettingsService {
     }
 
     fn load_initial(db: &DatabaseService) -> AppConfig {
-        // 1. Try SQLite `settings` table first
-        let map = db.get_all_settings();
+        // 1. Try SQLite `settings` table first (strip explicit JSON nulls so #[serde(default)] applies)
+        let mut map = db.get_all_settings();
+        map.retain(|_, v| !v.is_null());
         if !map.is_empty() {
             if let Ok(cfg) = serde_json::from_value::<AppConfig>(Value::Object(map)) {
                 return cfg;
@@ -48,8 +49,11 @@ impl SettingsService {
         let config_file = db.storage_dir().join("config.json");
         if config_file.is_file() {
             if let Ok(raw) = fs::read_to_string(&config_file) {
-                if let Ok(cfg) = serde_json::from_str::<AppConfig>(&raw) {
-                    return cfg;
+                if let Ok(Value::Object(mut json_map)) = serde_json::from_str::<Value>(&raw) {
+                    json_map.retain(|_, v| !v.is_null());
+                    if let Ok(cfg) = serde_json::from_value::<AppConfig>(Value::Object(json_map)) {
+                        return cfg;
+                    }
                 }
             }
         }
@@ -85,5 +89,34 @@ impl SettingsService {
         if let Ok(pretty) = serde_json::to_string_pretty(cfg) {
             let _ = fs::write(config_file, pretty);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_settings_null_resilience_and_domain_migration() {
+        let tmp = std::env::temp_dir().join(format!("rcb_cfg_test_{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&tmp).unwrap();
+        let legacy_json = serde_json::json!({
+            "radioboss_host": "http://192.168.1.50",
+            "radioboss_port": 9001,
+            "custom_cache_dir": null,
+            "total_airtime_seconds": null,
+            "casterhub_url": "https://radio-boss-controller.vercel.app"
+        });
+        fs::write(tmp.join("config.json"), legacy_json.to_string()).unwrap();
+
+        let db = DatabaseService::new_at_dir(tmp.clone()).unwrap();
+        let svc = SettingsService::new(db);
+        let loaded = svc.get_config();
+        assert_eq!(loaded.radioboss_host, "http://192.168.1.50");
+        assert_eq!(loaded.radioboss_port, 9001);
+        assert_eq!(loaded.casterhub_url, "https://rcb.oktaa.my.id");
+        assert_eq!(loaded.custom_cache_dir, "");
+
+        let _ = fs::remove_dir_all(&tmp);
     }
 }

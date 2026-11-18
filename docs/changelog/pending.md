@@ -67,6 +67,7 @@
 [12:23] - [caster-hub/app/components/Footer.tsx, caster-hub/next.config.js] - Update CasterHub footer format to 'Radio Caster Hub • v{commit_hash} and Credits' with automated git SHA injection and link to oktaa - Delivers requested minimal versioned footer with author credits
 [12:59] - [native_rust/, run_native.bat, .gitignore] - Implement complete Pure Native Rust desktop architecture on feat/native-desktop (zero WebView, zero Python) with 100% feature parity to main v0.9.4 and DESIGN.md Studio Broadcast Console UI (eframe/egui, Tokio, Axum relay, rusqlite, rodio audio preview, InnerTube YT Music, FFmpeg ID3v2 cache, CasterHub Cloud, and Auto-Updater) - Eliminates WebView2 RAM overhead while preserving full studio compatibility
 [13:22] - [native_rust/Cargo.toml, native_rust/build.rs, native_rust/src/, run_native.bat] - Standardize official project identity to 'Radio Caster Bridge Studio' ('RCB Studio') across binary (RCBStudio.exe), Windows VersionInfo / Task Manager process metadata, window title, header, footer, and copyright notices (removing all 'Native'/'Rust' labels from UI) - Clean unified studio branding
+[13:26] - [native_rust/src/services/db_service.rs, native_rust/src/services/settings_service.rs] - Harden Fase 2 SQLite & Config persistence with explicit null-value stripping, legacy telemetry_outbox ALTER TABLE migration, raw string fallback for settings/artists, and unit test verification (7/7 passed) - Guarantees seamless zero-loss migration from existing v0.9.4 databases
 
 
 
