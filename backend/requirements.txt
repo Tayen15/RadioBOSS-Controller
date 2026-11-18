@@ -9,4 +9,3 @@ defusedxml>=0.7.1
 python-dotenv>=1.0.0
 pywebview>=6.0.0
 pyinstaller>=6.0.0
-PySide6>=6.6.0
