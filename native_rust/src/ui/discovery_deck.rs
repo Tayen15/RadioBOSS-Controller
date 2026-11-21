@@ -35,6 +35,14 @@ pub fn render_discovery_deck(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 egui::TextEdit::singleline(&mut app.omnibox_input)
                     .hint_text("Cari lagu atau tempel tautan YouTube..."),
             );
+            let focus_id = egui::Id::unique("rcb_focus_omnibox");
+            if ui
+                .ctx()
+                .data(|d| d.get_temp::<bool>(focus_id).unwrap_or(false))
+            {
+                edit_resp.request_focus();
+                ui.ctx().data_mut(|d| d.insert_temp(focus_id, false));
+            }
 
             let submitted = (edit_resp.lost_focus()
                 && ui.input(|i| i.key_pressed(egui::Key::Enter)))

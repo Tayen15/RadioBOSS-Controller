@@ -4,9 +4,10 @@ use crate::app::{QueueMonitorTab, RadioCasterApp};
 use crate::events::AppCommand;
 use crate::models::track::TrackItem;
 use crate::ui::theme::{
-    bold_text, danger_button, lcd_frame, module_frame, mono_text, semibold_text, slate_button,
-    status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CHASSIS_BG, CONTROL_BG, DECK_BG,
-    SIGNAL_CYAN, STATUS_ERROR, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    animated_segment_tab, bold_text, danger_button, lcd_frame, lerp_color, module_frame,
+    mono_text, semibold_text, slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY,
+    BORDER_COLOR, CHASSIS_BG, CONTROL_BG, DECK_BG, SIGNAL_CYAN, STATUS_ERROR, TEXT_MUTED,
+    TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 pub fn render_queue_monitor(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
@@ -21,26 +22,7 @@ pub fn render_queue_monitor(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             ui.horizontal(|ui| {
                 let pl_active = app.queue_tab == QueueMonitorTab::Playlist;
                 let pl_lbl = format!("Antrean ({})", app.playlist_tracks.len());
-                if ui
-                    .add_sized(
-                        [half_w, 30.0],
-                        egui::Button::new(bold_text(
-                            pl_lbl,
-                            12.0,
-                            if pl_active {
-                                AMBER_DARK_TEXT
-                            } else {
-                                TEXT_SECONDARY
-                            },
-                        ))
-                        .fill(if pl_active {
-                            AMBER_PRIMARY
-                        } else {
-                            Color32::TRANSPARENT
-                        })
-                        .stroke(Stroke::NONE)
-                        .corner_radius(CornerRadius::same(7)),
-                    )
+                if animated_segment_tab(ui, egui::vec2(half_w, 30.0), &pl_lbl, pl_active, true, 7)
                     .clicked()
                 {
                     app.queue_tab = QueueMonitorTab::Playlist;
@@ -48,27 +30,15 @@ pub fn render_queue_monitor(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 
                 let hist_active = app.queue_tab == QueueMonitorTab::History;
                 let hist_lbl = format!("Riwayat ({})", app.history.len());
-                if ui
-                    .add_sized(
-                        [half_w, 30.0],
-                        egui::Button::new(bold_text(
-                            hist_lbl,
-                            12.0,
-                            if hist_active {
-                                AMBER_DARK_TEXT
-                            } else {
-                                TEXT_SECONDARY
-                            },
-                        ))
-                        .fill(if hist_active {
-                            AMBER_PRIMARY
-                        } else {
-                            Color32::TRANSPARENT
-                        })
-                        .stroke(Stroke::NONE)
-                        .corner_radius(CornerRadius::same(7)),
-                    )
-                    .clicked()
+                if animated_segment_tab(
+                    ui,
+                    egui::vec2(half_w, 30.0),
+                    &hist_lbl,
+                    hist_active,
+                    true,
+                    7,
+                )
+                .clicked()
                 {
                     app.queue_tab = QueueMonitorTab::History;
                 }
@@ -85,60 +55,20 @@ pub fn render_queue_monitor(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
 
 fn render_live_playlist(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
     module_frame().show(ui, |ui| {
-        ui.horizontal(|ui| {
-            ui.label(bold_text("Antrean Aktif", 13.0, TEXT_PRIMARY));
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if slate_button(ui, "Segarkan").clicked() {
-                    app.send_cmd(AppCommand::SyncPlaylist {
-                        manual: true,
-                        override_tab: None,
-                    });
-                }
-                if slate_button(ui, "Sync Tab").clicked() {
-                    app.send_cmd(AppCommand::SyncTabs { notify: true });
-                }
-            });
-        });
-
+        ui.label(bold_text("Antrean Aktif", 13.0, TEXT_PRIMARY));
         ui.add_space(6.0);
 
-        // 1:1 RadioBOSS Tab Bar
+        // 1:1 RadioBOSS Tab Bar (smooth animated pills)
         ui.horizontal_wrapped(|ui| {
             let auto_act = app.active_tab.is_empty();
-            if ui
-                .add(
-                    egui::Button::new(semibold_text(
-                        "Auto / Aktif",
-                        11.0,
-                        if auto_act {
-                            AMBER_DARK_TEXT
-                        } else {
-                            TEXT_PRIMARY
-                        },
-                    ))
-                    .fill(if auto_act { AMBER_PRIMARY } else { CONTROL_BG })
-                    .corner_radius(CornerRadius::same(6)),
-                )
-                .clicked()
-            {
+            if animated_tab_chip(ui, "Auto / Aktif", auto_act).clicked() {
                 app.active_tab = String::new();
                 app.send_cmd(AppCommand::SelectPlaylistTab(String::new()));
             }
             let tabs = app.available_tabs.clone();
             for tab in tabs {
                 let active = app.active_tab == tab;
-                if ui
-                    .add(
-                        egui::Button::new(semibold_text(
-                            &tab,
-                            11.0,
-                            if active { AMBER_DARK_TEXT } else { TEXT_PRIMARY },
-                        ))
-                        .fill(if active { AMBER_PRIMARY } else { CONTROL_BG })
-                        .corner_radius(CornerRadius::same(6)),
-                    )
-                    .clicked()
-                {
+                if animated_tab_chip(ui, &tab, active).clicked() {
                     app.active_tab = tab.clone();
                     app.send_cmd(AppCommand::SelectPlaylistTab(tab));
                 }
@@ -319,4 +249,42 @@ fn render_dispatch_history(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
                 }
             });
     });
+}
+
+fn animated_tab_chip(ui: &mut egui::Ui, label: &str, active: bool) -> egui::Response {
+    let font = egui::FontId::new(
+        11.0,
+        egui::FontFamily::Name(if active { "bold" } else { "semibold" }.into()),
+    );
+    let galley = ui
+        .painter()
+        .layout_no_wrap(label.to_string(), font, TEXT_PRIMARY);
+    let desired = egui::vec2(galley.size().x + 16.0, 24.0);
+    let (rect, resp) = ui.allocate_exact_size(desired, egui::Sense::click());
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+
+    let act_t = ui
+        .ctx()
+        .animate_bool_responsive(resp.id.with("chip_act"), active);
+    let hov_t = ui
+        .ctx()
+        .animate_bool_responsive(resp.id.with("chip_hov"), resp.hovered() && !active);
+
+    let base_bg = lerp_color(CONTROL_BG, Color32::from_rgb(46, 46, 56), hov_t);
+    let fill = lerp_color(base_bg, AMBER_PRIMARY, act_t);
+    let text_col = lerp_color(TEXT_PRIMARY, AMBER_DARK_TEXT, act_t);
+
+    ui.painter()
+        .rect_filled(rect, CornerRadius::same(6), fill);
+    ui.painter().text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        label,
+        egui::FontId::new(
+            11.0,
+            egui::FontFamily::Name(if active { "bold" } else { "semibold" }.into()),
+        ),
+        text_col,
+    );
+    resp
 }

@@ -18,8 +18,7 @@ use crate::models::track::{
 use crate::models::APP_VERSION;
 use crate::services::audio_player::AudioPlayerService;
 use crate::ui::theme::{
-    configure_studio_theme, mono_text, semibold_text, AMBER_PRIMARY, BORDER_COLOR, CHASSIS_BG,
-    TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    configure_studio_theme, mono_text, BORDER_COLOR, CHASSIS_BG, TEXT_MUTED, TEXT_SECONDARY,
 };
 use crate::ui::toast::{render_toasts, ToastItem};
 
@@ -276,6 +275,36 @@ impl RadioCasterApp {
         }
     }
 
+    fn handle_global_shortcuts(&mut self, ctx: &egui::Context) {
+        let focus_search = ctx.input_mut(|i| {
+            i.consume_key(egui::Modifiers::COMMAND, egui::Key::F)
+                || i.consume_key(egui::Modifiers::COMMAND, egui::Key::K)
+        });
+        if focus_search {
+            ctx.data_mut(|d| d.insert_temp(egui::Id::unique("rcb_focus_omnibox"), true));
+        }
+
+        let toggle_settings =
+            ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Comma));
+        if toggle_settings {
+            if self.is_settings_open {
+                self.is_settings_open = false;
+            } else {
+                self.draft_config = self.config.clone();
+                self.ping_result = None;
+                self.is_settings_open = true;
+                self.send_cmd(AppCommand::RefreshCacheStats);
+            }
+        }
+
+        if !ctx.egui_wants_keyboard_input()
+            && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Space))
+            && self.audio.get_state().active_video_id.is_some()
+        {
+            self.audio.toggle_pause();
+        }
+    }
+
     fn process_events(&mut self) {
         while let Ok(evt) = self.evt_rx.try_recv() {
             match evt {
@@ -451,6 +480,7 @@ impl eframe::App for RadioCasterApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         handle_frameless_window_resize(&ctx);
+        self.handle_global_shortcuts(&ctx);
         let audio_state = self.audio.get_state();
 
         // Top Rack Bar (Zone 1)
@@ -469,43 +499,45 @@ impl eframe::App for RadioCasterApp {
                 crate::ui::top_rack::render_top_rack(ui, self);
             });
 
-        // Studio Console Footer
+        // Slim Native Status Bar
         egui::Panel::bottom("studio_footer")
             .frame(
                 egui::Frame::NONE
                     .fill(CHASSIS_BG)
                     .stroke(egui::Stroke::new(1.0, BORDER_COLOR))
-                    .inner_margin(egui::Margin::symmetric(16, 8)),
+                    .inner_margin(egui::Margin::symmetric(14, 5)),
             )
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label(semibold_text("Radio Caster Bridge Studio", 11.5, TEXT_SECONDARY));
-                    ui.label(mono_text("•", 11.5, TEXT_MUTED));
-                    ui.label(mono_text(format!("v{APP_VERSION}"), 11.5, TEXT_MUTED));
-                    if self.session_stats.session_seconds > 0
-                        || self.session_stats.lifetime_airtime_hours > 0.0
-                    {
-                        ui.label(mono_text("•", 11.5, TEXT_MUTED));
-                        ui.label(mono_text(
-                            format!(
-                                "Jam Terbang: {:.1}j • Sesi: {} ({} lagu)",
-                                self.session_stats.lifetime_airtime_hours,
-                                self.session_stats.session_time_formatted,
-                                self.session_stats.songs_today
-                            ),
-                            11.5,
-                            AMBER_PRIMARY,
-                        ));
-                    }
+                    let port = if self.config.server_port == 0 {
+                        8000
+                    } else {
+                        self.config.server_port
+                    };
+                    let (dot_r, _) =
+                        ui.allocate_exact_size(egui::vec2(7.0, 7.0), egui::Sense::hover());
+                    ui.painter().circle_filled(
+                        dot_r.center(),
+                        3.5,
+                        crate::ui::theme::STATUS_SUCCESS,
+                    );
+                    ui.label(mono_text(format!("Relay :{port}"), 11.0, TEXT_SECONDARY));
+                    ui.label(mono_text("•", 11.0, TEXT_MUTED));
+                    ui.label(mono_text(
+                        format!(
+                            "Cache: {} lagu ({:.0} MB)",
+                            self.cache_stats.total_files, self.cache_stats.total_size_mb
+                        ),
+                        11.0,
+                        TEXT_SECONDARY,
+                    ));
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .link(semibold_text("Tayen (hi.oktaa.my.id)", 11.5, TEXT_PRIMARY))
-                            .clicked()
-                        {
-                            crate::services::system_service::open_in_system("https://hi.oktaa.my.id");
-                        }
-                        ui.label(semibold_text("Copyright © 2026 RCB Studio •", 11.5, TEXT_MUTED));
+                        ui.label(mono_text(
+                            "Ctrl+F Cari  •  Ctrl+, Pengaturan  •  Space Preview",
+                            10.5,
+                            TEXT_MUTED,
+                        ));
                     });
                 });
             });
