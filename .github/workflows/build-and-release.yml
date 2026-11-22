@@ -154,47 +154,59 @@ jobs:
 
       - name: Generate Categorized Release Notes
         run: |
-          CURRENT_TAG="${{ github.ref_name || inputs.tag_name }}"
-          PREV_TAG=$(git tag --sort=-v:refname | grep -Fxv "$CURRENT_TAG" | head -n 1 || true)
-          if [ -n "$PREV_TAG" ]; then
-            RANGE="${PREV_TAG}..HEAD"
-          else
-            RANGE="HEAD"
-          fi
+          python3 - <<'PY'
+          import os, re, subprocess
 
-          FEATS=$(git log "$RANGE" --no-merges --pretty=format:"- %s" | grep -E "^- feat(\([^)]+\))?:" || true)
-          FIXES=$(git log "$RANGE" --no-merges --pretty=format:"- %s" | grep -E "^- fix(\([^)]+\))?:" || true)
-          REFACTORS=$(git log "$RANGE" --no-merges --pretty=format:"- %s" | grep -E "^- (refactor|perf|style)(\([^)]+\))?:" || true)
-          CHORES=$(git log "$RANGE" --no-merges --pretty=format:"- %s" | grep -E "^- (ci|build|chore|docs)(\([^)]+\))?:" || true)
+          tag = "${{ github.ref_name || inputs.tag_name }}"
+          repo = "${{ github.repository }}"
+          curated = f"docs/releases/{tag}.md"
 
-          {
-            echo "## CastDeck ${CURRENT_TAG}"
-            echo ""
-            if [ -n "$FEATS" ]; then
-              echo "### New Features"
-              echo "$FEATS"
-              echo ""
-            fi
-            if [ -n "$FIXES" ]; then
-              echo "### Bug Fixes"
-              echo "$FIXES"
-              echo ""
-            fi
-            if [ -n "$REFACTORS" ]; then
-              echo "### UI / UX & Improvements"
-              echo "$REFACTORS"
-              echo ""
-            fi
-            if [ -n "$CHORES" ]; then
-              echo "### Build & Maintenance"
-              echo "$CHORES"
-              echo ""
-            fi
-            if [ -n "$PREV_TAG" ]; then
-              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${CURRENT_TAG}"
-            fi
-          } > RELEASE_NOTES.md
-          cat RELEASE_NOTES.md
+          tags_raw = subprocess.check_output(["git", "tag", "--sort=-v:refname"], text=True).splitlines()
+          prev_tag = next((t for t in tags_raw if t != tag), "")
+
+          if os.path.isfile(curated):
+              with open(curated, "r", encoding="utf-8") as f:
+                  body = f.read().strip()
+          else:
+              rng = f"{prev_tag}..HEAD" if prev_tag else "HEAD"
+              lines = subprocess.check_output(
+                  ["git", "log", rng, "--no-merges", "--pretty=format:%s"], text=True
+              ).splitlines()
+
+              noise = re.compile(r"(bump version|clippy|changelog|merge |wip)", re.I)
+              feats, fixes, imps = [], [], []
+              for raw in lines:
+                  if noise.search(raw):
+                      continue
+                  m = re.match(r"^(feat|fix|refactor|perf|style)(?:\([^)]+\))?:\s*(.+)$", raw, re.I)
+                  if not m:
+                      continue
+                  kind, msg = m.group(1).lower(), m.group(2).strip()
+                  msg = msg[0].upper() + msg[1:] if msg else msg
+                  if kind == "feat":
+                      feats.append(f"- {msg}")
+                  elif kind == "fix":
+                      fixes.append(f"- {msg}")
+                  else:
+                      imps.append(f"- {msg}")
+
+              parts = [f"## CastDeck {tag}\n"]
+              for title, items in [("What's New", feats), ("Bug Fixes", fixes), ("Improvements", imps)]:
+                  if items:
+                      parts.append(f"### {title}")
+                      parts.extend(items[:10])
+                      if len(items) > 10:
+                          parts.append(f"- *...and {len(items) - 10} more updates*")
+                      parts.append("")
+              body = "\n".join(parts).strip()
+
+          if prev_tag:
+              body += f"\n\n**Full Changelog**: https://github.com/{repo}/compare/{prev_tag}...{tag}"
+
+          with open("RELEASE_NOTES.md", "w", encoding="utf-8") as f:
+              f.write(body + "\n")
+          print(body)
+          PY
 
       - name: List Release Files
         run: |
