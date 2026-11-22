@@ -215,9 +215,9 @@ impl RadioBossService {
                             let v = attr.normalized_value(quick_xml::XmlVersion::Implicit1_0).unwrap_or_default().trim().to_string();
                             match k.as_str() {
                                 "STATE" => playback_state = v.to_lowercase(),
-                                "POS" => pos_str = format_time_string(&v),
+                                "POS" => pos_str = format_ms_string(&v),
                                 "LEN" if duration_str == "00:00" => {
-                                    duration_str = format_time_string(&v);
+                                    duration_str = format_ms_string(&v);
                                 }
                                 _ => {}
                             }
@@ -262,6 +262,10 @@ impl RadioBossService {
                 _ => {}
             }
             buf.clear();
+        }
+
+        if playback_state == "stopped" {
+            pos_str = "00:00".to_string();
         }
 
         if status_text.eq_ignore_ascii_case("error") {
@@ -768,6 +772,32 @@ impl RadioBossService {
             buf.clear();
         }
         tracks
+    }
+}
+
+pub fn format_ms_string(raw: &str) -> String {
+    let s = raw.trim();
+    if s.is_empty() || s == "––:––" || s == "--:--" || s == "0" || s == "-1" {
+        return "00:00".to_string();
+    }
+    if s.contains(':') {
+        return s.to_string();
+    }
+    if let Ok(val) = s.parse::<f64>() {
+        let secs = (val as i64) / 1000;
+        if secs <= 0 {
+            return "00:00".to_string();
+        }
+        let h = secs / 3600;
+        let m = (secs % 3600) / 60;
+        let sec = seconds_mod(secs);
+        if h > 0 {
+            format!("{h:02}:{m:02}:{sec:02}")
+        } else {
+            format!("{m:02}:{sec:02}")
+        }
+    } else {
+        "00:00".to_string()
     }
 }
 

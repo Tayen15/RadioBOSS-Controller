@@ -131,18 +131,32 @@ pub fn spawn_backend_workers(
                             .unwrap_or(false);
                         is_playing_flag.store(playing, Ordering::Relaxed);
 
-                        // 3-tier CasterHub sync: only report on-air track when RadioBOSS is actually playing
-                        if playing {
+                        // 3-tier CasterHub sync: report on-air track and sync immediately on track/state transitions
+                        let onair_changed = if playing {
                             if let Some(ref np) = status.now_playing {
                                 let parts: Vec<&str> = np.title.splitn(2, " - ").collect();
                                 if parts.len() == 2 {
-                                    services.telemetry.set_onair_track(parts[1], parts[0], "");
+                                    services.telemetry.set_onair_track(parts[1], parts[0], "")
                                 } else {
-                                    services.telemetry.set_onair_track(&np.title, "", "");
+                                    services.telemetry.set_onair_track(&np.title, "", "")
                                 }
+                            } else {
+                                false
                             }
                         } else {
-                            services.telemetry.clear_onair_track();
+                            services.telemetry.clear_onair_track()
+                        };
+
+                        if onair_changed {
+                            let tel = services.telemetry.clone();
+                            let emit_sync = emit_poll.clone();
+                            tokio::spawn(async move {
+                                let _ = tel.sync_outbox_to_casterhub().await;
+                                emit_sync(AppEvent::SessionStatsUpdated {
+                                    stats: tel.get_session_stats(),
+                                    station_hash: tel.station_hash.clone(),
+                                });
+                            });
                         }
 
                         emit_poll(AppEvent::StatusUpdated { status });
@@ -155,7 +169,12 @@ pub fn spawn_backend_workers(
                         fail_streak = fail_streak.saturating_add(1);
                         if fail_streak >= 2 {
                             is_playing_flag.store(false, Ordering::Relaxed);
-                            services.telemetry.clear_onair_track();
+                            if services.telemetry.clear_onair_track() {
+                                let tel = services.telemetry.clone();
+                                tokio::spawn(async move {
+                                    let _ = tel.sync_outbox_to_casterhub().await;
+                                });
+                            }
                             emit_poll(AppEvent::StatusUpdated { status });
                         }
                     }
@@ -804,6 +823,17 @@ async fn handle_command(
                     stats: cstats,
                     cached_tracks: clist,
                 });
+                if saved.enable_telemetry {
+                    let tel = services.telemetry.clone();
+                    let emit_sync = emit.clone();
+                    tokio::spawn(async move {
+                        let _ = tel.sync_outbox_to_casterhub().await;
+                        emit_sync(AppEvent::SessionStatsUpdated {
+                            stats: tel.get_session_stats(),
+                            station_hash: tel.station_hash.clone(),
+                        });
+                    });
+                }
             }
             Err(e) => emit(AppEvent::Toast {
                 is_error: true,

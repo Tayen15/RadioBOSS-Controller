@@ -85,7 +85,7 @@ impl TelemetryService {
     pub fn new(db: DatabaseService, settings: SettingsService) -> Self {
         let now = Instant::now();
         let client = Client::builder()
-            .timeout(Duration::from_secs(8))
+            .timeout(Duration::from_secs(12))
             .build()
             .unwrap_or_else(|_| Client::new());
         Self {
@@ -103,21 +103,26 @@ impl TelemetryService {
         }
     }
 
-    pub fn set_onair_track(&self, title: &str, artist: &str, video_id: &str) {
+    pub fn set_onair_track(&self, title: &str, artist: &str, video_id: &str) -> bool {
         if title.trim().is_empty() {
-            return;
+            return false;
         }
-        let mut guard = self.state.lock().unwrap();
-        guard.latest_onair_track = Some(json!({
+        let next = json!({
             "title": title,
             "artist": artist,
             "video_id": video_id,
-        }));
+        });
+        let mut guard = self.state.lock().unwrap();
+        let changed = guard.latest_onair_track.as_ref() != Some(&next);
+        guard.latest_onair_track = Some(next);
+        changed
     }
 
-    pub fn clear_onair_track(&self) {
+    pub fn clear_onair_track(&self) -> bool {
         let mut guard = self.state.lock().unwrap();
+        let changed = guard.latest_onair_track.is_some();
         guard.latest_onair_track = None;
+        changed
     }
 
     pub fn get_time_belt() -> &'static str {
