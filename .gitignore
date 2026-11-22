@@ -52,6 +52,10 @@ out/
 frontend/out/
 *.tsbuildinfo
 
+# Rust Build Artifacts
+native_rust/target/
+!native_rust/assets/**/*
+
 # Test & Local Audio Caches
 cache_test/
 *.mp3
@@ -63,6 +67,7 @@ cache_test/
 !assets/**/*
 !frontend/public/**/*
 !docs/**/*
+!native_rust/assets/**/*
 
 # Environment & Secrets (Keep .env.example, ignore private .env)
 .env
