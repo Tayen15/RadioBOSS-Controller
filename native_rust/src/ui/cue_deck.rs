@@ -5,8 +5,10 @@ use crate::events::AppCommand;
 use crate::services::audio_player::AudioPreviewState;
 use crate::services::title_cleaner::clean_broadcast_title;
 use crate::ui::theme::{
-    bold_text, lcd_frame, lerp_color, module_frame, mono_text, semibold_text, slate_button, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR, CONTROL_BG,
-    SIGNAL_CYAN, SLATE_BTN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECONDARY,
+    amber_button_sized, bold_text, lcd_frame, lerp_color, module_frame, mono_text, semibold_text,
+    slate_button, slate_button_sized, status_pill, AMBER_DARK_TEXT, AMBER_PRIMARY, BORDER_COLOR,
+    CONTROL_BG, SIGNAL_CYAN, SLATE_BTN, STATUS_ERROR, STATUS_SUCCESS, TEXT_MUTED, TEXT_PRIMARY,
+    TEXT_SECONDARY,
 };
 
 pub fn render_cue_deck(
@@ -396,22 +398,16 @@ pub fn render_cue_deck(
         let btn_w = ((ui.available_width() - 8.0) / 2.0).max(110.0);
         ui.horizontal(|ui| {
             ui.add_enabled_ui(!is_queueing, |ui| {
-                if ui
-                    .add_sized(
-                        [btn_w, 38.0],
-                        egui::Button::new(bold_text(
-                            if is_queueing {
-                                "Mengirim..."
-                            } else {
-                                "Putar Berikutnya"
-                            },
-                            12.5,
-                            AMBER_DARK_TEXT,
-                        ))
-                        .fill(AMBER_PRIMARY)
-                        .corner_radius(CornerRadius::same(8)),
-                    )
-                    .clicked()
+                if amber_button_sized(
+                    ui,
+                    if is_queueing {
+                        "Mengirim..."
+                    } else {
+                        "Putar Berikutnya"
+                    },
+                    [btn_w, 38.0],
+                )
+                .clicked()
                 {
                     app.selected_track = Some(track.clone());
                     app.send_cmd(AppCommand::QueueTrack {
@@ -423,20 +419,7 @@ pub fn render_cue_deck(
                     });
                 }
 
-                if ui
-                    .add_sized(
-                        [btn_w, 38.0],
-                        egui::Button::new(bold_text(
-                            "Tambah ke Antrean",
-                            12.5,
-                            TEXT_PRIMARY,
-                        ))
-                        .fill(Color32::from_rgb(39, 39, 48))
-                        .stroke(Stroke::new(1.0, BORDER_COLOR))
-                        .corner_radius(CornerRadius::same(8)),
-                    )
-                    .clicked()
-                {
+                if slate_button_sized(ui, "Tambah ke Antrean", [btn_w, 38.0]).clicked() {
                     app.selected_track = Some(track.clone());
                     app.send_cmd(AppCommand::QueueTrack {
                         track: track.clone(),

@@ -466,8 +466,8 @@ impl YtMusicService {
         let mut duration_str: Option<String> = None;
         let mut year: Option<String> = None;
 
-        if let Some(col2) = flex_cols.get(1) {
-            if let Some(runs) = col2
+        for (idx, col) in flex_cols.iter().enumerate().skip(1) {
+            if let Some(runs) = col
                 .pointer("/musicResponsiveListItemFlexColumnRenderer/text/runs")
                 .and_then(|v| v.as_array())
             {
@@ -493,7 +493,7 @@ impl YtMusicService {
                 }
 
                 // Fallback: if no artist had MUSIC_PAGE_TYPE_ARTIST navigation endpoint, pick first segment before •
-                if artists.is_empty() {
+                if idx == 1 && artists.is_empty() {
                     if let Some(first_run) = runs.first().and_then(|r| r.get("text")).and_then(|t| t.as_str()) {
                         let t = first_run.trim();
                         if !t.is_empty() && t != "Song" && t != "Lagu" {
@@ -504,14 +504,15 @@ impl YtMusicService {
             }
         }
 
-        // Fixed columns sometimes hold duration
+        // Fixed columns sometimes hold duration (runs or simpleText)
         if duration_str.is_none() {
             if let Some(fixed_cols) = renderer.get("fixedColumns").and_then(|v| v.as_array()) {
                 for fc in fixed_cols {
-                    if let Some(t) = fc
+                    let t = fc
                         .pointer("/musicResponsiveListItemFixedColumnRenderer/text/runs/0/text")
-                        .and_then(|v| v.as_str())
-                    {
+                        .or_else(|| fc.pointer("/musicResponsiveListItemFixedColumnRenderer/text/simpleText"))
+                        .and_then(|v| v.as_str());
+                    if let Some(t) = t {
                         if t.contains(':') {
                             duration_str = Some(t.trim().to_string());
                             break;
@@ -601,6 +602,7 @@ impl YtMusicService {
 
                             let length_str = renderer
                                 .pointer("/lengthText/runs/0/text")
+                                .or_else(|| renderer.pointer("/lengthText/simpleText"))
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("00:00");
                             let dur_sec = parse_duration_str(length_str);

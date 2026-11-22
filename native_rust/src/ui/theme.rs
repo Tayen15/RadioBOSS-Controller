@@ -315,7 +315,12 @@ struct PillButtonStyle {
     bold: bool,
 }
 
-fn animated_pill_button(ui: &mut egui::Ui, label: &str, style: PillButtonStyle) -> egui::Response {
+fn animated_pill_button_sized(
+    ui: &mut egui::Ui,
+    label: &str,
+    min_width: Option<f32>,
+    style: PillButtonStyle,
+) -> egui::Response {
     let font = egui::FontId::new(
         if style.bold { 12.5 } else { 12.0 },
         FontFamily::Name(if style.bold { "bold" } else { "semibold" }.into()),
@@ -323,7 +328,8 @@ fn animated_pill_button(ui: &mut egui::Ui, label: &str, style: PillButtonStyle) 
     let galley = ui
         .painter()
         .layout_no_wrap(label.to_string(), font, style.text_col);
-    let desired = egui::vec2(galley.size().x + 22.0, style.size_y);
+    let w = min_width.unwrap_or(galley.size().x + 22.0);
+    let desired = egui::vec2(w, style.size_y);
     let (rect, resp) = ui.allocate_exact_size(desired, egui::Sense::click());
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
 
@@ -349,6 +355,46 @@ fn animated_pill_button(ui: &mut egui::Ui, label: &str, style: PillButtonStyle) 
     ui.painter()
         .galley(rect.center() - galley.size() * 0.5, galley, style.text_col);
     resp
+}
+
+fn animated_pill_button(ui: &mut egui::Ui, label: &str, style: PillButtonStyle) -> egui::Response {
+    animated_pill_button_sized(ui, label, None, style)
+}
+
+pub fn amber_button_sized(ui: &mut egui::Ui, label: &str, size: [f32; 2]) -> egui::Response {
+    animated_pill_button_sized(
+        ui,
+        label,
+        Some(size[0]),
+        PillButtonStyle {
+            size_y: size[1],
+            base_fill: AMBER_PRIMARY,
+            hover_fill: Color32::from_rgb(251, 184, 52),
+            press_fill: Color32::from_rgb(217, 119, 6),
+            base_stroke: Color32::TRANSPARENT,
+            hover_stroke: Color32::TRANSPARENT,
+            text_col: AMBER_DARK_TEXT,
+            bold: true,
+        },
+    )
+}
+
+pub fn slate_button_sized(ui: &mut egui::Ui, label: &str, size: [f32; 2]) -> egui::Response {
+    animated_pill_button_sized(
+        ui,
+        label,
+        Some(size[0]),
+        PillButtonStyle {
+            size_y: size[1],
+            base_fill: SLATE_BTN,
+            hover_fill: Color32::from_rgb(54, 54, 67),
+            press_fill: Color32::from_rgb(31, 31, 39),
+            base_stroke: BORDER_COLOR,
+            hover_stroke: Color32::from_rgb(84, 84, 102),
+            text_col: TEXT_PRIMARY,
+            bold: true,
+        },
+    )
 }
 
 pub fn amber_button(ui: &mut egui::Ui, label: &str) -> egui::Response {
