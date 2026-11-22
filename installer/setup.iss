@@ -47,6 +47,20 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
+[InstallDelete]
+; Clean up legacy executable & shortcuts from pre-CastDeck releases
+Type: files; Name: "{app}\RCBStudio.exe"
+Type: files; Name: "{app}\RadioBOSSCaster.exe"
+Type: files; Name: "{autodesktop}\RCB Studio.lnk"
+Type: files; Name: "{autodesktop}\Radio Caster Bridge.lnk"
+Type: files; Name: "{autodesktop}\Radio Caster Bridge Studio.lnk"
+Type: filesandordirs; Name: "{group}\..\Radio Caster Bridge Studio"
+Type: filesandordirs; Name: "{group}\..\Radio Caster Bridge"
+Type: files; Name: "{commonprograms}\Radio Caster Bridge Studio.lnk"
+Type: files; Name: "{commonprograms}\Radio Caster Bridge.lnk"
+Type: files; Name: "{userprograms}\Radio Caster Bridge Studio.lnk"
+Type: files; Name: "{userprograms}\Radio Caster Bridge.lnk"
+
 [Files]
 Source: "..\dist\CastDeck.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
