@@ -485,7 +485,7 @@ impl YtMusicService {
                         } else if page_type == "MUSIC_PAGE_TYPE_ALBUM" {
                             album = Some(text.to_string());
                         }
-                    } else if text.contains(':') && text.chars().all(|c| c.is_ascii_digit() || c == ':') {
+                    } else if is_duration_token(text) {
                         duration_str = Some(text.to_string());
                     } else if text.len() == 4 && text.chars().all(|c| c.is_ascii_digit()) {
                         year = Some(text.to_string());
@@ -513,7 +513,7 @@ impl YtMusicService {
                         .or_else(|| fc.pointer("/musicResponsiveListItemFixedColumnRenderer/text/simpleText"))
                         .and_then(|v| v.as_str());
                     if let Some(t) = t {
-                        if t.contains(':') {
+                        if is_duration_token(t.trim()) {
                             duration_str = Some(t.trim().to_string());
                             break;
                         }
@@ -765,8 +765,16 @@ pub fn format_seconds(seconds: u64) -> String {
     }
 }
 
+fn is_duration_token(s: &str) -> bool {
+    let t = s.trim();
+    (t.contains(':') || t.contains('.'))
+        && t.len() >= 3
+        && t.chars().all(|c| c.is_ascii_digit() || c == ':' || c == '.')
+        && parse_duration_str(t) > 0
+}
+
 pub fn parse_duration_str(s: &str) -> u64 {
-    let parts: Vec<&str> = s.trim().split(':').collect();
+    let parts: Vec<&str> = s.trim().split([':', '.']).collect();
     match parts.as_slice() {
         [m, sec] => {
             let mm = m.parse::<u64>().unwrap_or(0);
