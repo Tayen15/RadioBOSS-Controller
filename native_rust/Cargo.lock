@@ -668,6 +668,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "castdeck"
+version = "1.0.0"
+dependencies = [
+ "axum",
+ "chrono",
+ "eframe",
+ "egui_extras",
+ "futures-util",
+ "id3",
+ "image",
+ "once_cell",
+ "open",
+ "quick-xml 0.42.0",
+ "regex",
+ "reqwest",
+ "rfd",
+ "rodio",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sysinfo",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+ "urlencoding",
+ "uuid",
+ "winresource",
+]
+
+[[package]]
 name = "cc"
 version = "1.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3485,38 +3517,6 @@ name = "raw-window-handle"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
-
-[[package]]
-name = "rcb_studio"
-version = "0.9.4"
-dependencies = [
- "axum",
- "chrono",
- "eframe",
- "egui_extras",
- "futures-util",
- "id3",
- "image",
- "once_cell",
- "open",
- "quick-xml 0.42.0",
- "regex",
- "reqwest",
- "rfd",
- "rodio",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2",
- "sysinfo",
- "tokio",
- "tokio-util",
- "tracing",
- "tracing-subscriber",
- "urlencoding",
- "uuid",
- "winresource",
-]
 
 [[package]]
 name = "read-fonts"

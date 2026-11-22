@@ -134,17 +134,16 @@ impl UpdateService {
         let list = assets?;
         let priorities = if cfg!(target_os = "windows") {
             vec![
+                "CastDeck-Setup-x64.exe",
                 "RCBStudio-Setup-x64.exe",
                 "RadioBOSSCaster-Setup-x64.exe",
-                "RadioBOSSCaster-Windows-x64.exe",
-                "RadioBOSSCaster.exe",
             ]
         } else {
             vec![
+                "CastDeck-Linux-x64.deb",
+                "CastDeck-Linux-x64.tar.gz",
                 "RCBStudio-Linux-x64.deb",
                 "RCBStudio-Linux-x64.tar.gz",
-                "RadioBOSSCaster-Portable-Linux-x64.tar.gz",
-                "RadioBOSSCaster-Linux-x64",
             ]
         };
 

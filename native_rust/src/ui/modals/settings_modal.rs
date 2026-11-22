@@ -880,11 +880,11 @@ fn render_system_tab(ui: &mut egui::Ui, app: &mut RadioCasterApp) {
             ui.vertical(|ui| {
                 ui.spacing_mut().item_spacing.y = 2.0;
                 ui.horizontal(|ui| {
-                    ui.label(bold_text("Radio Caster Bridge Studio", 14.0, TEXT_PRIMARY));
+                    ui.label(bold_text("CastDeck", 14.0, TEXT_PRIMARY));
                     status_pill(ui, &format!("v{APP_VERSION}"), AMBER_PRIMARY);
                 });
                 ui.label(semibold_text(
-                    "Copyright © 2026 RCB Studio • Tayen",
+                    "Copyright © 2026 CastDeck • Tayen",
                     11.5,
                     TEXT_SECONDARY,
                 ));

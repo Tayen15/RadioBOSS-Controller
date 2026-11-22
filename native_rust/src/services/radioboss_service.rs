@@ -308,7 +308,7 @@ impl RadioBossService {
 
         if resolved.is_empty() || resolved.starts_with("http://") || resolved.starts_with("https://") {
             resolved = if playback_state == "playing" {
-                "Siaran RCB Studio Aktif".to_string()
+                "Siaran CastDeck Aktif".to_string()
             } else {
                 "Tidak ada lagu yang sedang diputar".to_string()
             };

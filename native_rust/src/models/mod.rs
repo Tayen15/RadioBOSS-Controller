@@ -4,4 +4,4 @@ pub mod radioboss;
 pub mod system;
 pub mod track;
 
-pub const APP_VERSION: &str = "0.9.4";
+pub const APP_VERSION: &str = "1.0.0";

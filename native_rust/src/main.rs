@@ -66,7 +66,7 @@ fn main() -> eframe::Result<()> {
     };
 
     let mut viewport = egui::ViewportBuilder::default()
-        .with_title("Radio Caster Bridge Studio | RCB Studio")
+        .with_title("CastDeck")
         .with_decorations(false)
         .with_inner_size([1360.0, 860.0])
         .with_min_inner_size([1024.0, 680.0]);
@@ -81,7 +81,7 @@ fn main() -> eframe::Result<()> {
     };
 
     let res = eframe::run_native(
-        "Radio Caster Bridge Studio",
+        "CastDeck",
         native_options,
         Box::new(move |cc| {
             let _enter = rt_handle.enter();

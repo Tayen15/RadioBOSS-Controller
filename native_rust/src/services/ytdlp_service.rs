@@ -109,7 +109,7 @@ impl YtDlpService {
             .cloned()
             .unwrap_or(CachedMeta {
                 title: "YouTube Audio".to_string(),
-                artist: "RCB Studio".to_string(),
+                artist: "CastDeck".to_string(),
                 album: "Studio Stream".to_string(),
                 year: String::new(),
                 genre: "Pop".to_string(),

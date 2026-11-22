@@ -1,13 +1,13 @@
 [package]
-name = "rcb_studio"
-version = "0.9.4"
+name = "castdeck"
+version = "1.0.0"
 edition = "2021"
 authors = ["Firtiansyah Okta <tiantiantitik@gmail.com>"]
-description = "Radio Caster Bridge Studio (RCB Studio) - Broadcast Audio Bridge & Controller"
+description = "CastDeck - Broadcast Audio Bridge & RadioBOSS Controller"
 build = "build.rs"
 
 [[bin]]
-name = "RCBStudio"
+name = "CastDeck"
 path = "src/main.rs"
 
 [dependencies]

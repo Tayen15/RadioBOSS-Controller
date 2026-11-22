@@ -1,4 +1,4 @@
-# Build and stage release binary RCBStudio.exe for Inno Setup & Portable distribution
+# Build and stage release binary CastDeck.exe for Inno Setup & Portable distribution
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $DistDir = Join-Path $Root "dist"
@@ -12,9 +12,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Release build failed" }
 
     New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
-    Copy-Item "target\release\RCBStudio.exe" (Join-Path $DistDir "RCBStudio.exe") -Force
+    Copy-Item "target\release\CastDeck.exe" (Join-Path $DistDir "CastDeck.exe") -Force
 
-    $exeInfo = Get-Item (Join-Path $DistDir "RCBStudio.exe")
+    $exeInfo = Get-Item (Join-Path $DistDir "CastDeck.exe")
     Write-Host ("Staged: {0} ({1:N2} MB)" -f $exeInfo.FullName, ($exeInfo.Length / 1MB))
 }
 finally {

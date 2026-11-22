@@ -1,12 +1,12 @@
-; Inno Setup Script: Radio Caster Bridge Studio (RCB Studio) Setup Wizard
-; Packages the standalone RCBStudio.exe binary + optional ffmpeg.exe / yt-dlp.exe sidecars.
+; Inno Setup Script: CastDeck Setup Wizard
+; Packages the standalone CastDeck.exe binary + optional ffmpeg.exe / yt-dlp.exe sidecars.
 
-#define MyAppName "Radio Caster Bridge Studio"
-#define MyAppShortName "RCB Studio"
-#define MyAppVersion "0.9.4"
+#define MyAppName "CastDeck"
+#define MyAppShortName "CastDeck"
+#define MyAppVersion "1.0.0"
 #define MyAppPublisher "oktaa"
 #define MyAppURL "https://hi.oktaa.my.id"
-#define MyAppExeName "RCBStudio.exe"
+#define MyAppExeName "CastDeck.exe"
 
 #ifndef AppArch
 #define AppArch "x64"
@@ -29,7 +29,7 @@ DefaultDirName={autopf32}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\dist
-OutputBaseFilename=RCBStudio-Setup-{#AppArch}
+OutputBaseFilename=CastDeck-Setup-{#AppArch}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -48,7 +48,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
-Source: "..\dist\RCBStudio.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\CastDeck.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\dist\yt-dlp.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
